@@ -1,4 +1,4 @@
-# Phase 07: Technician And Inventory
+# Phase 08: Technician And Inventory
 
 > For implementation workers: implement this phase as a bounded slice, then request subagent review using `docs/review/subagent-review-protocol.md`.
 
@@ -31,7 +31,7 @@ Add technician mobile workflow and basic parts tracking.
 - Technician can mark parts used.
 - Request status updates reflect technician actions.
 - Tests cover technician actions and inventory stock changes.
-- `project_notes.md` identifies Phase 08 as the next active phase.
+- `project_notes.md` identifies Phase 09 as the next active phase.
 
 ## Subagent Review Gate
 

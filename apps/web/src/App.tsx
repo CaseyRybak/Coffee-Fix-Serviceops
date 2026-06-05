@@ -125,6 +125,58 @@ interface PublicStatusSnapshot {
   };
 }
 
+interface DispatcherListItem {
+  request_number: string;
+  status: RequestStatus;
+  customer_name: string;
+  customer_phone: string;
+  machine_label: string;
+  urgency: Urgency;
+  address: string;
+  created_at: string;
+  latest_event_title: string;
+}
+
+interface DispatcherListResponse {
+  items: DispatcherListItem[];
+}
+
+type DispatcherStatusFilter = "all" | RequestStatus;
+type DispatcherUrgencyFilter = "all" | Urgency;
+
+interface DispatcherRequestDetail {
+  request_number: string;
+  status: RequestStatus;
+  customer: {
+    name: string;
+    phone: string;
+    telegram: string | null;
+    client_type: ClientType;
+  };
+  machine: {
+    brand: string;
+    model: string | null;
+    location_type: LocationType;
+  };
+  problem: string;
+  address: string;
+  urgency: Urgency;
+  created_at: string;
+  timeline: PublicStatusSnapshot["timeline"];
+  clarification: PublicStatusSnapshot["clarification"];
+  assignment: {
+    technician_name: string | null;
+    technician_phone: string | null;
+    technician_region: string | null;
+    visit_window: string | null;
+  };
+  internal_notes: Array<{
+    note: string;
+    actor: string;
+    created_at: string;
+  }>;
+}
+
 const initialForm: IntakeFormState = {
   name: "",
   phone: "",
@@ -391,6 +443,42 @@ export function buildTelegramOptInPayload(telegram: string) {
   return cleaned ? { telegram: cleaned } : { telegram: undefined };
 }
 
+export function buildDispatcherListPath(): string {
+  return "/dispatcher/service-requests";
+}
+
+export function buildDispatcherDetailPath(requestNumber: string): string {
+  return `/dispatcher/service-requests/${encodeURIComponent(normalizeRequestNumber(requestNumber))}`;
+}
+
+export function buildDispatcherStatusPath(requestNumber: string): string {
+  return `${buildDispatcherDetailPath(requestNumber)}/status`;
+}
+
+export function buildDispatcherClarificationPath(requestNumber: string): string {
+  return `${buildDispatcherDetailPath(requestNumber)}/clarifications`;
+}
+
+export function buildDispatcherAssignmentPath(requestNumber: string): string {
+  return `${buildDispatcherDetailPath(requestNumber)}/assignment`;
+}
+
+export function buildDispatcherInternalNotePath(requestNumber: string): string {
+  return `${buildDispatcherDetailPath(requestNumber)}/internal-notes`;
+}
+
+export function filterDispatcherItems(
+  items: DispatcherListItem[],
+  statusFilter: DispatcherStatusFilter,
+  urgencyFilter: DispatcherUrgencyFilter,
+): DispatcherListItem[] {
+  return items.filter((item) => {
+    const statusMatches = statusFilter === "all" || item.status === statusFilter;
+    const urgencyMatches = urgencyFilter === "all" || item.urgency === urgencyFilter;
+    return statusMatches && urgencyMatches;
+  });
+}
+
 function statusLabel(status: RequestStatus): string {
   const labels: Record<RequestStatus, string> = {
     new: "Новая заявка",
@@ -407,6 +495,15 @@ function statusLabel(status: RequestStatus): string {
     cancelled: "Заявка отменена",
   };
   return labels[status];
+}
+
+function urgencyLabel(urgency: Urgency): string {
+  const labels: Record<Urgency, string> = {
+    today: "Сегодня",
+    one_two_days: "1-2 дня",
+    planned: "Планово",
+  };
+  return labels[urgency];
 }
 
 function Field({
@@ -536,6 +633,17 @@ function Header() {
           </a>
         </nav>
       ) : null}
+    </header>
+  );
+}
+
+function WorkspaceHeader() {
+  return (
+    <header className="workspace-header">
+      <div className="site-header-inner workspace-header-inner">
+        <Logo />
+        <span className="workspace-header-label">Рабочий кабинет</span>
+      </div>
     </header>
   );
 }
@@ -843,6 +951,378 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
         </section>
       </main>
       <Footer />
+    </div>
+  );
+}
+
+export function DispatcherPage({
+  initialList,
+  initialDetail,
+}: {
+  initialList?: DispatcherListResponse;
+  initialDetail?: DispatcherRequestDetail;
+}) {
+  const [list, setList] = useState<DispatcherListResponse>(initialList ?? { items: [] });
+  const [selected, setSelected] = useState(initialDetail?.request_number ?? initialList?.items[0]?.request_number ?? "");
+  const [detail, setDetail] = useState<DispatcherRequestDetail | null>(initialDetail ?? null);
+  const [statusValue, setStatusValue] = useState<RequestStatus>("awaiting_assignment");
+  const [statusTitle, setStatusTitle] = useState("Готово к назначению");
+  const [statusDescription, setStatusDescription] = useState("Описание проверено диспетчером.");
+  const [question, setQuestion] = useState("");
+  const [technicianName, setTechnicianName] = useState("");
+  const [technicianPhone, setTechnicianPhone] = useState("");
+  const [technicianRegion, setTechnicianRegion] = useState("");
+  const [visitWindow, setVisitWindow] = useState("");
+  const [internalNote, setInternalNote] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<DispatcherStatusFilter>("all");
+  const [urgencyFilter, setUrgencyFilter] = useState<DispatcherUrgencyFilter>("all");
+  const filteredItems = filterDispatcherItems(list.items, statusFilter, urgencyFilter);
+
+  async function loadList() {
+    const response = await fetch(`${apiBaseUrl()}${buildDispatcherListPath()}`);
+    if (!response.ok) throw new Error(`Dispatcher list failed with ${response.status}`);
+    const body = (await response.json()) as DispatcherListResponse;
+    setList(body);
+    if (!selected && body.items[0]) setSelected(body.items[0].request_number);
+    return body;
+  }
+
+  async function loadDetail(requestNumber: string) {
+    if (!requestNumber) return;
+    const response = await fetch(`${apiBaseUrl()}${buildDispatcherDetailPath(requestNumber)}`);
+    if (!response.ok) throw new Error(`Dispatcher detail failed with ${response.status}`);
+    const body = (await response.json()) as DispatcherRequestDetail;
+    setDetail(body);
+    setSelected(body.request_number);
+  }
+
+  async function refresh(requestNumber = selected) {
+    setLoading(true);
+    setMessage(null);
+    try {
+      await loadList();
+      if (requestNumber) await loadDetail(requestNumber);
+    } catch {
+      setMessage("Не удалось обновить диспетчерские данные.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (initialList || initialDetail) return;
+    void refresh();
+  }, [initialList, initialDetail]);
+
+  useEffect(() => {
+    if (!selected || selected === detail?.request_number) return;
+    void loadDetail(selected).catch(() => setMessage("Не удалось открыть заявку."));
+  }, [selected, detail?.request_number]);
+
+  async function postAction(path: string, body: object, afterSuccess: () => void, successMessage: string) {
+    if (!detail) return;
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error(`Dispatcher action failed with ${response.status}`);
+      afterSuccess();
+      await refresh(detail.request_number);
+      setMessage(successMessage);
+    } catch {
+      setMessage("Не удалось сохранить действие диспетчера.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitStatus(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!detail) return;
+    await postAction(
+      buildDispatcherStatusPath(detail.request_number),
+      { status: statusValue, title: statusTitle.trim(), description: statusDescription.trim() },
+      () => undefined,
+      "Статус обновлен.",
+    );
+  }
+
+  async function submitQuestion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!detail) return;
+    await postAction(
+      buildDispatcherClarificationPath(detail.request_number),
+      { question: question.trim() },
+      () => setQuestion(""),
+      "Вопрос клиенту сохранен.",
+    );
+  }
+
+  async function submitAssignment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!detail) return;
+    await postAction(
+      buildDispatcherAssignmentPath(detail.request_number),
+      {
+        technician_name: technicianName.trim(),
+        technician_phone: technicianPhone.trim() || undefined,
+        technician_region: technicianRegion.trim() || undefined,
+        visit_window: visitWindow.trim() || undefined,
+      },
+      () => {
+        setTechnicianName("");
+        setTechnicianPhone("");
+        setTechnicianRegion("");
+        setVisitWindow("");
+      },
+      "Назначение сохранено.",
+    );
+  }
+
+  async function submitInternalNote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!detail) return;
+    await postAction(
+      buildDispatcherInternalNotePath(detail.request_number),
+      { note: internalNote.trim() },
+      () => setInternalNote(""),
+      "Внутренняя заметка сохранена.",
+    );
+  }
+
+  return (
+    <div className="app-page dispatcher-page">
+      <WorkspaceHeader />
+      <main className="dispatcher-main">
+        <section className="section-inner dispatcher-shell">
+          <div className="dispatcher-topline">
+            <div>
+              <span>Внутренний контур</span>
+              <h1>Диспетчерская</h1>
+              <p>Заявки, статусы, уточнения, назначение мастера и внутренние заметки.</p>
+            </div>
+            <button className="secondary-status-button" type="button" onClick={() => void refresh()} disabled={loading}>
+              {loading ? "Обновляем" : "Обновить"}
+            </button>
+          </div>
+          {message ? <p className="status-message">{message}</p> : null}
+          <div className="dispatcher-workspace">
+            <aside className="dispatcher-list" aria-label="Список заявок">
+              <div className="dispatcher-filters">
+                <select
+                  aria-label="Фильтр по статусу"
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as DispatcherStatusFilter)}
+                >
+                  <option value="all">Все статусы</option>
+                  {[
+                    "new",
+                    "needs_clarification",
+                    "awaiting_assignment",
+                    "technician_assigned",
+                    "visit_scheduled",
+                    "diagnostics",
+                    "waiting_for_parts",
+                    "repair_in_progress",
+                    "completed",
+                    "closed",
+                    "warranty_case",
+                    "cancelled",
+                  ].map((status) => (
+                    <option key={status} value={status}>
+                      {statusLabel(status as RequestStatus)}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Фильтр по срочности"
+                  value={urgencyFilter}
+                  onChange={(event) => setUrgencyFilter(event.target.value as DispatcherUrgencyFilter)}
+                >
+                  <option value="all">Любая срочность</option>
+                  {urgencies.map((urgency) => (
+                    <option key={urgency.value} value={urgency.value}>
+                      {urgency.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {filteredItems.length ? (
+                filteredItems.map((item) => (
+                  <button
+                    className={selected === item.request_number ? "dispatcher-list-item active" : "dispatcher-list-item"}
+                    key={item.request_number}
+                    type="button"
+                    onClick={() => setSelected(item.request_number)}
+                  >
+                    <span>{statusLabel(item.status)}</span>
+                    <strong>{item.request_number}</strong>
+                    <em>{item.customer_name}</em>
+                    <small>
+                      {item.machine_label} · {urgencyLabel(item.urgency)}
+                    </small>
+                    <small>{item.latest_event_title}</small>
+                  </button>
+                ))
+              ) : (
+                <p className="dispatcher-empty">Заявок по выбранным фильтрам нет.</p>
+              )}
+            </aside>
+
+            {detail ? (
+              <section className="dispatcher-detail">
+                <div className="dispatcher-card dispatcher-summary-card">
+                  <div>
+                    <span className="status-pill">{statusLabel(detail.status)}</span>
+                    <h2>{detail.request_number}</h2>
+                    <p>{detail.problem}</p>
+                  </div>
+                  <dl>
+                    <div>
+                      <dt>Клиент</dt>
+                      <dd>{detail.customer.name}</dd>
+                    </div>
+                    <div>
+                      <dt>Телефон</dt>
+                      <dd>{detail.customer.phone}</dd>
+                    </div>
+                    <div>
+                      <dt>Кофемашина</dt>
+                      <dd>
+                        {detail.machine.brand}
+                        {detail.machine.model ? ` ${detail.machine.model}` : ""}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Адрес</dt>
+                      <dd>{detail.address}</dd>
+                    </div>
+                    <div>
+                      <dt>Срочность</dt>
+                      <dd>{urgencyLabel(detail.urgency)}</dd>
+                    </div>
+                    <div>
+                      <dt>Создана</dt>
+                      <dd>{detail.created_at}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="dispatcher-grid">
+                  <section className="dispatcher-card">
+                    <h3>История</h3>
+                    <div className="timeline compact-timeline">
+                      {detail.timeline.map((event) => (
+                        <article className="timeline-item" key={`${event.title}-${event.created_at}`}>
+                          <span />
+                          <div>
+                            <small>{statusLabel(event.status)}</small>
+                            <h3>{event.title}</h3>
+                            <p>{event.description}</p>
+                            <em>{event.created_at}</em>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="dispatcher-card">
+                    <h3>Вопрос клиенту</h3>
+                    {detail.clarification ? (
+                      <p>
+                        {detail.clarification.question}
+                        {detail.clarification.answer ? ` Ответ: ${detail.clarification.answer}` : ""}
+                      </p>
+                    ) : (
+                      <p>Открытых уточнений нет.</p>
+                    )}
+                    <form className="dispatcher-form" onSubmit={submitQuestion}>
+                      <textarea value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Новый вопрос клиенту" required rows={3} />
+                      <button className="submit-button" type="submit">Задать вопрос клиенту</button>
+                    </form>
+                  </section>
+
+                  <section className="dispatcher-card">
+                    <h3>Обновить статус</h3>
+                    <form className="dispatcher-form" onSubmit={submitStatus}>
+                      <select value={statusValue} onChange={(event) => setStatusValue(event.target.value as RequestStatus)}>
+                        {[
+                          "awaiting_assignment",
+                          "technician_assigned",
+                          "visit_scheduled",
+                          "diagnostics",
+                          "waiting_for_parts",
+                          "repair_in_progress",
+                          "completed",
+                          "closed",
+                          "cancelled",
+                        ].map((status) => (
+                          <option key={status} value={status}>
+                            {statusLabel(status as RequestStatus)}
+                          </option>
+                        ))}
+                      </select>
+                      <input value={statusTitle} onChange={(event) => setStatusTitle(event.target.value)} placeholder="Заголовок события" required />
+                      <textarea value={statusDescription} onChange={(event) => setStatusDescription(event.target.value)} placeholder="Описание для timeline" required rows={2} />
+                      <button className="submit-button" type="submit">Обновить статус</button>
+                    </form>
+                  </section>
+
+                  <section className="dispatcher-card">
+                    <h3>Назначение</h3>
+                    <p>
+                      {detail.assignment.technician_name
+                        ? `${detail.assignment.technician_name}${detail.assignment.technician_phone ? ` · ${detail.assignment.technician_phone}` : ""}`
+                        : "Мастер еще не назначен."}
+                    </p>
+                    {detail.assignment.visit_window ? <p>{detail.assignment.visit_window}</p> : null}
+                    <form className="dispatcher-form" onSubmit={submitAssignment}>
+                      <input value={technicianName} onChange={(event) => setTechnicianName(event.target.value)} placeholder="Имя мастера" required />
+                      <input value={technicianPhone} onChange={(event) => setTechnicianPhone(event.target.value)} placeholder="Телефон мастера" />
+                      <input value={technicianRegion} onChange={(event) => setTechnicianRegion(event.target.value)} placeholder="Регион" />
+                      <input value={visitWindow} onChange={(event) => setVisitWindow(event.target.value)} placeholder="Окно визита" />
+                      <button className="submit-button" type="submit">Назначить мастера</button>
+                    </form>
+                  </section>
+
+                  <section className="dispatcher-card">
+                    <h3>Внутренние заметки</h3>
+                    <div className="internal-note-list">
+                      {detail.internal_notes.length ? (
+                        detail.internal_notes.map((note) => (
+                          <article key={`${note.created_at}-${note.note}`}>
+                            <p>{note.note}</p>
+                            <small>
+                              {note.actor} · {note.created_at}
+                            </small>
+                          </article>
+                        ))
+                      ) : (
+                        <p>Заметок пока нет.</p>
+                      )}
+                    </div>
+                    <form className="dispatcher-form" onSubmit={submitInternalNote}>
+                      <textarea value={internalNote} onChange={(event) => setInternalNote(event.target.value)} placeholder="Внутренняя заметка" required rows={3} />
+                      <button className="submit-button" type="submit">Сохранить заметку</button>
+                    </form>
+                  </section>
+                </div>
+              </section>
+            ) : (
+              <section className="dispatcher-detail dispatcher-card">
+                <h2>Выберите заявку</h2>
+                <p>Откройте заявку из списка слева, чтобы увидеть детали и действия.</p>
+              </section>
+            )}
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
@@ -1256,7 +1736,9 @@ function SectionHeading({ title, copy }: { title: string; copy: string }) {
 }
 
 export function App() {
+  const isDispatcherRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/dispatcher");
   const isStatusRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/status");
+  if (isDispatcherRoute) return <DispatcherPage />;
   if (isStatusRoute) return <StatusPage />;
 
   return (

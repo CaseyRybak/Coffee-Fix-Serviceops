@@ -57,6 +57,10 @@ class ServiceRequestRepository:
                 problem TEXT NOT NULL,
                 address TEXT NOT NULL,
                 urgency TEXT NOT NULL,
+                assigned_technician_name TEXT,
+                assigned_technician_phone TEXT,
+                assigned_technician_region TEXT,
+                visit_window TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -102,8 +106,31 @@ class ServiceRequestRepository:
                 token TEXT NOT NULL UNIQUE,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS internal_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                service_request_id INTEGER NOT NULL REFERENCES service_requests(id),
+                note TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
             """
         )
+        self._ensure_sqlite_dispatcher_columns()
+
+    def _ensure_sqlite_dispatcher_columns(self) -> None:
+        existing_columns = {
+            str(row["name"])
+            for row in self._connection.execute("PRAGMA table_info(service_requests)").fetchall()
+        }
+        for column_name in (
+            "assigned_technician_name",
+            "assigned_technician_phone",
+            "assigned_technician_region",
+            "visit_window",
+        ):
+            if column_name not in existing_columns:
+                self._connection.execute(f"ALTER TABLE service_requests ADD COLUMN {column_name} TEXT")
 
     def next_sequence(self) -> int:
         row = self._connection.execute("SELECT COUNT(*) AS count FROM service_requests").fetchone()
@@ -397,6 +424,120 @@ class ServiceRequestRepository:
             "link": f"https://t.me/coffeefix_service_bot?start={token}",
         }
 
+    def list_dispatcher_requests(self) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            """
+            SELECT
+                sr.request_number,
+                sr.status,
+                sr.urgency,
+                sr.address,
+                sr.created_at,
+                c.name AS customer_name,
+                c.phone AS customer_phone,
+                m.brand,
+                m.model,
+                (
+                    SELECT se.title
+                    FROM status_events se
+                    WHERE se.service_request_id = sr.id
+                    ORDER BY se.id DESC
+                    LIMIT 1
+                ) AS latest_event_title
+            FROM service_requests sr
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            ORDER BY sr.id DESC
+            """
+        ).fetchall()
+        return [self._dispatcher_list_item(row) for row in rows]
+
+    def get_dispatcher_request(self, request_number: str) -> dict[str, Any]:
+        request = self._connection.execute(
+            """
+            SELECT
+                sr.id,
+                sr.request_number,
+                sr.status,
+                sr.problem,
+                sr.address,
+                sr.urgency,
+                sr.created_at,
+                sr.assigned_technician_name,
+                sr.assigned_technician_phone,
+                sr.assigned_technician_region,
+                sr.visit_window,
+                c.name,
+                c.phone,
+                c.telegram,
+                c.client_type,
+                m.brand,
+                m.model,
+                m.location_type
+            FROM service_requests sr
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE sr.request_number = ?
+            """,
+            (request_number,),
+        ).fetchone()
+        if request is None:
+            raise KeyError(request_number)
+        return self._dispatcher_detail(request)
+
+    def update_status(self, request_number: str, status: str, title: str, description: str, actor: str) -> str:
+        self.add_status_event(request_number, status, title, description, actor)
+        return self._get_request_status(request_number)
+
+    def assign_technician(
+        self,
+        request_number: str,
+        technician_name: str,
+        technician_phone: str | None,
+        technician_region: str | None,
+        visit_window: str | None,
+    ) -> str:
+        request_id = self._get_request_id(request_number)
+        status = "visit_scheduled" if visit_window else "technician_assigned"
+        title = "Визит запланирован" if visit_window else "Мастер назначен"
+        description = "Диспетчер назначил мастера и обновил следующий шаг по заявке."
+        with self._connection:
+            self._connection.execute(
+                """
+                UPDATE service_requests
+                SET
+                    status = ?,
+                    assigned_technician_name = ?,
+                    assigned_technician_phone = ?,
+                    assigned_technician_region = ?,
+                    visit_window = ?
+                WHERE id = ?
+                """,
+                (status, technician_name, technician_phone, technician_region, visit_window, request_id),
+            )
+            self._connection.execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (request_id, status, title, description, "dispatcher"),
+            )
+        return status
+
+    def save_internal_note(self, request_number: str, note: str, actor: str) -> str:
+        request_id = self._get_request_id(request_number)
+        with self._connection:
+            self._connection.execute(
+                """
+                INSERT INTO internal_notes (service_request_id, note, actor)
+                VALUES (?, ?, ?)
+                """,
+                (request_id, note, actor),
+            )
+        return self._get_request_status(request_number)
+
     def _get_request_id(self, request_number: str) -> int:
         row = self._connection.execute(
             "SELECT id FROM service_requests WHERE request_number = ?",
@@ -414,6 +555,101 @@ class ServiceRequestRepository:
         if row is None:
             raise KeyError(request_number)
         return str(row["status"])
+
+    def _dispatcher_list_item(self, row: sqlite3.Row) -> dict[str, Any]:
+        model = row["model"]
+        return {
+            "request_number": row["request_number"],
+            "status": row["status"],
+            "customer_name": row["customer_name"],
+            "customer_phone": row["customer_phone"],
+            "machine_label": f"{row['brand']}{f' {model}' if model else ''}",
+            "urgency": row["urgency"],
+            "address": row["address"],
+            "created_at": row["created_at"],
+            "latest_event_title": row["latest_event_title"] or "",
+        }
+
+    def _dispatcher_detail(self, request: sqlite3.Row) -> dict[str, Any]:
+        events = self._connection.execute(
+            """
+            SELECT status, title, description, actor, created_at
+            FROM status_events
+            WHERE service_request_id = ?
+            ORDER BY id
+            """,
+            (request["id"],),
+        ).fetchall()
+        clarification = self._connection.execute(
+            """
+            SELECT id, question, answer, answered_at
+            FROM clarification_questions
+            WHERE service_request_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (request["id"],),
+        ).fetchone()
+        notes = self._connection.execute(
+            """
+            SELECT note, actor, created_at
+            FROM internal_notes
+            WHERE service_request_id = ?
+            ORDER BY id DESC
+            """,
+            (request["id"],),
+        ).fetchall()
+        return {
+            "request_number": request["request_number"],
+            "status": request["status"],
+            "customer": {
+                "name": request["name"],
+                "phone": request["phone"],
+                "telegram": request["telegram"],
+                "client_type": request["client_type"],
+            },
+            "machine": {
+                "brand": request["brand"],
+                "model": request["model"],
+                "location_type": request["location_type"],
+            },
+            "problem": request["problem"],
+            "address": request["address"],
+            "urgency": request["urgency"],
+            "created_at": request["created_at"],
+            "timeline": [
+                {
+                    "status": event["status"],
+                    "title": event["title"],
+                    "description": event["description"],
+                    "actor": event["actor"],
+                    "created_at": event["created_at"],
+                }
+                for event in events
+            ],
+            "clarification": None
+            if clarification is None
+            else {
+                "question_id": clarification["id"],
+                "question": clarification["question"],
+                "answer": clarification["answer"],
+                "answered_at": clarification["answered_at"],
+            },
+            "assignment": {
+                "technician_name": request["assigned_technician_name"],
+                "technician_phone": request["assigned_technician_phone"],
+                "technician_region": request["assigned_technician_region"],
+                "visit_window": request["visit_window"],
+            },
+            "internal_notes": [
+                {
+                    "note": note["note"],
+                    "actor": note["actor"],
+                    "created_at": note["created_at"],
+                }
+                for note in notes
+            ],
+        }
 
     def _get_public_status(self, predicate: str, value: str) -> dict[str, Any]:
         request = self._connection.execute(
@@ -834,6 +1070,120 @@ class PostgresServiceRequestRepository:
             "link": f"https://t.me/coffeefix_service_bot?start={token}",
         }
 
+    def list_dispatcher_requests(self) -> list[dict[str, Any]]:
+        rows = self._connect().execute(
+            """
+            SELECT
+                sr.request_number,
+                sr.status,
+                sr.urgency,
+                sr.address,
+                sr.created_at,
+                c.name AS customer_name,
+                c.phone AS customer_phone,
+                m.brand,
+                m.model,
+                (
+                    SELECT se.title
+                    FROM status_events se
+                    WHERE se.service_request_id = sr.id
+                    ORDER BY se.id DESC
+                    LIMIT 1
+                ) AS latest_event_title
+            FROM service_requests sr
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            ORDER BY sr.id DESC
+            """
+        ).fetchall()
+        return [self._dispatcher_list_item(row) for row in rows]
+
+    def get_dispatcher_request(self, request_number: str) -> dict[str, Any]:
+        request = self._connect().execute(
+            """
+            SELECT
+                sr.id,
+                sr.request_number,
+                sr.status,
+                sr.problem,
+                sr.address,
+                sr.urgency,
+                sr.created_at,
+                sr.assigned_technician_name,
+                sr.assigned_technician_phone,
+                sr.assigned_technician_region,
+                sr.visit_window,
+                c.name,
+                c.phone,
+                c.telegram,
+                c.client_type,
+                m.brand,
+                m.model,
+                m.location_type
+            FROM service_requests sr
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE sr.request_number = %s
+            """,
+            (request_number,),
+        ).fetchone()
+        if request is None:
+            raise KeyError(request_number)
+        return self._dispatcher_detail(request)
+
+    def update_status(self, request_number: str, status: str, title: str, description: str, actor: str) -> str:
+        self.add_status_event(request_number, status, title, description, actor)
+        return self._get_request_status(request_number)
+
+    def assign_technician(
+        self,
+        request_number: str,
+        technician_name: str,
+        technician_phone: str | None,
+        technician_region: str | None,
+        visit_window: str | None,
+    ) -> str:
+        request_id = self._get_request_id(request_number)
+        status = "visit_scheduled" if visit_window else "technician_assigned"
+        title = "Визит запланирован" if visit_window else "Мастер назначен"
+        description = "Диспетчер назначил мастера и обновил следующий шаг по заявке."
+        with self._connect().transaction():
+            self._connect().execute(
+                """
+                UPDATE service_requests
+                SET
+                    status = %s,
+                    assigned_technician_name = %s,
+                    assigned_technician_phone = %s,
+                    assigned_technician_region = %s,
+                    visit_window = %s
+                WHERE id = %s
+                """,
+                (status, technician_name, technician_phone, technician_region, visit_window, request_id),
+            )
+            self._connect().execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (request_id, status, title, description, "dispatcher"),
+            )
+        return status
+
+    def save_internal_note(self, request_number: str, note: str, actor: str) -> str:
+        request_id = self._get_request_id(request_number)
+        self._connect().execute(
+            """
+            INSERT INTO internal_notes (service_request_id, note, actor)
+            VALUES (%s, %s, %s)
+            """,
+            (request_id, note, actor),
+        )
+        self._connect().commit()
+        return self._get_request_status(request_number)
+
     def _connect(self) -> psycopg.Connection[dict[str, Any]]:
         if self._connection is None or self._connection.closed:
             self._connection = psycopg.connect(self._database_url, row_factory=dict_row, autocommit=True)
@@ -856,6 +1206,103 @@ class PostgresServiceRequestRepository:
         if row is None:
             raise KeyError(request_number)
         return str(row["status"])
+
+    def _dispatcher_list_item(self, row: dict[str, Any]) -> dict[str, Any]:
+        model = row["model"]
+        return {
+            "request_number": row["request_number"],
+            "status": row["status"],
+            "customer_name": row["customer_name"],
+            "customer_phone": row["customer_phone"],
+            "machine_label": f"{row['brand']}{f' {model}' if model else ''}",
+            "urgency": row["urgency"],
+            "address": row["address"],
+            "created_at": self._format_timestamp(row["created_at"]),
+            "latest_event_title": row["latest_event_title"] or "",
+        }
+
+    def _dispatcher_detail(self, request: dict[str, Any]) -> dict[str, Any]:
+        events = self._connect().execute(
+            """
+            SELECT status, title, description, actor, created_at
+            FROM status_events
+            WHERE service_request_id = %s
+            ORDER BY id
+            """,
+            (request["id"],),
+        ).fetchall()
+        clarification = self._connect().execute(
+            """
+            SELECT id, question, answer, answered_at
+            FROM clarification_questions
+            WHERE service_request_id = %s
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (request["id"],),
+        ).fetchone()
+        notes = self._connect().execute(
+            """
+            SELECT note, actor, created_at
+            FROM internal_notes
+            WHERE service_request_id = %s
+            ORDER BY id DESC
+            """,
+            (request["id"],),
+        ).fetchall()
+        return {
+            "request_number": request["request_number"],
+            "status": request["status"],
+            "customer": {
+                "name": request["name"],
+                "phone": request["phone"],
+                "telegram": request["telegram"],
+                "client_type": request["client_type"],
+            },
+            "machine": {
+                "brand": request["brand"],
+                "model": request["model"],
+                "location_type": request["location_type"],
+            },
+            "problem": request["problem"],
+            "address": request["address"],
+            "urgency": request["urgency"],
+            "created_at": self._format_timestamp(request["created_at"]),
+            "timeline": [
+                {
+                    "status": event["status"],
+                    "title": event["title"],
+                    "description": event["description"],
+                    "actor": event["actor"],
+                    "created_at": self._format_timestamp(event["created_at"]),
+                }
+                for event in events
+            ],
+            "clarification": None
+            if clarification is None
+            else {
+                "question_id": clarification["id"],
+                "question": clarification["question"],
+                "answer": clarification["answer"],
+                "answered_at": None
+                if clarification["answered_at"] is None
+                else self._format_timestamp(clarification["answered_at"]),
+            },
+            "assignment": {
+                "technician_name": request["assigned_technician_name"],
+                "technician_phone": request["assigned_technician_phone"],
+                "technician_region": request["assigned_technician_region"],
+                "visit_window": request["visit_window"],
+            },
+            "internal_notes": [
+                {
+                    "note": note["note"],
+                    "actor": note["actor"],
+                    "created_at": self._format_timestamp(note["created_at"]),
+                }
+                for note in notes
+            ],
+        }
 
     def _get_public_status(self, predicate: str, value: str) -> dict[str, Any]:
         request = self._connect().execute(

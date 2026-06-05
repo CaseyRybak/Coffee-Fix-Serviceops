@@ -7,15 +7,28 @@ from serviceops_api.service_requests.models import (
     CustomerAnswerResponse,
     CreateServiceRequestPayload,
     CreateServiceRequestResponse,
+    DispatcherActionResponse,
+    DispatcherAssignmentPayload,
+    DispatcherClarificationPayload,
+    DispatcherInternalNotePayload,
+    DispatcherRequestDetail,
+    DispatcherRequestListResponse,
+    DispatcherStatusUpdatePayload,
     PublicStatusResponse,
     TelegramOptInPayload,
     TelegramOptInResponse,
 )
 from serviceops_api.service_requests.use_cases import (
+    AskDispatcherClarification,
+    AssignDispatcherTechnician,
     CreateServiceRequest,
     CreateTelegramOptIn,
+    GetDispatcherRequest,
     GetPublicStatus,
+    ListDispatcherRequests,
+    SaveDispatcherInternalNote,
     SubmitCustomerAnswer,
+    UpdateDispatcherStatus,
 )
 
 
@@ -62,6 +75,70 @@ def create_public_status_router(get_status: GetPublicStatus) -> APIRouter:
     async def get_public_status(public_token: str) -> PublicStatusResponse:
         try:
             return get_status.by_token(public_token)
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found") from exc
+
+    return router
+
+
+def create_dispatcher_router(
+    list_requests: ListDispatcherRequests,
+    get_request: GetDispatcherRequest,
+    update_status: UpdateDispatcherStatus,
+    ask_clarification: AskDispatcherClarification,
+    assign_technician: AssignDispatcherTechnician,
+    save_internal_note: SaveDispatcherInternalNote,
+) -> APIRouter:
+    router = APIRouter(prefix="/dispatcher/service-requests", tags=["dispatcher"])
+
+    @router.get("", response_model=DispatcherRequestListResponse)
+    async def list_dispatcher_requests() -> DispatcherRequestListResponse:
+        return list_requests.execute()
+
+    @router.get("/{request_number}", response_model=DispatcherRequestDetail)
+    async def get_dispatcher_request(request_number: str) -> DispatcherRequestDetail:
+        try:
+            return get_request.execute(request_number)
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found") from exc
+
+    @router.post("/{request_number}/status", response_model=DispatcherActionResponse)
+    async def update_dispatcher_status(
+        request_number: str,
+        payload: DispatcherStatusUpdatePayload,
+    ) -> DispatcherActionResponse:
+        try:
+            return update_status.execute(request_number, payload)
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found") from exc
+
+    @router.post("/{request_number}/clarifications", response_model=DispatcherActionResponse)
+    async def create_dispatcher_clarification(
+        request_number: str,
+        payload: DispatcherClarificationPayload,
+    ) -> DispatcherActionResponse:
+        try:
+            return ask_clarification.execute(request_number, payload)
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found") from exc
+
+    @router.post("/{request_number}/assignment", response_model=DispatcherActionResponse)
+    async def assign_dispatcher_technician(
+        request_number: str,
+        payload: DispatcherAssignmentPayload,
+    ) -> DispatcherActionResponse:
+        try:
+            return assign_technician.execute(request_number, payload)
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found") from exc
+
+    @router.post("/{request_number}/internal-notes", response_model=DispatcherActionResponse)
+    async def save_dispatcher_internal_note(
+        request_number: str,
+        payload: DispatcherInternalNotePayload,
+    ) -> DispatcherActionResponse:
+        try:
+            return save_internal_note.execute(request_number, payload)
         except KeyError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found") from exc
 

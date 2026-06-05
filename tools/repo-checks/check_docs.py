@@ -37,6 +37,7 @@ REQUIRED_FILES = [
     "docs/review/phase-01-review.md",
     "docs/review/phase-02-review.md",
     "docs/review/phase-03-review.md",
+    "docs/review/phase-04-review.md",
     ".env.example",
     "docker-compose.yml",
     "apps/api/Dockerfile",
@@ -50,6 +51,7 @@ REQUIRED_FILES = [
     "apps/api/src/serviceops_api/migrations/0001_service_request_intake.sql",
     "apps/api/tests/test_health.py",
     "apps/api/tests/test_repository_selection.py",
+    "apps/api/tests/test_dispatcher_requests.py",
     "apps/api/tests/test_service_request_intake.py",
     "apps/api/tests/test_service_request_status.py",
     "apps/web/Dockerfile",
@@ -104,10 +106,11 @@ PHASE_SLICE_MAPS = [
     "02-service-request-intake.md",
     "03-client-status-and-notifications.md",
     "04-dispatcher-mvp.md",
-    "05-knowledge-base-rag.md",
-    "06-ai-agent-workflows.md",
-    "07-technician-and-inventory.md",
-    "08-deployment-and-operations.md",
+    "05-staff-access-and-roles.md",
+    "06-knowledge-base-rag.md",
+    "07-ai-agent-workflows.md",
+    "08-technician-and-inventory.md",
+    "09-deployment-and-operations.md",
 ]
 
 SKILL_DRAFTS = [

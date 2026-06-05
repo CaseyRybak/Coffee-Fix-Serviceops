@@ -165,3 +165,86 @@ class TelegramOptInResponse(BaseModel):
     telegram: str | None
     token: str
     link: str
+
+
+class DispatcherRequestListItem(BaseModel):
+    request_number: str
+    status: RequestStatus
+    customer_name: str
+    customer_phone: str
+    machine_label: str
+    urgency: Urgency
+    address: str
+    created_at: str
+    latest_event_title: str
+
+
+class DispatcherRequestListResponse(BaseModel):
+    items: list[DispatcherRequestListItem]
+
+
+class DispatcherAssignmentSnapshot(BaseModel):
+    technician_name: str | None
+    technician_phone: str | None
+    technician_region: str | None
+    visit_window: str | None
+
+
+class DispatcherInternalNote(BaseModel):
+    note: str
+    actor: str
+    created_at: str
+
+
+class DispatcherRequestDetail(BaseModel):
+    request_number: str
+    status: RequestStatus
+    customer: CustomerIntake
+    machine: MachineIntake
+    problem: str
+    address: str
+    urgency: Urgency
+    created_at: str
+    timeline: list[StatusEvent]
+    clarification: ClarificationSnapshot | None
+    assignment: DispatcherAssignmentSnapshot
+    internal_notes: list[DispatcherInternalNote]
+
+
+class DispatcherStatusUpdatePayload(BaseModel):
+    status: RequestStatus
+    title: str = Field(min_length=1, max_length=160)
+    description: str = Field(min_length=1, max_length=500)
+
+    _clean_title = field_validator("title")(_clean_required)
+    _clean_description = field_validator("description")(_clean_required)
+
+
+class DispatcherClarificationPayload(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+
+    _clean_question = field_validator("question")(_clean_required)
+
+
+class DispatcherAssignmentPayload(BaseModel):
+    technician_name: str = Field(min_length=1, max_length=120)
+    technician_phone: str | None = Field(default=None, max_length=40)
+    technician_region: str | None = Field(default=None, max_length=120)
+    visit_window: str | None = Field(default=None, max_length=160)
+
+    _clean_technician_name = field_validator("technician_name")(_clean_required)
+    _clean_technician_phone = field_validator("technician_phone")(_clean_optional)
+    _clean_technician_region = field_validator("technician_region")(_clean_optional)
+    _clean_visit_window = field_validator("visit_window")(_clean_optional)
+
+
+class DispatcherInternalNotePayload(BaseModel):
+    note: str = Field(min_length=1, max_length=2000)
+
+    _clean_note = field_validator("note")(_clean_required)
+
+
+class DispatcherActionResponse(BaseModel):
+    request_number: str
+    status: RequestStatus
+    message: str

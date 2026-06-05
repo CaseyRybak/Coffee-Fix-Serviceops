@@ -205,6 +205,32 @@ p {
   font-size: 0.92rem;
 }
 
+.workspace-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid rgba(90, 56, 37, 0.12);
+  background: rgba(253, 250, 244, 0.96);
+  backdrop-filter: blur(14px);
+}
+
+.workspace-header-inner {
+  min-height: 72px;
+}
+
+.workspace-header-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(90, 56, 37, 0.16);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #745643;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .menu-button {
   display: none;
   width: 42px;
@@ -843,6 +869,218 @@ select:focus {
 
 .telegram-panel {
   grid-column: 2;
+}
+
+.dispatcher-main {
+  min-height: 76vh;
+  padding: 32px 0 56px;
+}
+
+.dispatcher-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.dispatcher-topline {
+  display: flex;
+  gap: 18px;
+  align-items: end;
+  justify-content: space-between;
+  padding: 22px 24px;
+  background: #ffffff;
+  border: 1px solid #e2d8cd;
+  border-radius: 10px;
+}
+
+.dispatcher-topline span {
+  color: #717182;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dispatcher-topline h1 {
+  margin: 4px 0 6px;
+  font-size: 1.75rem;
+}
+
+.dispatcher-topline p {
+  margin-bottom: 0;
+  color: #5a3825;
+}
+
+.dispatcher-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.38fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.dispatcher-list {
+  display: grid;
+  gap: 10px;
+}
+
+.dispatcher-filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #e2d8cd;
+  border-radius: 8px;
+}
+
+.dispatcher-filters select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px;
+  color: #1f1a17;
+  background: #fbf8f5;
+  border: 1px solid #d8c8b8;
+  border-radius: 6px;
+}
+
+.dispatcher-list-item {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 16px;
+  color: #1f1a17;
+  background: #ffffff;
+  border: 1px solid #e2d8cd;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.dispatcher-list-item.active {
+  border-color: #5a3825;
+  box-shadow: inset 3px 0 0 #5a3825;
+}
+
+.dispatcher-list-item span {
+  width: fit-content;
+  padding: 4px 8px;
+  color: #ffffff;
+  background: #2f6b4f;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.dispatcher-list-item strong {
+  font-size: 1rem;
+}
+
+.dispatcher-list-item em,
+.dispatcher-list-item small {
+  color: #717182;
+  font-size: 0.82rem;
+  font-style: normal;
+}
+
+.dispatcher-empty,
+.dispatcher-card {
+  background: #ffffff;
+  border: 1px solid #e2d8cd;
+  border-radius: 10px;
+}
+
+.dispatcher-empty {
+  margin: 0;
+  padding: 18px;
+  color: #717182;
+}
+
+.dispatcher-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.dispatcher-card {
+  padding: 20px;
+}
+
+.dispatcher-card h2,
+.dispatcher-card h3 {
+  margin-bottom: 12px;
+}
+
+.dispatcher-card p {
+  margin-bottom: 12px;
+  color: #5a3825;
+  line-height: 1.55;
+}
+
+.dispatcher-summary-card {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1.1fr);
+  gap: 20px;
+}
+
+.dispatcher-summary-card h2 {
+  margin: 10px 0 8px;
+  font-size: 1.4rem;
+}
+
+.dispatcher-summary-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.dispatcher-summary-card dt {
+  color: #717182;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dispatcher-summary-card dd {
+  margin: 4px 0 0;
+  font-weight: 700;
+}
+
+.dispatcher-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.compact-timeline {
+  gap: 12px;
+}
+
+.dispatcher-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.dispatcher-form .submit-button {
+  width: fit-content;
+}
+
+.internal-note-list {
+  display: grid;
+  gap: 10px;
+}
+
+.internal-note-list article {
+  padding: 12px;
+  background: #f7f2ea;
+  border: 1px solid #e2d8cd;
+  border-radius: 8px;
+}
+
+.internal-note-list p {
+  margin-bottom: 6px;
+}
+
+.internal-note-list small {
+  color: #717182;
+  font-size: 0.78rem;
 }
 
 .next-steps {

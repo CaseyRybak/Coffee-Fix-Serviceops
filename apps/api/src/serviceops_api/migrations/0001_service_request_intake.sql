@@ -37,6 +37,11 @@ CREATE INDEX IF NOT EXISTS idx_service_requests_customer_id ON service_requests 
 CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests (status);
 CREATE INDEX IF NOT EXISTS idx_service_requests_created_at ON service_requests (created_at);
 
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS assigned_technician_name TEXT;
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS assigned_technician_phone TEXT;
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS assigned_technician_region TEXT;
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS visit_window TEXT;
+
 CREATE TABLE IF NOT EXISTS attachment_metadata (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     service_request_id BIGINT NOT NULL REFERENCES service_requests(id),
@@ -91,3 +96,13 @@ CREATE TABLE IF NOT EXISTS telegram_opt_ins (
 
 CREATE INDEX IF NOT EXISTS idx_telegram_opt_ins_service_request_id ON telegram_opt_ins (service_request_id);
 CREATE INDEX IF NOT EXISTS idx_telegram_opt_ins_token ON telegram_opt_ins (token);
+
+CREATE TABLE IF NOT EXISTS internal_notes (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    service_request_id BIGINT NOT NULL REFERENCES service_requests(id),
+    note TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_internal_notes_service_request_id ON internal_notes (service_request_id);

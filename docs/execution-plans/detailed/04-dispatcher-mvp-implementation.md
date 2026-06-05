@@ -10,6 +10,12 @@
 
 ---
 
+## Execution Status
+
+- Implemented on 2026-06-05.
+- Review artifact: `docs/review/phase-04-review.md`.
+- Next active slice after completion: `docs/execution-plans/phases/05-staff-access-and-roles.md`.
+
 ## Scope Decisions
 
 - Phase 04 is an internal MVP workflow, not a full back-office product.
@@ -42,7 +48,7 @@
 - Modify: `apps/api/src/serviceops_api/service_requests/models.py`
 - Create: `apps/api/tests/test_dispatcher_requests.py`
 
-- [ ] **Step 1: Add dispatcher DTO skeletons**
+- [x] **Step 1: Add dispatcher DTO skeletons**
 
 Add Pydantic models for:
 - `DispatcherRequestListItem`
@@ -55,7 +61,7 @@ Add Pydantic models for:
 
 Use explicit field constraints. `internal_notes` and assignment metadata belong only to dispatcher responses.
 
-- [ ] **Step 2: Write failing API tests for list and detail**
+- [x] **Step 2: Write failing API tests for list and detail**
 
 Create tests that:
 - create two service requests through `POST /service-requests`;
@@ -68,7 +74,7 @@ Run: `cd apps/api && uv run --extra dev pytest tests/test_dispatcher_requests.py
 
 Expected: failures because dispatcher routes and models do not exist.
 
-- [ ] **Step 3: Write failing API tests for dispatcher actions**
+- [x] **Step 3: Write failing API tests for dispatcher actions**
 
 Add tests for:
 - `POST /dispatcher/service-requests/{request_number}/status` updating status and appending a dispatcher event;
@@ -87,7 +93,7 @@ Expected: route-not-found failures.
 - Modify: `apps/api/src/serviceops_api/service_requests/repository.py`
 - Modify: `apps/api/src/serviceops_api/migrations/0001_service_request_intake.sql`
 
-- [ ] **Step 1: Extend the repository protocol**
+- [x] **Step 1: Extend the repository protocol**
 
 Add protocol methods for dispatcher list/detail and mutations:
 - `list_dispatcher_requests()`
@@ -97,7 +103,7 @@ Add protocol methods for dispatcher list/detail and mutations:
 - `assign_technician(request_number, technician_name, technician_phone, technician_region, visit_window)`
 - `save_internal_note(request_number, note, actor)`
 
-- [ ] **Step 2: Add additive persistence fields**
+- [x] **Step 2: Add additive persistence fields**
 
 Add nullable dispatcher metadata to both sqlite initialization and PostgreSQL migration SQL:
 - `service_requests.assigned_technician_name`
@@ -108,7 +114,7 @@ Add nullable dispatcher metadata to both sqlite initialization and PostgreSQL mi
 
 Keep these fields out of `get_public_status_by_request_number()` and `get_public_status_by_token()`.
 
-- [ ] **Step 3: Implement sqlite repository behavior first**
+- [x] **Step 3: Implement sqlite repository behavior first**
 
 Implement the new protocol methods in `ServiceRequestRepository`. Reuse existing status event insertion patterns and `ask_clarification()` behavior. For assignment:
 - set status to `visit_scheduled` when `visit_window` is present;
@@ -119,7 +125,7 @@ Run: `cd apps/api && uv run --extra dev pytest tests/test_dispatcher_requests.py
 
 Expected: sqlite-backed dispatcher tests move from route failures to use-case or API wiring failures until Task 3 is complete.
 
-- [ ] **Step 4: Implement PostgreSQL repository parity**
+- [x] **Step 4: Implement PostgreSQL repository parity**
 
 Mirror sqlite behavior in `PostgresServiceRequestRepository` with psycopg placeholders, returned IDs, and timestamp formatting consistent with existing public status methods.
 
@@ -134,7 +140,7 @@ Expected: all selected API tests pass without Docker because tests inject sqlite
 - Modify: `apps/api/src/serviceops_api/service_requests/api.py`
 - Modify: `apps/api/src/serviceops_api/main.py`
 
-- [ ] **Step 1: Add dispatcher use cases**
+- [x] **Step 1: Add dispatcher use cases**
 
 Create use-case classes:
 - `ListDispatcherRequests`
@@ -146,7 +152,7 @@ Create use-case classes:
 
 Each use case should return Pydantic response models instead of raw repository dictionaries.
 
-- [ ] **Step 2: Mount dispatcher routes**
+- [x] **Step 2: Mount dispatcher routes**
 
 Add routes:
 - `GET /dispatcher/service-requests`
@@ -158,7 +164,7 @@ Add routes:
 
 Map missing request numbers to `404`. Let invalid status values fail with `422` through Pydantic validation.
 
-- [ ] **Step 3: Verify API behavior**
+- [x] **Step 3: Verify API behavior**
 
 Run: `cd apps/api && uv run --extra dev pytest tests/test_dispatcher_requests.py tests/test_service_request_status.py tests/test_service_request_intake.py -v`
 
@@ -171,7 +177,7 @@ Expected: dispatcher tests pass and existing public status/intake behavior remai
 - Modify: `apps/web/src/App.test.tsx`
 - Modify: `apps/web/src/styles.css`
 
-- [ ] **Step 1: Write failing web tests**
+- [x] **Step 1: Write failing web tests**
 
 Add tests that render a dispatcher page with mocked initial data and assert:
 - request list cards show request number, customer name, brand/model, urgency, and status label;
@@ -183,11 +189,11 @@ Run: `cd apps/web && npm test`
 
 Expected: failures because dispatcher helpers and UI do not exist.
 
-- [ ] **Step 2: Add typed dispatcher API helpers**
+- [x] **Step 2: Add typed dispatcher API helpers**
 
 Add TypeScript types for list items, detail snapshots, action payloads, and action responses. Add helpers for dispatcher API paths and payload trimming. Preserve existing public intake and status helpers.
 
-- [ ] **Step 3: Add dispatcher route and UI**
+- [x] **Step 3: Add dispatcher route and UI**
 
 Render dispatcher UI when `window.location.pathname` starts with `/dispatcher`. Build a work-focused layout:
 - left request list with status and urgency filters;
@@ -195,11 +201,11 @@ Render dispatcher UI when `window.location.pathname` starts with `/dispatcher`. 
 - action controls for status update, clarification question, assignment metadata, visit window, and internal notes;
 - clear loading, empty, and error states.
 
-- [ ] **Step 4: Wire dispatcher actions**
+- [x] **Step 4: Wire dispatcher actions**
 
 Fetch list/detail from the dispatcher API and refresh detail after each successful action. Keep form state local and reset only the form that was submitted.
 
-- [ ] **Step 5: Verify web behavior**
+- [x] **Step 5: Verify web behavior**
 
 Run:
 
@@ -223,19 +229,19 @@ Expected: web tests, lint, and build pass.
 - Modify: `tools/repo-checks/check_docs.py`
 - Create: `docs/review/phase-04-review.md`
 
-- [ ] **Step 1: Update domain documentation**
+- [x] **Step 1: Update domain documentation**
 
 Document dispatcher-only fields, public/private data separation, manual assignment semantics, and visit-window scope.
 
-- [ ] **Step 2: Update repository harness**
+- [x] **Step 2: Update repository harness**
 
 Require `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md`, `apps/api/tests/test_dispatcher_requests.py`, and `docs/review/phase-04-review.md` in `tools/repo-checks/check_docs.py` after the implementation and review artifacts exist.
 
-- [ ] **Step 3: Update project status**
+- [x] **Step 3: Update project status**
 
 After implementation and review, mark Phase 04 complete, set Phase 05 as the active phase, and record Phase 04 artifacts in `project_notes.md` and `docs/execution-plans/index.md`.
 
-- [ ] **Step 4: Run full verification**
+- [x] **Step 4: Run full verification**
 
 Run:
 
@@ -252,7 +258,7 @@ docker compose config
 
 Expected: all commands exit 0. If Docker is unavailable, record the skipped Docker command and reason in the review artifact.
 
-- [ ] **Step 5: Record Phase 04 review**
+- [x] **Step 5: Record Phase 04 review**
 
 Apply `docs/review/subagent-review-protocol.md` to the Phase 04 slice, detailed plan, changed-file list, verification output, and public/private data boundary. Store findings and final recommendation in `docs/review/phase-04-review.md`.
 

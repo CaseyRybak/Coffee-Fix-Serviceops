@@ -10,7 +10,7 @@ description: Use when adding CoffeeFix Pro knowledge documents, chunking, embedd
 - `domains/knowledge-base/AGENTS.md`
 - `domains/knowledge-base/domain.md`
 - `docs/architecture/tech-stack.md`
-- Phase 05 plan.
+- Phase 06 plan.
 
 ## Pattern
 
@@ -32,4 +32,3 @@ Capture:
 - Chunking is deterministic.
 - Retrieval contract returns source metadata.
 - Provider calls are behind ports so tests can use fakes.
-

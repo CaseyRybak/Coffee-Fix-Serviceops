@@ -8,7 +8,7 @@ Before executing any phase, create a detailed implementation plan for that speci
 
 ## Active Phase
 
-- `phases/04-dispatcher-mvp.md`
+- `phases/05-staff-access-and-roles.md`
 
 The active phase points to the next phase that needs a detailed implementation plan before execution. `phases/` contains all phase slice maps, not only active work.
 
@@ -16,9 +16,9 @@ The active phase points to the next phase that needs a detailed implementation p
 
 Detailed implementation plans are created just in time in `detailed/`.
 
-Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`.
+Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`, `detailed/04-dispatcher-mvp-implementation.md`.
 
-Ready for review before execution: `detailed/04-dispatcher-mvp-implementation.md`.
+Ready for review before execution: none.
 
 ## Phase Sequence
 
@@ -27,10 +27,11 @@ Ready for review before execution: `detailed/04-dispatcher-mvp-implementation.md
 3. `phases/02-service-request-intake.md`: request intake API and public form integration.
 4. `phases/03-client-status-and-notifications.md`: status page, status timeline, Telegram opt-in.
 5. `phases/04-dispatcher-mvp.md`: dispatcher request list, request card, assignment, clarification.
-6. `phases/05-knowledge-base-rag.md`: RAG documents, chunks, embeddings, retrieval with sources.
-7. `phases/06-ai-agent-workflows.md`: intake, diagnostic, parts, dispatcher, and reply workflows.
-8. `phases/07-technician-and-inventory.md`: technician mobile flow and basic parts tracking.
-9. `phases/08-deployment-and-operations.md`: Dokploy deployment, backups, observability, n8n flows.
+6. `phases/05-staff-access-and-roles.md`: staff login, roles, protected internal workspace and API access.
+7. `phases/06-knowledge-base-rag.md`: RAG documents, chunks, embeddings, retrieval with sources.
+8. `phases/07-ai-agent-workflows.md`: intake, diagnostic, parts, dispatcher, and reply workflows.
+9. `phases/08-technician-and-inventory.md`: technician mobile flow and basic parts tracking.
+10. `phases/09-deployment-and-operations.md`: Dokploy deployment, backups, observability, n8n flows.
 
 ## Review
 

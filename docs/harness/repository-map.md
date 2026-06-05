@@ -33,11 +33,12 @@
 - `docs/execution-plans/phases/`: phase slice maps.
 - `docs/execution-plans/detailed/`: just-in-time detailed implementation plans.
 - `docs/execution-plans/detailed/03a-postgres-persistence-implementation.md`: PostgreSQL persistence technical slice between Phase 03 and Phase 04.
-- `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md`: ready-for-review detailed plan for the dispatcher MVP.
+- `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md`: completed detailed plan for the dispatcher MVP.
 - `docs/execution-plans/completed/`: completed phase plans.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
 - `docs/review/phase-03-review.md`: Phase 03 review artifact for client status and notifications.
+- `docs/review/phase-04-review.md`: Phase 04 review artifact for dispatcher MVP.
 
 ## Workflow Skills
 
@@ -46,9 +47,9 @@
 
 ## Code Areas
 
-- `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, Telegram opt-in contracts, sqlite test persistence, and PostgreSQL Compose persistence.
-- `apps/api/src/serviceops_api/service_requests`: service request intake/status API, use cases, models, sqlite repository, PostgreSQL repository, and repository factory.
-- `apps/web`: React/Vite public intake form, request-number success state, and public status page.
+- `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, Telegram opt-in contracts, dispatcher routes, sqlite test persistence, and PostgreSQL Compose persistence.
+- `apps/api/src/serviceops_api/service_requests`: service request intake/status/dispatcher API, use cases, models, sqlite repository, PostgreSQL repository, and repository factory.
+- `apps/web`: React/Vite public intake form, request-number success state, public status page, and dispatcher workspace.
 - `apps/worker`: Celery worker shell.
 - `apps/telegram-bot`: aiogram bot shell.
 - `packages/shared-kernel`: shared domain primitives.

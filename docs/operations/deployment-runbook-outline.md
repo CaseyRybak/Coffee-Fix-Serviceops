@@ -1,6 +1,6 @@
 # Deployment Runbook Outline
 
-This outline becomes the concrete runbook during Phase 08.
+This outline becomes the concrete runbook during Phase 09.
 
 ## Services
 
@@ -23,4 +23,3 @@ This outline becomes the concrete runbook during Phase 08.
 - Smoke tests.
 - Log locations.
 - Rollback procedure.
-

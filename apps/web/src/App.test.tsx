@@ -5,12 +5,20 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   App,
+  DispatcherPage,
   StatusPage,
   SuccessState,
+  buildDispatcherAssignmentPath,
+  buildDispatcherClarificationPath,
+  buildDispatcherDetailPath,
+  buildDispatcherInternalNotePath,
+  buildDispatcherListPath,
+  buildDispatcherStatusPath,
   buildCustomerAnswerPayload,
   buildServiceRequestPayload,
   buildStatusLookupPath,
   buildTelegramOptInPayload,
+  filterDispatcherItems,
   normalizeRequestNumber,
   statusPathFromRequestNumber,
   telegramOptInPathFromRequestNumber,
@@ -19,6 +27,61 @@ import {
 } from "./App";
 
 describe("App", () => {
+  const dispatcherDetail = {
+    request_number: "CFX-20260605-000001",
+    status: "visit_scheduled" as const,
+    customer: {
+      name: "Anna Petrova",
+      phone: "+7 999 111-22-33",
+      telegram: "@anna_fix",
+      client_type: "coffee_shop" as const,
+    },
+    machine: {
+      brand: "Jura",
+      model: "E8",
+      location_type: "coffee_shop" as const,
+    },
+    problem: "Machine leaks water under the brew group.",
+    address: "Tverskaya district",
+    urgency: "today" as const,
+    created_at: "2026-06-05 10:00:00",
+    timeline: [
+      {
+        status: "new" as const,
+        title: "Заявка создана",
+        description: "Мы получили обращение.",
+        actor: "system",
+        created_at: "2026-06-05 10:00:00",
+      },
+      {
+        status: "visit_scheduled" as const,
+        title: "Визит запланирован",
+        description: "Диспетчер назначил мастера.",
+        actor: "dispatcher",
+        created_at: "2026-06-05 10:15:00",
+      },
+    ],
+    clarification: {
+      question_id: 4,
+      question: "Пришлите фото шильдика с моделью кофемашины.",
+      answer: null,
+      answered_at: null,
+    },
+    assignment: {
+      technician_name: "Pavel Sokolov",
+      technician_phone: "+7 999 222-33-44",
+      technician_region: "ЦАО",
+      visit_window: "Завтра 14:00-16:00",
+    },
+    internal_notes: [
+      {
+        note: "Клиент просит звонить после 12:00.",
+        actor: "dispatcher",
+        created_at: "2026-06-05 10:20:00",
+      },
+    ],
+  };
+
   it("renders the Figma reference public service page", () => {
     const html = renderToStaticMarkup(<App />);
 
@@ -197,6 +260,143 @@ describe("App", () => {
     });
   });
 
+  it("builds dispatcher API paths", () => {
+    assert.equal(buildDispatcherListPath(), "/dispatcher/service-requests");
+    assert.equal(
+      buildDispatcherDetailPath(" CFX-20260605-000001 "),
+      "/dispatcher/service-requests/CFX-20260605-000001",
+    );
+    assert.equal(
+      buildDispatcherStatusPath("CFX-20260605-000001"),
+      "/dispatcher/service-requests/CFX-20260605-000001/status",
+    );
+    assert.equal(
+      buildDispatcherClarificationPath("CFX-20260605-000001"),
+      "/dispatcher/service-requests/CFX-20260605-000001/clarifications",
+    );
+    assert.equal(
+      buildDispatcherAssignmentPath("CFX-20260605-000001"),
+      "/dispatcher/service-requests/CFX-20260605-000001/assignment",
+    );
+    assert.equal(
+      buildDispatcherInternalNotePath("CFX-20260605-000001"),
+      "/dispatcher/service-requests/CFX-20260605-000001/internal-notes",
+    );
+  });
+
+  it("renders dispatcher list detail and action controls", () => {
+    const html = renderToStaticMarkup(
+      <DispatcherPage
+        initialList={{
+          items: [
+            {
+              request_number: "CFX-20260605-000001",
+              status: "visit_scheduled",
+              customer_name: "Anna Petrova",
+              customer_phone: "+7 999 111-22-33",
+              machine_label: "Jura E8",
+              urgency: "today",
+              address: "Tverskaya district",
+              created_at: "2026-06-05 10:00:00",
+              latest_event_title: "Визит запланирован",
+            },
+          ],
+        }}
+        initialDetail={dispatcherDetail}
+      />,
+    );
+
+    assert.match(html, /Диспетчерская/);
+    assert.match(html, /CFX-20260605-000001/);
+    assert.match(html, /Anna Petrova/);
+    assert.match(html, /Jura E8/);
+    assert.match(html, /Сегодня/);
+    assert.match(html, /Machine leaks water under the brew group./);
+    assert.match(html, /Пришлите фото шильдика/);
+    assert.match(html, /Pavel Sokolov/);
+    assert.match(html, /\+7 999 222-33-44/);
+    assert.match(html, /Завтра 14:00-16:00/);
+    assert.match(html, /Клиент просит звонить после 12:00./);
+    assert.match(html, /Обновить статус/);
+    assert.match(html, /Задать вопрос клиенту/);
+    assert.match(html, /Назначить мастера/);
+    assert.match(html, /Сохранить заметку/);
+  });
+
+  it("filters dispatcher request list by status and urgency", () => {
+    const items = [
+      {
+        request_number: "CFX-20260605-000001",
+        status: "visit_scheduled" as const,
+        customer_name: "Anna Petrova",
+        customer_phone: "+7 999 111-22-33",
+        machine_label: "Jura E8",
+        urgency: "today" as const,
+        address: "Tverskaya district",
+        created_at: "2026-06-05 10:00:00",
+        latest_event_title: "Визит запланирован",
+      },
+      {
+        request_number: "CFX-20260605-000002",
+        status: "awaiting_assignment" as const,
+        customer_name: "Ivan Ivanov",
+        customer_phone: "+7 999 111-22-33",
+        machine_label: "Saeco E8",
+        urgency: "planned" as const,
+        address: "Arbat district",
+        created_at: "2026-06-05 10:10:00",
+        latest_event_title: "Заявка создана",
+      },
+    ];
+
+    assert.deepEqual(
+      filterDispatcherItems(items, "awaiting_assignment", "planned").map((item) => item.request_number),
+      ["CFX-20260605-000002"],
+    );
+
+    const html = renderToStaticMarkup(
+      <DispatcherPage
+        initialList={{ items }}
+        initialDetail={dispatcherDetail}
+      />,
+    );
+
+    assert.match(html, /aria-label="Фильтр по статусу"/);
+    assert.match(html, /aria-label="Фильтр по срочности"/);
+  });
+
+  it("keeps dispatcher workspace free from public contact chrome and public CTAs", () => {
+    const html = renderToStaticMarkup(
+      <DispatcherPage
+        initialList={{
+          items: [
+            {
+              request_number: "CFX-20260605-000001",
+              status: "visit_scheduled",
+              customer_name: "Anna Petrova",
+              customer_phone: "+7 999 111-22-33",
+              machine_label: "Jura E8",
+              urgency: "today",
+              address: "Tverskaya district",
+              created_at: "2026-06-05 10:00:00",
+              latest_event_title: "Визит запланирован",
+            },
+          ],
+        }}
+        initialDetail={dispatcherDetail}
+      />,
+    );
+
+    assert.doesNotMatch(html, /class="service-bar"/);
+    assert.doesNotMatch(html, /Москва и МО/);
+    assert.doesNotMatch(html, /Пн-Вс 08:00-22:00/);
+    assert.doesNotMatch(html, /href="tel:\+74950000000"/);
+    assert.doesNotMatch(html, /class="desktop-nav"/);
+    assert.doesNotMatch(html, /class="header-cta"/);
+    assert.doesNotMatch(html, /Оставить заявку/);
+    assert.doesNotMatch(html, /Вызвать мастера/);
+  });
+
   it("renders the public status page with timeline, clarification answer, and Telegram opt-in", () => {
     const html = renderToStaticMarkup(
       <StatusPage
@@ -254,5 +454,7 @@ describe("App", () => {
     assert.match(html, /Пришлите, пожалуйста, код ошибки на дисплее./);
     assert.match(html, /Отправить ответ/);
     assert.match(html, /Подключить Telegram/);
+    assert.doesNotMatch(html, /Pavel Sokolov/);
+    assert.doesNotMatch(html, /Клиент просит звонить/);
   });
 });

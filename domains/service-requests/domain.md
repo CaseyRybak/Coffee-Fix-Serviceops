@@ -92,3 +92,5 @@ Public/private boundary:
 Phase 04 status actions use the existing status vocabulary. Manual assignment sets `technician_assigned` when only a technician is selected and `visit_scheduled` when a visit window is also recorded. Asking a clarification question sets `needs_clarification`.
 
 Every dispatcher status change, clarification question, and assignment action creates a status event with actor `dispatcher`.
+
+The Phase 04 implementation persists dispatcher metadata in sqlite and PostgreSQL, exposes it through `/dispatcher/service-requests` routes, and keeps the public status DTO unchanged for client-safe visibility.

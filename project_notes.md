@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, the Phase 03 public status and notification opt-in flow, and a PostgreSQL persistence slice for Docker Compose. The API can create persisted service requests, expose public status snapshots, record clarification answers, and create Telegram opt-in links. Docker Compose API runs against PostgreSQL, while injected tests keep sqlite in-memory persistence.
+The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, the Phase 03 public status and notification opt-in flow, a PostgreSQL persistence slice for Docker Compose, and the Phase 04 dispatcher MVP. The API can create persisted service requests, expose public status snapshots, record clarification answers, create Telegram opt-in links, and support internal dispatcher list/detail/actions. Docker Compose API runs against PostgreSQL, while injected tests keep sqlite in-memory persistence.
 
 ## Latest Changes
 
@@ -29,15 +29,16 @@ The repository currently contains a Figma-exported React/Vite reference in `refe
 - 2026-06-05: Added `docs/execution-plans/detailed/03a-postgres-persistence-implementation.md` and connected Docker Compose API persistence to PostgreSQL.
 - 2026-06-05: Added a PostgreSQL service-request repository, repository selection from `SERVICEOPS_DATABASE_URL`, idempotent migration application, and psycopg runtime dependency.
 - 2026-06-05: Audited documentation readiness for Phase 04 and added `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md` with dispatcher API, persistence, web, testing, and review scope.
+- 2026-06-05: Implemented Phase 04 dispatcher MVP with internal dispatcher API routes, sqlite/PostgreSQL dispatcher persistence, manual assignment metadata, dispatcher-only internal notes, and a React dispatcher workspace.
 
 ## Active Focus
 
-Phase 04 plan review is the active focus: review `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md` before implementing the dispatcher request list, request card, assignment, and clarification workflow.
+Phase 05 planning is the active focus: create and review the detailed implementation plan for `docs/execution-plans/phases/05-staff-access-and-roles.md` before protecting internal workspaces and dispatcher APIs.
 
 ## Next Steps
 
-1. Review the Phase 04 detailed implementation plan.
-2. Execute Phase 04 only after the detailed plan review is accepted.
+1. Create a detailed Phase 05 implementation plan from `docs/execution-plans/phases/05-staff-access-and-roles.md`.
+2. Review the Phase 05 detailed plan before implementing staff login, roles, and protected internal workspace/API access.
 3. Keep `python3 tools/repo-checks/check_docs.py`, API tests, worker tests, Telegram bot tests, and web checks passing after harness changes.
 
 ## Active Artifacts
@@ -52,8 +53,9 @@ Phase 04 plan review is the active focus: review `docs/execution-plans/detailed/
 - Completed Phase 03 slice: `docs/execution-plans/phases/03-client-status-and-notifications.md`
 - Detailed Phase 03 plan: `docs/execution-plans/detailed/03-client-status-and-notifications-implementation.md`
 - Detailed PostgreSQL persistence plan: `docs/execution-plans/detailed/03a-postgres-persistence-implementation.md`
-- Detailed Phase 04 plan ready for review: `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md`
-- Next phase slice: `docs/execution-plans/phases/04-dispatcher-mvp.md`
+- Detailed Phase 04 plan: `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md`
+- Completed Phase 04 slice: `docs/execution-plans/phases/04-dispatcher-mvp.md`
+- Next phase slice: `docs/execution-plans/phases/05-staff-access-and-roles.md`
 - Architecture map: `ARCHITECTURE.md`
 - Domain map: `docs/domain-maps/index.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
@@ -61,6 +63,7 @@ Phase 04 plan review is the active focus: review `docs/execution-plans/detailed/
 - Phase 01 review: `docs/review/phase-01-review.md`
 - Phase 02 review: `docs/review/phase-02-review.md`
 - Phase 03 review: `docs/review/phase-03-review.md`
+- Phase 04 review: `docs/review/phase-04-review.md`
 
 ## Recent Decisions
 
@@ -80,3 +83,6 @@ Phase 04 plan review is the active focus: review `docs/execution-plans/detailed/
 - Phase 03 defines Telegram opt-in token/link generation but defers bot-side token consumption and outbound notification delivery.
 - Docker Compose API persistence uses PostgreSQL via `SERVICEOPS_DATABASE_URL`; direct Python defaults to sqlite for lightweight local imports and tests.
 - Phase 04 should keep dispatcher-only internal notes and assignment metadata out of public status snapshots.
+- Phase 04 dispatcher routes are internal API contracts but still unauthenticated; an access gate is required before public deployment exposure.
+- Phase 04 keeps technician assignment manual and descriptive on the request. Full technician profiles, availability, confirmed appointments, and mobile technician workflows remain deferred.
+- Phase 05 should add staff login, role checks, frontend route guards, and backend protection for dispatcher APIs before expanding internal workflows further.

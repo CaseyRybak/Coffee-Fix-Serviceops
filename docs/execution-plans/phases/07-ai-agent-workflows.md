@@ -1,4 +1,4 @@
-# Phase 06: AI Agent Workflows
+# Phase 07: AI Agent Workflows
 
 > For implementation workers: implement this phase as a bounded slice, then request subagent review using `docs/review/subagent-review-protocol.md`.
 
@@ -30,7 +30,7 @@ Introduce bounded AI workflows that assist dispatchers without making critical d
 - Suggested questions can be converted into customer-visible clarification questions.
 - RAG context can be included in diagnostic workflow.
 - Tests cover prompt input assembly and suggestion lifecycle without requiring live LLM calls.
-- `project_notes.md` identifies Phase 07 as the next active phase.
+- `project_notes.md` identifies Phase 08 as the next active phase.
 
 ## Subagent Review Gate
 

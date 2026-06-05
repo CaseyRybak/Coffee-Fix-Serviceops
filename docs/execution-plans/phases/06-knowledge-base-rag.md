@@ -1,4 +1,4 @@
-# Phase 05: Knowledge Base RAG
+# Phase 06: Knowledge Base RAG
 
 > For implementation workers: implement this phase as a bounded slice, then request subagent review using `docs/review/subagent-review-protocol.md`.
 
@@ -28,7 +28,7 @@ Build the first RAG knowledge base for coffee machine repair documents.
 - Chunks are persisted with embeddings.
 - Retrieval returns relevant chunks and source metadata.
 - Tests cover chunking and retrieval contract using deterministic test data.
-- `project_notes.md` identifies Phase 06 as the next active phase.
+- `project_notes.md` identifies Phase 07 as the next active phase.
 
 ## Subagent Review Gate
 
