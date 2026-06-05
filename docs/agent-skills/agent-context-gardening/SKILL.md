@@ -15,7 +15,7 @@ description: Use when updating project notes, AGENTS maps, domain maps, phase pl
 
 ## Pattern
 
-After meaningful work, update the smallest artifact that helps the next agent resume. Keep maps short and link to deeper documents.
+After meaningful work, update the smallest artifact that helps the next contributor resume. Keep maps short and link to deeper documents.
 
 ## Update Targets
 
@@ -27,4 +27,4 @@ After meaningful work, update the smallest artifact that helps the next agent re
 
 ## Quality Check
 
-The next agent should be able to find the active phase, relevant domain, and latest decision without reading chat history.
+The next contributor should be able to find the active phase, relevant domain, and latest decision without reading chat history.

@@ -1,6 +1,6 @@
 # Foundation Runtime Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For implementation workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the runnable Phase 01 foundation for API, web, worker, Telegram bot, PostgreSQL, Redis, and local verification.
 
@@ -16,6 +16,7 @@
 - Completed: created worker and Telegram bot shells.
 - Completed: created React/Vite web shell and build/test/lint commands.
 - Completed: created Docker Compose and environment example.
+- Completed: added root npm scripts so `npm run dev` starts the web shell from the repository root on `localhost:3000`.
 - Completed: updated repository checks, project notes, repository map, and Phase 01 review artifact.
 - Verification gap: Docker CLI is not installed in the current environment, so `docker compose config` and `docker compose up` must be verified on a machine with Docker.
 
@@ -102,6 +103,7 @@ Expected after implementation: all shell tests pass.
 - Create: `apps/web/src/styles.css`
 - Create: `apps/web/src/vite-env.d.ts`
 - Delete: `apps/web/.gitkeep`
+- Create: `package.json`
 
 - [x] **Step 1: Write shell tests**
 
@@ -119,7 +121,7 @@ Create a compact ServiceOps runtime shell with status, queue, and operations pan
 
 - [x] **Step 4: Run frontend tests and build**
 
-Run `cd apps/web && npm test`, `cd apps/web && npm run lint`, and `cd apps/web && npm run build`.
+Run `cd apps/web && npm test`, `cd apps/web && npm run lint`, `cd apps/web && npm run build`, and `npm run dev` from the repository root.
 
 Expected after implementation: tests and build pass.
 
@@ -151,6 +153,7 @@ Expected: Compose renders without configuration errors. Actual in this environme
 - Modify: `docs/harness/repository-map.md`
 - Modify: `docs/execution-plans/index.md`
 - Modify: `project_notes.md`
+- Create: `package.json`
 - Create: `docs/review/phase-01-review.md`
 
 - [x] **Step 1: Extend repository checks**
@@ -173,6 +176,9 @@ cd apps/telegram-bot && python3 -m pytest
 cd apps/web && npm test
 cd apps/web && npm run lint
 cd apps/web && npm run build
+npm run web:test
+npm run web:lint
+npm run web:build
 docker compose config
 ```
 

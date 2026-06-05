@@ -10,7 +10,7 @@ Run review after a slice is implemented and local verification has completed.
 
 ## Reviewer Role
 
-A subagent reviewer is an independent reviewer for the slice. It can be another AI agent, another chat/session, or a human reviewer, but it must not be the same worker that implemented the slice. The reviewer should receive only repository context, the active phase plan, the detailed implementation plan, the verification output, and the diff or changed-file list.
+A subagent reviewer is an independent reviewer for the slice. It can be another session or a human reviewer, but it must not be the same worker that implemented the slice. The reviewer should receive only repository context, the active phase plan, the detailed implementation plan, the verification output, and the diff or changed-file list.
 
 The reviewer does not continue implementation during review. The reviewer evaluates whether the slice can safely move forward and reports findings using the output format below.
 
@@ -32,7 +32,7 @@ The reviewer checks:
 - Domain code does not depend on infrastructure details.
 - API contracts are explicit.
 - Tests cover the implemented behavior.
-- The implementation remains legible to future agents.
+- The implementation remains legible to future contributors.
 
 ## Review Output
 

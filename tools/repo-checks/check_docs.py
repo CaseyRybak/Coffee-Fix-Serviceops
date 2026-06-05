@@ -15,6 +15,7 @@ REQUIRED_FILES = [
     "ARCHITECTURE.md",
     "README.md",
     "project_notes.md",
+    "package.json",
     "docs/harness/repository-map.md",
     "docs/execution-plans/index.md",
     "docs/review/subagent-review-protocol.md",

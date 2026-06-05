@@ -1,10 +1,10 @@
 # Repository Harness Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For implementation workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Complete Phase 00 by making the repository harness executable, verifiable, and ready to hand off to Phase 01.
 
-**Architecture:** This phase changes repository metadata and documentation only. It does not introduce application runtime code. The core output is a lightweight documentation check script plus updated agent entry points.
+**Architecture:** This phase changes repository metadata and documentation only. It does not introduce application runtime code. The core output is a lightweight documentation check script plus updated contributor entry points.
 
 **Tech Stack:** Python standard library for repo checks, Git for repository initialization, Markdown documentation.
 

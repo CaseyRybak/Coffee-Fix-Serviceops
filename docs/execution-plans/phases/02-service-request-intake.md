@@ -1,6 +1,6 @@
 # Phase 02: Service Request Intake
 
-> For agentic workers: implement this phase as a bounded slice, then request subagent review using `docs/review/subagent-review-protocol.md`.
+> For implementation workers: implement this phase as a bounded slice, then request subagent review using `docs/review/subagent-review-protocol.md`.
 
 ## Goal
 

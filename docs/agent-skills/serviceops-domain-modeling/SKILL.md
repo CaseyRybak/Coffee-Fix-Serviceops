@@ -36,4 +36,3 @@ Model repair operations around the request lifecycle. Start with the business ev
 - Likely cause.
 - Parts suggestion.
 - Warranty case.
-

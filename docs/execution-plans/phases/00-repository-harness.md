@@ -1,10 +1,10 @@
 # Phase 00: Repository Harness
 
-> For agentic workers: implement this phase as a bounded slice, then request subagent review using `docs/review/subagent-review-protocol.md`.
+> For implementation workers: implement this phase as a bounded slice, then request subagent review using `docs/review/subagent-review-protocol.md`.
 
 ## Goal
 
-Stabilize the repository as an agent-legible system of record before application code is generated.
+Stabilize the repository as a legible system of record before application code is generated.
 
 ## Context To Read
 
@@ -24,7 +24,7 @@ Stabilize the repository as an agent-legible system of record before application
 
 ## Acceptance Criteria
 
-- A new agent can identify current status, active phase, product vision, architecture, and review protocol in under five file opens.
+- A new contributor can identify current status, active phase, product vision, architecture, and review protocol in under five file opens.
 - All linked documents from `AGENTS.md` exist.
 - `project_notes.md` points to Phase 01 when this phase is complete.
 - Subagent review finds no missing phase-critical harness documents.

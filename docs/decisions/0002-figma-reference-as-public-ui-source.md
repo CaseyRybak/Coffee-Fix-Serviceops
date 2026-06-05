@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-The repository includes an exported React/Vite Figma reference in `reference/figma`. The design matches the desired client-facing tone: practical local service company, not AI/SaaS landing page.
+The repository includes an exported React/Vite Figma reference in `reference/figma`. The design matches the desired client-facing tone: practical local service company, not a startup landing page.
 
 ## Decision
 
@@ -21,4 +21,3 @@ The design already captures the correct service-business structure, palette, cop
 - Public UI implementation should consult `docs/product/figma-reference-review.md`.
 - External image URLs should be replaced with controlled assets.
 - The first form submission should be simplified for conversion.
-

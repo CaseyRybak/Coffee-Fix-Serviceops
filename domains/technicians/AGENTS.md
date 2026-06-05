@@ -23,4 +23,3 @@ Owns technician profile, specialization, service areas, and availability signals
 - Scheduling owns visit windows.
 - Service requests reference assignment.
 - AI agents can suggest technicians.
-

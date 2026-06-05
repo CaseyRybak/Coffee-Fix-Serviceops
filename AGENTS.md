@@ -1,6 +1,10 @@
-# AI ServiceOps Platform Agent Map
+# Coffee Fix ServiceOps Project Map
 
-This repository is built for agent-first development. The repository is the system of record for product intent, architecture, plans, domain context, review loops, and reusable project knowledge.
+This repository is the system of record for product intent, architecture, plans, domain context, review loops, and reusable project knowledge.
+
+## Commit And Push Policy
+
+Never create commits or push changes unless the user gives a direct instruction to commit or push in the current conversation turn.
 
 ## Start Here
 
@@ -36,6 +40,6 @@ Before executing any phase, first create a detailed implementation plan for that
 
 ## Repository Skills
 
-Repo-specific skill drafts live in `docs/agent-skills/`. They are written as portable `SKILL.md` files and can be installed into the agent skill directory when the project is ready to activate them.
+Repo-specific workflow drafts live in `docs/agent-skills/`. They are written as portable `SKILL.md` files and can be installed into the local skill directory when the project is ready to activate them.
 
 Skill catalog: `docs/agent-skills/skill-catalog.md`

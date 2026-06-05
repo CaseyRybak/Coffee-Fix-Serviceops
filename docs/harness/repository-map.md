@@ -2,10 +2,11 @@
 
 ## Root
 
-- `AGENTS.md`: entry map for agents.
+- `AGENTS.md`: entry map for contributors.
 - `project_notes.md`: current status, latest changes, active focus, and next steps.
 - `ARCHITECTURE.md`: system and domain architecture overview.
 - `README.md`: human-readable project introduction.
+- `package.json`: root developer scripts for local web checks and dev server.
 - `reference/figma`: exported Figma/Vite reference for the public UI.
 
 ## Product Docs
@@ -16,7 +17,7 @@
 
 ## Architecture Docs
 
-- `docs/architecture/harness-engineering.md`: agent-first repository approach.
+- `docs/architecture/harness-engineering.md`: repository-guided development approach.
 - `docs/architecture/domain-architecture.md`: DDD and hexagonal structure.
 - `docs/architecture/tech-stack.md`: selected technologies.
 
@@ -34,10 +35,10 @@
 - `docs/execution-plans/completed/`: completed phase plans.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 
-## Agent Skills
+## Workflow Skills
 
 - `docs/agent-skills/skill-catalog.md`: skill list.
-- `docs/agent-skills/<skill>/SKILL.md`: portable repo-specific skills.
+- `docs/agent-skills/<skill>/SKILL.md`: portable repo-specific workflow drafts.
 
 ## Future Code Areas
 
@@ -52,7 +53,7 @@
 ## Runtime Harness
 
 - `.env.example`: local environment template.
-- `docker-compose.yml`: local PostgreSQL, Redis, API, web, worker, and optional Telegram bot profile.
+- `docker-compose.yml`: local PostgreSQL, Redis, API, web on port 3000, worker, and optional Telegram bot profile.
 - `apps/api/Dockerfile`: API container definition.
 - `apps/web/Dockerfile`: web container definition.
 - `apps/worker/Dockerfile`: worker container definition.

@@ -45,4 +45,3 @@
 - VPS.
 - Dokploy.
 - HTTPS through Dokploy or reverse proxy.
-

@@ -1,6 +1,6 @@
 # Product Vision
 
-CoffeeFix Pro is an AI ServiceOps Platform for coffee machine repair. The public site helps clients quickly submit a repair request, receive a request number, and track status. The operations layer helps dispatchers and technicians manage the request lifecycle from intake to closure.
+CoffeeFix Pro is a ServiceOps platform for coffee machine repair. The public site helps clients quickly submit a repair request, receive a request number, and track status. The operations layer helps dispatchers and technicians manage the request lifecycle from intake to closure.
 
 ## Target Users
 
@@ -23,4 +23,3 @@ The client sees a practical local repair service: phone number, working hours, b
 - A dispatcher can classify, clarify, assign, and track requests.
 - A technician can work a visit from a mobile-friendly interface.
 - AI suggestions are available with human confirmation.
-

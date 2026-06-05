@@ -43,4 +43,3 @@ service-requests
 - `knowledge-base` stores repair knowledge and powers RAG.
 - `ai-agents` owns workflow orchestration, prompts, and human-confirmed suggestions.
 - `notifications` owns Telegram and n8n communication edges.
-

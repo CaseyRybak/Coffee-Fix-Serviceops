@@ -1,6 +1,6 @@
 # Repository Skill Catalog
 
-Repo-specific skills are stored here as portable skill drafts. They can be installed into the agent skill directory when the project is ready to activate them.
+Repo-specific skills are stored here as portable workflow drafts. They can be installed into the local skill directory when the project is ready to activate them.
 
 ## Skills
 
@@ -11,7 +11,7 @@ Repo-specific skills are stored here as portable skill drafts. They can be insta
 - `telegram-serviceops-flows`: use for Telegram request status workflows.
 - `n8n-automation-design`: use for n8n workflows around backend events.
 - `dokploy-deployment`: use for VPS and Dokploy deployment work.
-- `agent-context-gardening`: use for keeping agent-readable docs fresh.
+- `agent-context-gardening`: use for keeping contributor-readable docs fresh.
 
 ## Installation Note
 

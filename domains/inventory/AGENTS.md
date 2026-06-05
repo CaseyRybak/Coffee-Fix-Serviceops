@@ -23,4 +23,3 @@ Owns parts, stock, compatibility, and reservations.
 - AI agents suggest likely parts.
 - Knowledge base links symptoms to parts.
 - Service requests reserve parts for repairs.
-

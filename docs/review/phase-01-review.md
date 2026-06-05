@@ -2,7 +2,7 @@
 
 ## Reviewer
 
-- Role: independent AI subagent reviewer.
+- Role: independent subagent reviewer.
 - Scope: Phase 01 foundation runtime.
 - Date: 2026-06-05.
 
@@ -20,6 +20,7 @@
 - `apps/web`
 - `apps/worker`
 - `apps/telegram-bot`
+- `package.json`
 - `.env.example`
 - `docker-compose.yml`
 - `tools/repo-checks/check_docs.py`
@@ -33,7 +34,7 @@ cd apps/api && ~/.local/bin/uv run --extra dev pytest
 Result:
 
 ```text
-1 passed
+2 passed
 ```
 
 ```bash
@@ -77,13 +78,33 @@ TypeScript check passed
 ```
 
 ```bash
-cd apps/web && npm run build
+npm run web:test
 ```
 
 Result:
 
 ```text
-TypeScript check and Vite build passed
+Root web test script passed
+```
+
+```bash
+npm run web:lint
+```
+
+Result:
+
+```text
+Root web lint script passed
+```
+
+```bash
+npm run web:build
+```
+
+Result:
+
+```text
+Root web build script passed
 ```
 
 ```bash
@@ -120,7 +141,7 @@ Resolution:
 Remaining plan-compliance findings:
 
 - No blocking issues after this artifact was added.
-- Phase 01 deliverables are present: FastAPI `/health`, React/Vite shell, Celery worker shell, aiogram shell, PostgreSQL and Redis Docker Compose services, `.env.example`, backend tests, frontend test command, frontend lint command, and frontend build command.
+- Phase 01 deliverables are present: FastAPI `/health`, React/Vite shell, Celery worker shell, aiogram shell, PostgreSQL and Redis Docker Compose services, `.env.example`, backend tests, root `npm run dev`, frontend test command, frontend lint command, and frontend build command.
 - Docker Compose cannot be verified in the current environment because Docker CLI is not installed.
 
 ## Review 2: Architecture And Quality

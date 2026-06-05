@@ -1,0 +1,12 @@
+{
+  "name": "coffee-fix-serviceops",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev",
+    "web:dev": "npm --prefix apps/web run dev",
+    "web:test": "npm --prefix apps/web test",
+    "web:lint": "npm --prefix apps/web run lint",
+    "web:build": "npm --prefix apps/web run build"
+  }
+}

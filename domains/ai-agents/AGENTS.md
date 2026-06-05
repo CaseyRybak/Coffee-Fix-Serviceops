@@ -25,4 +25,3 @@ Owns AI-assisted operational workflows and human-confirmed suggestions.
 - Knowledge base provides RAG context.
 - Inventory provides stock context.
 - Notifications deliver approved messages.
-

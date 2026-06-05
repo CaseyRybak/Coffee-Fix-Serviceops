@@ -23,4 +23,3 @@ Owns documents, chunks, embeddings, retrieval, and source-backed repair knowledg
 - AI agents retrieve knowledge.
 - Machines provide brand/model filters.
 - Inventory links parts and compatibility.
-

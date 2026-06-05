@@ -29,4 +29,3 @@ Use the Figma export as a visual and UX reference, not as production architectur
 - Replace external image URLs with controlled assets.
 - Avoid copying inline styles directly into production components.
 - Keep legal/service wording realistic around diagnostics, warranty, and visit conditions.
-

@@ -2,13 +2,13 @@
 
 ## Current Status
 
-The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for agent-first development, and the Phase 01 runtime foundation. The API, web shell, worker shell, Telegram bot shell, environment template, and Docker Compose file exist with local verification commands.
+The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, and the Phase 01 runtime foundation. The API, web shell, worker shell, Telegram bot shell, environment template, and Docker Compose file exist with local verification commands.
 
 ## Latest Changes
 
 - 2026-06-05: Captured product vision, stack choices, harness-engineering approach, DDD/hexagonal direction, Figma reference assessment, and phased implementation strategy as repository artifacts.
-- 2026-06-05: Added `project_notes.md` as the operational status file for future agent runs.
-- 2026-06-05: Added phase-based execution plans with subagent review gates.
+- 2026-06-05: Added `project_notes.md` as the operational status file for future work.
+- 2026-06-05: Added phase-based execution plans with review gates.
 - 2026-06-05: Removed the redundant operational status file naming path; `project_notes.md` is the single operational status file.
 - 2026-06-05: Added the process decision that each phase requires a detailed implementation plan before execution.
 - 2026-06-05: Started Phase 00 execution and added `docs/execution-plans/detailed/00-repository-harness-implementation.md`.
@@ -17,6 +17,8 @@ The repository currently contains a Figma-exported React/Vite reference in `refe
 - 2026-06-05: Added `.gitkeep` placeholders for empty scaffold directories and extended repo checks to validate required directories.
 - 2026-06-05: Renamed the initial Git branch to `main` for GitHub readiness and saved the Phase 00 review artifact in `docs/review/phase-00-review.md`.
 - 2026-06-05: Implemented Phase 01 foundation runtime with FastAPI `/health`, React/Vite shell, Celery worker shell, aiogram shell, Docker Compose, and runtime verification commands.
+- 2026-06-05: Added the policy that commits and pushes require a direct user instruction in the current conversation turn.
+- 2026-06-05: Added root npm scripts so the web shell starts from the repository root with `npm run dev` on `http://localhost:3000/`.
 
 ## Active Focus
 
@@ -48,8 +50,8 @@ Phase 02 planning is the active focus: create a detailed implementation plan for
 - The backend is a modular monolith with DDD/hexagonal boundaries.
 - PostgreSQL with pgvector is the default SQL and RAG store.
 - The Figma reference drives the public client UI, but exported code is treated as a reference, not production structure.
-- AI features are operational workflows with human confirmation, not decorative client-facing claims.
+- Automation features are operational workflows with human confirmation, not decorative client-facing claims.
 - `AGENTS.md` files act as maps and context entry points.
-- Repo-specific skills are stored as portable drafts in `docs/agent-skills` until the project is ready to activate them.
+- Repo-specific workflow drafts are stored in `docs/agent-skills` until the project is ready to activate them.
 - Before executing any phase, create a detailed implementation plan for that phase; current phase files are slice maps, not execution-ready implementation plans.
-- Phase 01 local verification commands are `python3 tools/repo-checks/check_docs.py`, `cd apps/api && uv run --extra dev pytest`, `cd apps/worker && uv run --extra dev pytest`, `cd apps/telegram-bot && uv run --extra dev pytest`, `cd apps/web && npm test`, and `cd apps/web && npm run build`.
+- Phase 01 local verification commands are `python3 tools/repo-checks/check_docs.py`, `cd apps/api && uv run --extra dev pytest`, `cd apps/worker && uv run --extra dev pytest`, `cd apps/telegram-bot && uv run --extra dev pytest`, `npm run web:test`, `npm run web:lint`, and `npm run web:build`.

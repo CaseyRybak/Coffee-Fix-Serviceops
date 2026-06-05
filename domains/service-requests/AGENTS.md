@@ -29,4 +29,3 @@ Owns the repair request lifecycle from intake to closure.
 - Inventory checks likely parts.
 - AI agents produce suggestions.
 - Notifications deliver status updates.
-

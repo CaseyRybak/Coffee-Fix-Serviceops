@@ -27,4 +27,3 @@ Telegram is a notification and lightweight interaction channel. The backend rema
 ## Message Style
 
 Use practical service language: request number, current status, next action, and contact option. Keep operational facts separate from AI-generated drafts unless a human has approved the message.
-

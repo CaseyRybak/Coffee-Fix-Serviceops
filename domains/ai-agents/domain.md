@@ -11,4 +11,3 @@ This domain coordinates bounded AI workflows. AI produces suggestions and drafts
 - Likely cause suggestion.
 - Likely parts suggestion.
 - Customer-friendly reply draft.
-

@@ -2,7 +2,7 @@
 
 ## Reviewer
 
-- Role: independent AI subagent reviewer.
+- Role: independent subagent reviewer.
 - Scope: Phase 00 repository harness.
 - Date: 2026-06-05.
 
@@ -70,7 +70,7 @@ Findings:
 
 - No blocking issues.
 - Phase 00 remains documentation-only and does not introduce runtime application code.
-- Agent entry points are legible: `AGENTS.md`, `project_notes.md`, `ARCHITECTURE.md`, `docs/execution-plans/index.md`, and `docs/review/subagent-review-protocol.md`.
+- Contributor entry points are legible: `AGENTS.md`, `project_notes.md`, `ARCHITECTURE.md`, `docs/execution-plans/index.md`, and `docs/review/subagent-review-protocol.md`.
 - Domain boundaries and future code areas are documented at repository level before implementation begins.
 
 ## Non-Blocking Issues

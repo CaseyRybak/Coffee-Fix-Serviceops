@@ -23,4 +23,3 @@ Owns outbound and inbound service communications.
 - Service requests publish events.
 - Customers provide contact channels.
 - AI agents can draft message text.
-

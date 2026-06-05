@@ -35,4 +35,3 @@ Infrastructure implements ports. Domain logic does not import API routers, ORM m
 7. AI agents.
 8. Inventory.
 9. Billing.
-

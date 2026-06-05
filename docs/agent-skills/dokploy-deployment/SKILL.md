@@ -13,7 +13,7 @@ description: Use when preparing CoffeeFix Pro for VPS deployment, Docker Compose
 
 ## Pattern
 
-Deployment should be reproducible by a fresh agent. Keep runtime services explicit: API, web, worker, telegram bot, PostgreSQL, Redis, and n8n.
+Deployment should be reproducible by a fresh contributor. Keep runtime services explicit: API, web, worker, telegram bot, PostgreSQL, Redis, and n8n.
 
 ## Deployment Docs Should Include
 

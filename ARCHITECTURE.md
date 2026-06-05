@@ -2,7 +2,7 @@
 
 ## System Shape
 
-The project is a modular monolith with DDD and hexagonal architecture. The monolith keeps local development, testing, and deployment simple while preserving domain boundaries for agent readability.
+The project is a modular monolith with DDD and hexagonal architecture. The monolith keeps local development, testing, and deployment simple while preserving domain boundaries for readability.
 
 ## Applications
 
@@ -52,7 +52,7 @@ decisions/
 
 Domain code represents business concepts. Application code coordinates use cases. Infrastructure code adapts persistence and external integrations. API code exposes HTTP contracts.
 
-## Context Flow For Agents
+## Context Flow For Contributors
 
 ```text
 AGENTS.md

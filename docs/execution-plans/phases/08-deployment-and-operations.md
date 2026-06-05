@@ -1,6 +1,6 @@
 # Phase 08: Deployment And Operations
 
-> For agentic workers: implement this phase as a bounded slice, then request subagent review using `docs/review/subagent-review-protocol.md`.
+> For implementation workers: implement this phase as a bounded slice, then request subagent review using `docs/review/subagent-review-protocol.md`.
 
 ## Goal
 
@@ -24,7 +24,7 @@ Prepare the system for VPS deployment with Dokploy, operational automation, back
 
 ## Acceptance Criteria
 
-- Deployment steps are documented and executable by a fresh agent.
+- Deployment steps are documented and executable by a fresh contributor.
 - Required secrets are listed in `.env.example`.
 - Backup and restore commands are documented.
 - Smoke tests cover API health, public page, request intake, status page, worker, Telegram bot shell, and n8n webhook path.
@@ -32,4 +32,4 @@ Prepare the system for VPS deployment with Dokploy, operational automation, back
 
 ## Subagent Review Gate
 
-Review deployability, secret handling, operational clarity, and whether runbooks are specific enough for future agents.
+Review deployability, secret handling, operational clarity, and whether runbooks are specific enough for future contributors.
