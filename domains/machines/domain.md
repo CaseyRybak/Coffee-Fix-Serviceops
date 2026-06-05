@@ -11,3 +11,6 @@ This domain models the equipment being repaired. A machine can be known only par
 - Link machine to request and customer.
 - Store repair history once completed.
 
+## Phase 02 Intake Ownership
+
+Machine intake records can be partial at creation time. The machine domain owns the submitted brand, optional model, and location type (`home`, `office`, `coffee_shop`, `restaurant`, or `other`). Phase 02 links each intake machine to the submitted customer and the newly created service request.

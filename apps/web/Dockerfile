@@ -8,6 +8,9 @@ RUN npm ci
 COPY index.html tsconfig.json tsconfig.node.json vite.config.ts ./
 COPY src ./src
 
+ARG VITE_SERVICEOPS_API_BASE_URL
+ENV VITE_SERVICEOPS_API_BASE_URL=$VITE_SERVICEOPS_API_BASE_URL
+
 RUN npm run build
 
 FROM nginx:1.27-alpine

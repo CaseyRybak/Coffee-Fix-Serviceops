@@ -34,16 +34,18 @@
 - `docs/execution-plans/detailed/`: just-in-time detailed implementation plans.
 - `docs/execution-plans/completed/`: completed phase plans.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
+- `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
 
 ## Workflow Skills
 
 - `docs/agent-skills/skill-catalog.md`: skill list.
 - `docs/agent-skills/<skill>/SKILL.md`: portable repo-specific workflow drafts.
 
-## Future Code Areas
+## Code Areas
 
-- `apps/api`: FastAPI backend with `/health`.
-- `apps/web`: React/Vite frontend shell.
+- `apps/api`: FastAPI backend with `/health` and service request intake.
+- `apps/api/src/serviceops_api/service_requests`: service request intake API, use case, models, and repository.
+- `apps/web`: React/Vite public intake form and request-number success state.
 - `apps/worker`: Celery worker shell.
 - `apps/telegram-bot`: aiogram bot shell.
 - `packages/shared-kernel`: shared domain primitives.
@@ -53,7 +55,7 @@
 ## Runtime Harness
 
 - `.env.example`: local environment template.
-- `docker-compose.yml`: local PostgreSQL, Redis, API, web on port 3000, worker, and optional Telegram bot profile.
+- `docker-compose.yml`: localhost-only local PostgreSQL, Redis, API, web on port 3000, worker, and optional Telegram bot profile.
 - `apps/api/Dockerfile`: API container definition.
 - `apps/web/Dockerfile`: web container definition.
 - `apps/worker/Dockerfile`: worker container definition.

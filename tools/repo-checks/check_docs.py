@@ -29,15 +29,23 @@ REQUIRED_FILES = [
     "docs/user-intent/2026-06-05-project-intent.md",
     "docs/execution-plans/detailed/00-repository-harness-implementation.md",
     "docs/execution-plans/detailed/01-foundation-runtime-implementation.md",
+    "docs/execution-plans/detailed/02-service-request-intake-implementation.md",
     "docs/review/phase-00-review.md",
     "docs/review/phase-01-review.md",
+    "docs/review/phase-02-review.md",
     ".env.example",
     "docker-compose.yml",
     "apps/api/Dockerfile",
     "apps/api/pyproject.toml",
     "apps/api/uv.lock",
     "apps/api/src/serviceops_api/main.py",
+    "apps/api/src/serviceops_api/service_requests/api.py",
+    "apps/api/src/serviceops_api/service_requests/models.py",
+    "apps/api/src/serviceops_api/service_requests/repository.py",
+    "apps/api/src/serviceops_api/service_requests/use_cases.py",
+    "apps/api/src/serviceops_api/migrations/0001_service_request_intake.sql",
     "apps/api/tests/test_health.py",
+    "apps/api/tests/test_service_request_intake.py",
     "apps/web/Dockerfile",
     "apps/web/package.json",
     "apps/web/package-lock.json",
@@ -155,6 +163,13 @@ def require_dir(relative_path: str) -> None:
         fail(f"missing required directory: {relative_path}")
 
 
+def require_text(relative_path: str, expected_text: str) -> None:
+    path = ROOT / relative_path
+    text = path.read_text(encoding="utf-8")
+    if expected_text not in text:
+        fail(f"missing expected text in {relative_path}: {expected_text}")
+
+
 def scan_for_markers() -> None:
     markers = ("TODO", "TBD")
     for root in SCAN_ROOTS:
@@ -223,6 +238,13 @@ def main() -> None:
 
     for skill in SKILL_DRAFTS:
         require_file(f"docs/agent-skills/{skill}/SKILL.md")
+
+    require_text("apps/web/Dockerfile", "ARG VITE_SERVICEOPS_API_BASE_URL")
+    require_text("docker-compose.yml", "VITE_SERVICEOPS_API_BASE_URL")
+    require_text("docker-compose.yml", "127.0.0.1:${SERVICEOPS_API_PORT:-8000}:8000")
+    require_text("docker-compose.yml", "127.0.0.1:${SERVICEOPS_WEB_PORT:-3000}:80")
+    require_text("docker-compose.yml", "127.0.0.1:${POSTGRES_PORT:-5432}:5432")
+    require_text("docker-compose.yml", "127.0.0.1:6379:6379")
 
     scan_for_markers()
     validate_local_links()
