@@ -14,7 +14,7 @@ The active phase points to the next phase that needs a detailed implementation p
 
 ## Detailed Plans
 
-Detailed implementation plans are created just in time in `detailed/`. Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`.
+Detailed implementation plans are created just in time in `detailed/`. Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`.
 
 ## Phase Sequence
 

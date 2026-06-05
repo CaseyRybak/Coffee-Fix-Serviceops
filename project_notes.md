@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, and the Phase 03 public status and notification opt-in flow. The API can create persisted service requests, expose public status snapshots, record clarification answers, and create Telegram opt-in links. The web app presents the public CoffeeFix Pro request form, request-number success state, and status page with timeline and customer answer flow.
+The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, the Phase 03 public status and notification opt-in flow, and a PostgreSQL persistence slice for Docker Compose. The API can create persisted service requests, expose public status snapshots, record clarification answers, and create Telegram opt-in links. Docker Compose API runs against PostgreSQL, while injected tests keep sqlite in-memory persistence.
 
 ## Latest Changes
 
@@ -26,6 +26,8 @@ The repository currently contains a Figma-exported React/Vite reference in `refe
 - 2026-06-05: Created `docs/execution-plans/detailed/03-client-status-and-notifications-implementation.md` and implemented Phase 03 client status and notification opt-in.
 - 2026-06-05: Added public status retrieval by request number or token, status events, clarification questions, customer answer submission, Telegram opt-in token/link contract, and PostgreSQL target schema updates.
 - 2026-06-05: Added the web status page with timeline, clarification answer form, Telegram opt-in action, and real success-state links.
+- 2026-06-05: Added `docs/execution-plans/detailed/03a-postgres-persistence-implementation.md` and connected Docker Compose API persistence to PostgreSQL.
+- 2026-06-05: Added a PostgreSQL service-request repository, repository selection from `SERVICEOPS_DATABASE_URL`, idempotent migration application, and psycopg runtime dependency.
 
 ## Active Focus
 
@@ -49,6 +51,7 @@ Phase 04 planning is the active focus: create a detailed implementation plan for
 - Detailed Phase 02 plan: `docs/execution-plans/detailed/02-service-request-intake-implementation.md`
 - Completed Phase 03 slice: `docs/execution-plans/phases/03-client-status-and-notifications.md`
 - Detailed Phase 03 plan: `docs/execution-plans/detailed/03-client-status-and-notifications-implementation.md`
+- Detailed PostgreSQL persistence plan: `docs/execution-plans/detailed/03a-postgres-persistence-implementation.md`
 - Next phase slice: `docs/execution-plans/phases/04-dispatcher-mvp.md`
 - Architecture map: `ARCHITECTURE.md`
 - Domain map: `docs/domain-maps/index.md`
@@ -69,8 +72,9 @@ Phase 04 planning is the active focus: create a detailed implementation plan for
 - Before executing any phase, create a detailed implementation plan for that phase; current phase files are slice maps, not execution-ready implementation plans.
 - Phase 01 local verification commands are `python3 tools/repo-checks/check_docs.py`, `cd apps/api && uv run --extra dev pytest`, `cd apps/worker && uv run --extra dev pytest`, `cd apps/telegram-bot && uv run --extra dev pytest`, `npm run web:test`, `npm run web:lint`, and `npm run web:build`.
 - Phase 02 keeps attachment handling to metadata only; binary upload storage is deferred.
-- Phase 02 uses sqlite-backed local persistence for deterministic development and tests while recording the PostgreSQL target schema in `apps/api/src/serviceops_api/migrations/0001_service_request_intake.sql`.
+- Phase 02 introduced sqlite-backed local persistence for deterministic development and tests while recording the PostgreSQL target schema in `apps/api/src/serviceops_api/migrations/0001_service_request_intake.sql`.
 - Local Docker Compose publishes API, web, PostgreSQL, and Redis on `127.0.0.1` only; this is the intended safety posture for development.
 - Phase 03 supports public status lookup by request number for MVP convenience and by public token for direct status links.
 - Phase 03 records customer clarification answers in the service-request lifecycle; dispatcher UI creation of questions is deferred to Phase 04.
 - Phase 03 defines Telegram opt-in token/link generation but defers bot-side token consumption and outbound notification delivery.
+- Docker Compose API persistence uses PostgreSQL via `SERVICEOPS_DATABASE_URL`; direct Python defaults to sqlite for lightweight local imports and tests.

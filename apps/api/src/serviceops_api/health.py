@@ -6,6 +6,7 @@ from serviceops_api.config import Settings
 class DependencyStatus(BaseModel):
     postgres: str
     redis: str
+    storage: str
 
 
 class HealthStatus(BaseModel):
@@ -16,6 +17,7 @@ class HealthStatus(BaseModel):
 
 
 def build_health_status(settings: Settings) -> HealthStatus:
+    storage = "postgres" if settings.database_url.startswith(("postgresql://", "postgresql+psycopg://")) else "sqlite"
     return HealthStatus(
         service=settings.service_name,
         status="healthy",
@@ -23,6 +25,6 @@ def build_health_status(settings: Settings) -> HealthStatus:
         dependencies=DependencyStatus(
             postgres="configured",
             redis="configured",
+            storage=storage,
         ),
     )
-

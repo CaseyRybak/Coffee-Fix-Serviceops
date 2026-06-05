@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     service_name: str = "serviceops-api"
     environment: str = "local"
-    database_url: str = "postgresql+psycopg://serviceops:serviceops@postgres:5432/serviceops"
+    database_url: str = "sqlite:///.local/serviceops-api.sqlite3"
     intake_sqlite_path: str = ".local/serviceops-api.sqlite3"
     redis_url: str = "redis://redis:6379/0"
     cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"

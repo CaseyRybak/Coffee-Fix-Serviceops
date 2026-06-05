@@ -32,6 +32,7 @@
 - `docs/execution-plans/index.md`: phase list.
 - `docs/execution-plans/phases/`: phase slice maps.
 - `docs/execution-plans/detailed/`: just-in-time detailed implementation plans.
+- `docs/execution-plans/detailed/03a-postgres-persistence-implementation.md`: PostgreSQL persistence technical slice between Phase 03 and Phase 04.
 - `docs/execution-plans/completed/`: completed phase plans.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
@@ -44,8 +45,8 @@
 
 ## Code Areas
 
-- `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, and Telegram opt-in contracts.
-- `apps/api/src/serviceops_api/service_requests`: service request intake/status API, use cases, models, and repository.
+- `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, Telegram opt-in contracts, sqlite test persistence, and PostgreSQL Compose persistence.
+- `apps/api/src/serviceops_api/service_requests`: service request intake/status API, use cases, models, sqlite repository, PostgreSQL repository, and repository factory.
 - `apps/web`: React/Vite public intake form, request-number success state, and public status page.
 - `apps/worker`: Celery worker shell.
 - `apps/telegram-bot`: aiogram bot shell.
@@ -56,7 +57,7 @@
 ## Runtime Harness
 
 - `.env.example`: local environment template.
-- `docker-compose.yml`: localhost-only local PostgreSQL, Redis, API, web on port 3000, worker, and optional Telegram bot profile.
+- `docker-compose.yml`: localhost-only local PostgreSQL, Redis, API using PostgreSQL persistence, web on port 3000, worker, and optional Telegram bot profile.
 - `apps/api/Dockerfile`: API container definition.
 - `apps/web/Dockerfile`: web container definition.
 - `apps/worker/Dockerfile`: worker container definition.

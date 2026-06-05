@@ -1,4 +1,4 @@
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS customers (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name TEXT NOT NULL,
     phone TEXT NOT NULL,
@@ -7,9 +7,9 @@ CREATE TABLE customers (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_customers_phone ON customers (phone);
+CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers (phone);
 
-CREATE TABLE machines (
+CREATE TABLE IF NOT EXISTS machines (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     customer_id BIGINT NOT NULL REFERENCES customers(id),
     brand TEXT NOT NULL,
@@ -18,10 +18,10 @@ CREATE TABLE machines (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_machines_customer_id ON machines (customer_id);
-CREATE INDEX idx_machines_brand ON machines (brand);
+CREATE INDEX IF NOT EXISTS idx_machines_customer_id ON machines (customer_id);
+CREATE INDEX IF NOT EXISTS idx_machines_brand ON machines (brand);
 
-CREATE TABLE service_requests (
+CREATE TABLE IF NOT EXISTS service_requests (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     request_number TEXT NOT NULL UNIQUE,
     customer_id BIGINT NOT NULL REFERENCES customers(id),
@@ -33,11 +33,11 @@ CREATE TABLE service_requests (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_service_requests_customer_id ON service_requests (customer_id);
-CREATE INDEX idx_service_requests_status ON service_requests (status);
-CREATE INDEX idx_service_requests_created_at ON service_requests (created_at);
+CREATE INDEX IF NOT EXISTS idx_service_requests_customer_id ON service_requests (customer_id);
+CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests (status);
+CREATE INDEX IF NOT EXISTS idx_service_requests_created_at ON service_requests (created_at);
 
-CREATE TABLE attachment_metadata (
+CREATE TABLE IF NOT EXISTS attachment_metadata (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     service_request_id BIGINT NOT NULL REFERENCES service_requests(id),
     filename TEXT NOT NULL,
@@ -46,9 +46,9 @@ CREATE TABLE attachment_metadata (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_attachment_metadata_service_request_id ON attachment_metadata (service_request_id);
+CREATE INDEX IF NOT EXISTS idx_attachment_metadata_service_request_id ON attachment_metadata (service_request_id);
 
-CREATE TABLE status_events (
+CREATE TABLE IF NOT EXISTS status_events (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     service_request_id BIGINT NOT NULL REFERENCES service_requests(id),
     status TEXT NOT NULL,
@@ -58,10 +58,10 @@ CREATE TABLE status_events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_status_events_service_request_id ON status_events (service_request_id);
-CREATE INDEX idx_status_events_created_at ON status_events (created_at);
+CREATE INDEX IF NOT EXISTS idx_status_events_service_request_id ON status_events (service_request_id);
+CREATE INDEX IF NOT EXISTS idx_status_events_created_at ON status_events (created_at);
 
-CREATE TABLE clarification_questions (
+CREATE TABLE IF NOT EXISTS clarification_questions (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     service_request_id BIGINT NOT NULL REFERENCES service_requests(id),
     question TEXT NOT NULL,
@@ -70,18 +70,18 @@ CREATE TABLE clarification_questions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_clarification_questions_service_request_id ON clarification_questions (service_request_id);
+CREATE INDEX IF NOT EXISTS idx_clarification_questions_service_request_id ON clarification_questions (service_request_id);
 
-CREATE TABLE public_access_tokens (
+CREATE TABLE IF NOT EXISTS public_access_tokens (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     service_request_id BIGINT NOT NULL UNIQUE REFERENCES service_requests(id),
     token TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_public_access_tokens_token ON public_access_tokens (token);
+CREATE INDEX IF NOT EXISTS idx_public_access_tokens_token ON public_access_tokens (token);
 
-CREATE TABLE telegram_opt_ins (
+CREATE TABLE IF NOT EXISTS telegram_opt_ins (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     service_request_id BIGINT NOT NULL REFERENCES service_requests(id),
     telegram TEXT,
@@ -89,5 +89,5 @@ CREATE TABLE telegram_opt_ins (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_telegram_opt_ins_service_request_id ON telegram_opt_ins (service_request_id);
-CREATE INDEX idx_telegram_opt_ins_token ON telegram_opt_ins (token);
+CREATE INDEX IF NOT EXISTS idx_telegram_opt_ins_service_request_id ON telegram_opt_ins (service_request_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_opt_ins_token ON telegram_opt_ins (token);

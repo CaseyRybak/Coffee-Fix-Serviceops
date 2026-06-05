@@ -59,6 +59,14 @@ describe("App", () => {
     assert.doesNotMatch(css, /\.repair-step\s*{[^}]*border:/s);
   });
 
+  it("configures nginx to serve React routes directly", () => {
+    const dockerfile = readFileSync(new URL("../Dockerfile", import.meta.url), "utf-8");
+    const nginxConfig = readFileSync(new URL("../nginx.conf", import.meta.url), "utf-8");
+
+    assert.match(dockerfile, /COPY nginx\.conf \/etc\/nginx\/conf\.d\/default\.conf/);
+    assert.match(nginxConfig, /try_files \$uri \$uri\/ \/index\.html;/);
+  });
+
   it("renders the success state with a request number", () => {
     const html = renderToStaticMarkup(<SuccessState requestNumber="CFX-20260605-000001" />);
 

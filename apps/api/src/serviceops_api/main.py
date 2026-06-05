@@ -4,7 +4,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from serviceops_api.config import get_settings
 from serviceops_api.health import HealthStatus, build_health_status
 from serviceops_api.service_requests.api import create_public_status_router, create_service_requests_router
-from serviceops_api.service_requests.repository import ServiceRequestRepository
+from serviceops_api.service_requests.repository import (
+    PostgresServiceRequestRepository,
+    ServiceRequestRepository,
+    create_service_request_repository,
+)
 from serviceops_api.service_requests.use_cases import (
     CreateServiceRequest,
     CreateTelegramOptIn,
@@ -13,7 +17,9 @@ from serviceops_api.service_requests.use_cases import (
 )
 
 
-def create_app(service_request_repository: ServiceRequestRepository | None = None) -> FastAPI:
+def create_app(
+    service_request_repository: ServiceRequestRepository | PostgresServiceRequestRepository | None = None,
+) -> FastAPI:
     app = FastAPI(title="Coffee Fix ServiceOps API")
     settings = get_settings()
     app.add_middleware(
@@ -22,7 +28,7 @@ def create_app(service_request_repository: ServiceRequestRepository | None = Non
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["content-type"],
     )
-    repository = service_request_repository or ServiceRequestRepository(settings.intake_sqlite_path)
+    repository = service_request_repository or create_service_request_repository(settings)
     get_public_status = GetPublicStatus(repository)
     app.include_router(
         create_service_requests_router(

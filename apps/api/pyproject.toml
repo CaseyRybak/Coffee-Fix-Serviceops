@@ -5,6 +5,7 @@ description = "Coffee repair service operations API"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.111,<1.0",
+  "psycopg[binary]>=3.2,<4.0",
   "pydantic-settings>=2.3,<3.0",
   "uvicorn[standard]>=0.30,<1.0",
 ]

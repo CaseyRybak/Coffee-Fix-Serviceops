@@ -16,6 +16,7 @@ def test_health_route_returns_service_status() -> None:
         "dependencies": {
             "postgres": "configured",
             "redis": "configured",
+            "storage": "sqlite",
         },
     }
 
@@ -30,5 +31,14 @@ def test_health_status_returns_service_contract() -> None:
         "dependencies": {
             "postgres": "configured",
             "redis": "configured",
+            "storage": "sqlite",
         },
     }
+
+
+def test_health_status_reports_postgres_storage_when_configured() -> None:
+    status = build_health_status(
+        Settings(database_url="postgresql+psycopg://serviceops:serviceops@postgres:5432/serviceops")
+    )
+
+    assert status.dependencies.storage == "postgres"
