@@ -348,6 +348,27 @@ const footerClientLinks = [
   { label: "Оплата и документы", href: "#trust" },
 ];
 
+const technicianCandidates = [
+  {
+    name: "Sergey Morozov",
+    phone: "+7 999 310-22-11",
+    region: "ЦАО",
+    skills: "Jura, Saeco",
+  },
+  {
+    name: "Pavel Sokolov",
+    phone: "+7 999 222-33-44",
+    region: "СЗАО",
+    skills: "DeLonghi, Philips",
+  },
+  {
+    name: "Marina Volkova",
+    phone: "+7 999 450-18-07",
+    region: "ЮЗАО",
+    skills: "WMF, Nuova Simonelli",
+  },
+];
+
 export function getNextFormStep(step: FormStep): FormStep {
   return step < 3 ? ((step + 1) as FormStep) : 3;
 }
@@ -1096,6 +1117,12 @@ export function DispatcherPage({
     );
   }
 
+  function selectTechnicianCandidate(candidate: (typeof technicianCandidates)[number]) {
+    setTechnicianName(candidate.name);
+    setTechnicianPhone(candidate.phone);
+    setTechnicianRegion(candidate.region);
+  }
+
   return (
     <div className="app-page dispatcher-page">
       <WorkspaceHeader />
@@ -1282,6 +1309,21 @@ export function DispatcherPage({
                         : "Мастер еще не назначен."}
                     </p>
                     {detail.assignment.visit_window ? <p>{detail.assignment.visit_window}</p> : null}
+                    <div className="technician-candidates" aria-label="Кандидаты мастеров">
+                      <strong>Кандидаты мастеров</strong>
+                      {technicianCandidates.map((candidate) => (
+                        <button
+                          key={candidate.name}
+                          type="button"
+                          onClick={() => selectTechnicianCandidate(candidate)}
+                        >
+                          <span>{candidate.name}</span>
+                          <small>
+                            {candidate.skills} · {candidate.region}
+                          </small>
+                        </button>
+                      ))}
+                    </div>
                     <form className="dispatcher-form" onSubmit={submitAssignment}>
                       <input value={technicianName} onChange={(event) => setTechnicianName(event.target.value)} placeholder="Имя мастера" required />
                       <input value={technicianPhone} onChange={(event) => setTechnicianPhone(event.target.value)} placeholder="Телефон мастера" />

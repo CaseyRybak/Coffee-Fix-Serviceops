@@ -316,6 +316,9 @@ describe("App", () => {
     assert.match(html, /Pavel Sokolov/);
     assert.match(html, /\+7 999 222-33-44/);
     assert.match(html, /Завтра 14:00-16:00/);
+    assert.match(html, /Кандидаты мастеров/);
+    assert.match(html, /Sergey Morozov/);
+    assert.match(html, /Jura, Saeco · ЦАО/);
     assert.match(html, /Клиент просит звонить после 12:00./);
     assert.match(html, /Обновить статус/);
     assert.match(html, /Задать вопрос клиенту/);

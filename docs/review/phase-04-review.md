@@ -54,16 +54,18 @@ None found in implementation-session review.
 
 A follow-up consistency audit found one plan-compliance gap: the dispatcher page had the request list but did not include the planned status and urgency filters. The implementation now includes status and urgency filters in the dispatcher list, plus a web test for filter behavior and control rendering.
 
-Fresh verification after the follow-up audit exited with code 0:
+This readiness audit found one additional non-blocking slice-map gap: Phase 04 listed a technician list, while the dispatcher UI only had free-text assignment fields. The implementation now includes a lightweight dispatcher-only technician candidate list that pre-fills manual assignment fields without introducing a technician directory, availability, automatic matching, or appointment confirmation.
+
+Fresh verification after the follow-up audits exited with code 0:
 
 - `python3 tools/repo-checks/check_docs.py`
-- `UV_CACHE_DIR=/tmp/uv-cache uv run --extra dev pytest` in `apps/api`: 19 passed.
-- `UV_CACHE_DIR=/tmp/uv-cache uv run --extra dev pytest` in `apps/worker`: 1 passed.
-- `UV_CACHE_DIR=/tmp/uv-cache uv run --extra dev pytest` in `apps/telegram-bot`: 2 passed.
-- `npm run web:test`
-- `npm run web:lint`
-- `npm run web:build`
-- `docker compose config`
+- `uv run --extra dev pytest` in `apps/api`: 19 passed.
+- `uv run --extra dev pytest` in `apps/worker`: 1 passed.
+- `uv run --extra dev pytest` in `apps/telegram-bot`: 2 passed.
+- `npm run web:test`: 15 passed after the technician candidate list update.
+- `npm run web:lint`: TypeScript check passed.
+- `npm run web:build`: Vite production build completed.
+- `docker compose config`: Compose configuration rendered successfully.
 
 ## Suggested Follow-Up Slice
 

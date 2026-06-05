@@ -30,6 +30,7 @@ The repository currently contains a Figma-exported React/Vite reference in `refe
 - 2026-06-05: Added a PostgreSQL service-request repository, repository selection from `SERVICEOPS_DATABASE_URL`, idempotent migration application, and psycopg runtime dependency.
 - 2026-06-05: Audited documentation readiness for Phase 04 and added `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md` with dispatcher API, persistence, web, testing, and review scope.
 - 2026-06-05: Implemented Phase 04 dispatcher MVP with internal dispatcher API routes, sqlite/PostgreSQL dispatcher persistence, manual assignment metadata, dispatcher-only internal notes, and a React dispatcher workspace.
+- 2026-06-06: Re-audited Phase 04 readiness and added a lightweight dispatcher-only technician candidate list to close the slice-map "technician list" gap without expanding into full technician profiles or availability.
 
 ## Active Focus
 
