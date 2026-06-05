@@ -8,7 +8,20 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 ClientType = Literal["private", "office", "coffee_shop", "restaurant", "other"]
 LocationType = Literal["home", "office", "coffee_shop", "restaurant", "other"]
 Urgency = Literal["today", "one_two_days", "planned"]
-RequestStatus = Literal["new"]
+RequestStatus = Literal[
+    "new",
+    "needs_clarification",
+    "awaiting_assignment",
+    "technician_assigned",
+    "visit_scheduled",
+    "diagnostics",
+    "waiting_for_parts",
+    "repair_in_progress",
+    "completed",
+    "closed",
+    "warranty_case",
+    "cancelled",
+]
 
 
 def _clean_required(value: str) -> str:
@@ -83,3 +96,72 @@ class CreateServiceRequestResponse(BaseModel):
     request_number: str
     status: RequestStatus
     message: str
+
+
+class PublicCustomerSnapshot(BaseModel):
+    name: str
+    phone_masked: str
+    telegram: str | None
+
+
+class PublicMachineSnapshot(BaseModel):
+    brand: str
+    model: str | None
+
+
+class StatusEvent(BaseModel):
+    status: RequestStatus
+    title: str
+    description: str
+    actor: str
+    created_at: str
+
+
+class ClarificationSnapshot(BaseModel):
+    question_id: int
+    question: str
+    answer: str | None
+    answered_at: str | None
+
+
+class TelegramOptInSnapshot(BaseModel):
+    enabled: bool
+    link: str
+
+
+class PublicStatusResponse(BaseModel):
+    request_number: str
+    public_token: str
+    status: RequestStatus
+    customer: PublicCustomerSnapshot
+    machine: PublicMachineSnapshot
+    problem_summary: str
+    timeline: list[StatusEvent]
+    clarification: ClarificationSnapshot | None
+    telegram_opt_in: TelegramOptInSnapshot
+
+
+class CustomerAnswerPayload(BaseModel):
+    question_id: int = Field(gt=0)
+    answer: str = Field(min_length=1, max_length=2000)
+
+    _clean_answer = field_validator("answer")(_clean_required)
+
+
+class CustomerAnswerResponse(BaseModel):
+    request_number: str
+    status: RequestStatus
+    message: str
+
+
+class TelegramOptInPayload(BaseModel):
+    telegram: str | None = Field(default=None, max_length=80)
+
+    _clean_telegram = field_validator("telegram")(_clean_optional)
+
+
+class TelegramOptInResponse(BaseModel):
+    request_number: str
+    telegram: str | None
+    token: str
+    link: str

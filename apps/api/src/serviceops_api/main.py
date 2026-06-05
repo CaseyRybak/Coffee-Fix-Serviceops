@@ -3,9 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from serviceops_api.config import get_settings
 from serviceops_api.health import HealthStatus, build_health_status
-from serviceops_api.service_requests.api import create_service_requests_router
+from serviceops_api.service_requests.api import create_public_status_router, create_service_requests_router
 from serviceops_api.service_requests.repository import ServiceRequestRepository
-from serviceops_api.service_requests.use_cases import CreateServiceRequest
+from serviceops_api.service_requests.use_cases import (
+    CreateServiceRequest,
+    CreateTelegramOptIn,
+    GetPublicStatus,
+    SubmitCustomerAnswer,
+)
 
 
 def create_app(service_request_repository: ServiceRequestRepository | None = None) -> FastAPI:
@@ -14,11 +19,20 @@ def create_app(service_request_repository: ServiceRequestRepository | None = Non
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_methods=["POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["content-type"],
     )
     repository = service_request_repository or ServiceRequestRepository(settings.intake_sqlite_path)
-    app.include_router(create_service_requests_router(CreateServiceRequest(repository)))
+    get_public_status = GetPublicStatus(repository)
+    app.include_router(
+        create_service_requests_router(
+            CreateServiceRequest(repository),
+            get_public_status,
+            SubmitCustomerAnswer(repository),
+            CreateTelegramOptIn(repository),
+        )
+    )
+    app.include_router(create_public_status_router(get_public_status))
 
     @app.get("/health", response_model=HealthStatus)
     def health() -> HealthStatus:

@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, and the Phase 02 service request intake flow. The API can create persisted service requests with customer and machine intake data, and the web app presents the public CoffeeFix Pro request form with a request-number success state.
+The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, and the Phase 03 public status and notification opt-in flow. The API can create persisted service requests, expose public status snapshots, record clarification answers, and create Telegram opt-in links. The web app presents the public CoffeeFix Pro request form, request-number success state, and status page with timeline and customer answer flow.
 
 ## Latest Changes
 
@@ -23,16 +23,19 @@ The repository currently contains a Figma-exported React/Vite reference in `refe
 - 2026-06-05: Added `POST /service-requests`, request number generation, sqlite-backed local persistence, and a PostgreSQL migration for customer, machine, service request, and attachment metadata tables.
 - 2026-06-05: Replaced the web runtime shell with a public CoffeeFix Pro intake form based on the Figma reference and wired it to the service request API contract.
 - 2026-06-05: Rechecked Phase 02 after Docker setup, passed Compose config/build verification, passed `VITE_SERVICEOPS_API_BASE_URL` into the web Docker build, and restricted local Compose port bindings to `127.0.0.1`.
+- 2026-06-05: Created `docs/execution-plans/detailed/03-client-status-and-notifications-implementation.md` and implemented Phase 03 client status and notification opt-in.
+- 2026-06-05: Added public status retrieval by request number or token, status events, clarification questions, customer answer submission, Telegram opt-in token/link contract, and PostgreSQL target schema updates.
+- 2026-06-05: Added the web status page with timeline, clarification answer form, Telegram opt-in action, and real success-state links.
 
 ## Active Focus
 
-Phase 03 planning is the active focus: create a detailed implementation plan for `docs/execution-plans/phases/03-client-status-and-notifications.md` before implementing the public status page and notification opt-in flow.
+Phase 04 planning is the active focus: create a detailed implementation plan for `docs/execution-plans/phases/04-dispatcher-mvp.md` before implementing the dispatcher request list, request card, assignment, and clarification workflow.
 
 ## Next Steps
 
-1. Create a detailed implementation plan for Phase 03.
-2. Review the Phase 03 plan before execution.
-3. Execute Phase 03 only after the detailed plan exists.
+1. Create a detailed implementation plan for Phase 04.
+2. Review the Phase 04 plan before execution.
+3. Execute Phase 04 only after the detailed plan exists.
 4. Keep `python3 tools/repo-checks/check_docs.py`, API tests, worker tests, Telegram bot tests, and web checks passing after harness changes.
 
 ## Active Artifacts
@@ -44,13 +47,16 @@ Phase 03 planning is the active focus: create a detailed implementation plan for
 - Detailed Phase 01 plan: `docs/execution-plans/detailed/01-foundation-runtime-implementation.md`
 - Completed Phase 02 slice: `docs/execution-plans/phases/02-service-request-intake.md`
 - Detailed Phase 02 plan: `docs/execution-plans/detailed/02-service-request-intake-implementation.md`
-- Next phase slice: `docs/execution-plans/phases/03-client-status-and-notifications.md`
+- Completed Phase 03 slice: `docs/execution-plans/phases/03-client-status-and-notifications.md`
+- Detailed Phase 03 plan: `docs/execution-plans/detailed/03-client-status-and-notifications-implementation.md`
+- Next phase slice: `docs/execution-plans/phases/04-dispatcher-mvp.md`
 - Architecture map: `ARCHITECTURE.md`
 - Domain map: `docs/domain-maps/index.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
 - Phase 00 review: `docs/review/phase-00-review.md`
 - Phase 01 review: `docs/review/phase-01-review.md`
 - Phase 02 review: `docs/review/phase-02-review.md`
+- Phase 03 review: `docs/review/phase-03-review.md`
 
 ## Recent Decisions
 
@@ -65,3 +71,6 @@ Phase 03 planning is the active focus: create a detailed implementation plan for
 - Phase 02 keeps attachment handling to metadata only; binary upload storage is deferred.
 - Phase 02 uses sqlite-backed local persistence for deterministic development and tests while recording the PostgreSQL target schema in `apps/api/src/serviceops_api/migrations/0001_service_request_intake.sql`.
 - Local Docker Compose publishes API, web, PostgreSQL, and Redis on `127.0.0.1` only; this is the intended safety posture for development.
+- Phase 03 supports public status lookup by request number for MVP convenience and by public token for direct status links.
+- Phase 03 records customer clarification answers in the service-request lifecycle; dispatcher UI creation of questions is deferred to Phase 04.
+- Phase 03 defines Telegram opt-in token/link generation but defers bot-side token consumption and outbound notification delivery.

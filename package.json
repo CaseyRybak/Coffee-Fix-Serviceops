@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npm --prefix apps/web run dev",
-    "web:dev": "npm --prefix apps/web run dev",
-    "web:test": "npm --prefix apps/web test",
-    "web:lint": "npm --prefix apps/web run lint",
-    "web:build": "npm --prefix apps/web run build"
+    "dev": "cd apps/web && npm run dev",
+    "web:dev": "cd apps/web && npm run dev",
+    "web:test": "cd apps/web && npm test",
+    "web:lint": "cd apps/web && npm run lint",
+    "web:build": "cd apps/web && npm run build"
   }
 }

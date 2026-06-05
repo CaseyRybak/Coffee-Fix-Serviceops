@@ -49,3 +49,25 @@ Optional intake fields:
 - Telegram handle.
 - Machine model.
 - Attachment metadata: filename, content type, and byte size.
+
+## Phase 03 Public Status Model
+
+Every created service request now receives:
+
+- An initial status event with status `new`.
+- A public access token for token-based status links.
+- A public status snapshot available by request number or public token.
+
+The public status snapshot intentionally exposes only client-safe data:
+
+- Request number and current lifecycle status.
+- Customer name, masked phone, and Telegram handle if provided.
+- Machine brand and model.
+- Problem summary.
+- Ordered status timeline.
+- Latest clarification question and saved answer, if present.
+- Telegram opt-in link contract.
+
+Clarification questions belong to the service-request lifecycle. A dispatcher can ask a question, the request moves to `needs_clarification`, and the customer answer is recorded against that question with a timeline event. Phase 03 records the answer for dispatcher visibility; it does not yet implement the dispatcher console that creates questions from the UI.
+
+Public access rule: request-number lookup is supported for MVP convenience, and token lookup is supported for direct links. Public responses must avoid internal IDs except the clarification `question_id` required to submit an answer.

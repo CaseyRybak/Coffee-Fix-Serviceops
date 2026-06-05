@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
   ArrowRight,
@@ -78,6 +78,53 @@ interface IntakePayload {
   }>;
 }
 
+type RequestStatus =
+  | "new"
+  | "needs_clarification"
+  | "awaiting_assignment"
+  | "technician_assigned"
+  | "visit_scheduled"
+  | "diagnostics"
+  | "waiting_for_parts"
+  | "repair_in_progress"
+  | "completed"
+  | "closed"
+  | "warranty_case"
+  | "cancelled";
+
+interface PublicStatusSnapshot {
+  request_number: string;
+  public_token: string;
+  status: RequestStatus;
+  customer: {
+    name: string;
+    phone_masked: string;
+    telegram: string | null;
+  };
+  machine: {
+    brand: string;
+    model: string | null;
+  };
+  problem_summary: string;
+  timeline: Array<{
+    status: RequestStatus;
+    title: string;
+    description: string;
+    actor: string;
+    created_at: string;
+  }>;
+  clarification: {
+    question_id: number;
+    question: string;
+    answer: string | null;
+    answered_at: string | null;
+  } | null;
+  telegram_opt_in: {
+    enabled: boolean;
+    link: string;
+  };
+}
+
 const initialForm: IntakeFormState = {
   name: "",
   phone: "",
@@ -101,7 +148,7 @@ const navLinks = [
   { label: "Бренды", href: "#brands" },
   { label: "Как работаем", href: "#how-it-works" },
   { label: "Гарантия", href: "#trust" },
-  { label: "Статус заявки", href: "#status" },
+  { label: "Статус заявки", href: "/status" },
   { label: "Контакты", href: "#footer" },
 ];
 
@@ -241,10 +288,38 @@ const footerServices = [
 ];
 
 const footerBrands = ["Jura", "Saeco", "DeLonghi", "Philips", "Bosch", "Nivona", "WMF", "Nuova Simonelli"];
-const footerClientLinks = ["Оставить заявку", "Отследить статус", "Telegram-уведомления", "Гарантийные условия", "Оплата и документы"];
+const footerClientLinks = [
+  { label: "Оставить заявку", href: "#request-form" },
+  { label: "Отследить статус", href: "/status" },
+  { label: "Telegram-уведомления", href: "/status" },
+  { label: "Гарантийные условия", href: "#trust" },
+  { label: "Оплата и документы", href: "#trust" },
+];
 
 export function getNextFormStep(step: FormStep): FormStep {
   return step < 3 ? ((step + 1) as FormStep) : 3;
+}
+
+export function validateIntakeStep(form: IntakeFormState, step: FormStep): string[] {
+  if (step === 1) {
+    return [
+      [form.name, "Имя"],
+      [form.phone, "Телефон"],
+    ]
+      .filter(([value]) => !String(value).trim())
+      .map(([, label]) => String(label));
+  }
+
+  if (step === 2) {
+    return [
+      [form.brand, "Бренд кофемашины"],
+      [form.problem, "Комментарий"],
+    ]
+      .filter(([value]) => !String(value).trim())
+      .map(([, label]) => String(label));
+  }
+
+  return form.address.trim() ? [] : ["Район или адрес"];
 }
 
 export function buildServiceRequestPayload(form: IntakeFormState): IntakePayload {
@@ -281,6 +356,57 @@ export function buildServiceRequestPayload(form: IntakeFormState): IntakePayload
 
 function apiBaseUrl(): string {
   return import.meta.env.VITE_SERVICEOPS_API_BASE_URL ?? "";
+}
+
+export function normalizeRequestNumber(value: string): string {
+  return value.trim().toUpperCase();
+}
+
+export function statusPathFromRequestNumber(requestNumber: string): string {
+  return `/status/${encodeURIComponent(normalizeRequestNumber(requestNumber))}`;
+}
+
+export function buildStatusLookupPath(value: string): string {
+  const cleaned = value.trim();
+  const normalized = normalizeRequestNumber(cleaned);
+  if (/^CFX-\d{8}-\d{6}$/.test(normalized)) {
+    return `/service-requests/${encodeURIComponent(normalized)}/status`;
+  }
+  return `/status/${encodeURIComponent(cleaned)}`;
+}
+
+export function telegramOptInPathFromRequestNumber(requestNumber: string): string {
+  return `/service-requests/${encodeURIComponent(normalizeRequestNumber(requestNumber))}/telegram-opt-in`;
+}
+
+export function buildCustomerAnswerPayload(questionId: number, answer: string) {
+  return {
+    question_id: questionId,
+    answer: answer.trim(),
+  };
+}
+
+export function buildTelegramOptInPayload(telegram: string) {
+  const cleaned = telegram.trim();
+  return cleaned ? { telegram: cleaned } : { telegram: undefined };
+}
+
+function statusLabel(status: RequestStatus): string {
+  const labels: Record<RequestStatus, string> = {
+    new: "Новая заявка",
+    needs_clarification: "Ждет уточнения",
+    awaiting_assignment: "Ждет назначения мастера",
+    technician_assigned: "Мастер назначен",
+    visit_scheduled: "Визит запланирован",
+    diagnostics: "Диагностика",
+    waiting_for_parts: "Ожидаем запчасти",
+    repair_in_progress: "Ремонт в работе",
+    completed: "Ремонт завершен",
+    closed: "Заявка закрыта",
+    warranty_case: "Гарантийный случай",
+    cancelled: "Заявка отменена",
+  };
+  return labels[status];
 }
 
 function Field({
@@ -473,14 +599,14 @@ export function SuccessState({ requestNumber }: { requestNumber: string }) {
       </div>
       <p>Мы получили обращение. Диспетчер проверит описание, уточнит симптомы и предложит ближайшее время визита.</p>
       <div className="success-actions">
-        <button type="button">
+        <a href={statusPathFromRequestNumber(requestNumber)}>
           <ExternalLink aria-hidden="true" />
           Открыть страницу статуса
-        </button>
-        <button className="ghost-action" type="button">
+        </a>
+        <a className="ghost-action" href={telegramOptInPathFromRequestNumber(requestNumber)}>
           <MessageCircle aria-hidden="true" />
           Подключить Telegram-уведомления
-        </button>
+        </a>
       </div>
       <div className="next-steps">
         <p>Что дальше?</p>
@@ -495,25 +621,267 @@ export function SuccessState({ requestNumber }: { requestNumber: string }) {
   );
 }
 
+export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnapshot }) {
+  const [lookup, setLookup] = useState(initialStatus?.request_number ?? "");
+  const [status, setStatus] = useState<PublicStatusSnapshot | null>(initialStatus ?? null);
+  const [changingRequest, setChangingRequest] = useState(!initialStatus);
+  const [answer, setAnswer] = useState("");
+  const [telegram, setTelegram] = useState(initialStatus?.customer.telegram ?? "");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function loadStatus(value: string) {
+    const cleaned = value.trim();
+    if (!cleaned) return;
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${buildStatusLookupPath(cleaned)}`);
+      if (!response.ok) throw new Error(`Status request failed with ${response.status}`);
+      const body = (await response.json()) as PublicStatusSnapshot;
+      setStatus(body);
+      setLookup(body.request_number);
+      setTelegram(body.customer.telegram ?? "");
+      setChangingRequest(false);
+    } catch {
+      setMessage("Не удалось открыть статус. Проверьте номер заявки и попробуйте еще раз.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (initialStatus) return;
+    if (typeof window === "undefined") return;
+    const [, route, tokenOrNumber] = window.location.pathname.split("/");
+    if (route === "status" && tokenOrNumber) {
+      const decoded = decodeURIComponent(tokenOrNumber);
+      setLookup(decoded);
+      void loadStatus(decoded);
+    }
+  }, [initialStatus]);
+
+  async function handleLookup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await loadStatus(lookup);
+  }
+
+  async function submitAnswer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!status?.clarification) return;
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}/service-requests/${status.request_number}/answers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildCustomerAnswerPayload(status.clarification.question_id, answer)),
+      });
+      if (!response.ok) throw new Error(`Answer request failed with ${response.status}`);
+      setAnswer("");
+      await loadStatus(status.request_number);
+      setMessage("Ответ сохранен. Диспетчер увидит его в заявке.");
+    } catch {
+      setMessage("Не удалось отправить ответ. Попробуйте еще раз.");
+    }
+  }
+
+  async function requestTelegramOptIn() {
+    if (!status) return;
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${telegramOptInPathFromRequestNumber(status.request_number)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildTelegramOptInPayload(telegram)),
+      });
+      if (!response.ok) throw new Error(`Telegram opt-in failed with ${response.status}`);
+      const body = (await response.json()) as { link: string };
+      setMessage(`Ссылка для подключения Telegram: ${body.link}`);
+    } catch {
+      setMessage("Не удалось подготовить Telegram-подключение. Попробуйте позже.");
+    }
+  }
+
+  return (
+    <div className="app-page status-page">
+      <ServiceBar />
+      <Header />
+      <main className="status-main">
+        <section className="section-inner status-workspace">
+          {status && !changingRequest ? (
+            <div className="status-lookup compact-status-header">
+              <div>
+                <span>Страница статуса</span>
+                <h1>Статус заявки {status.request_number}</h1>
+                <p>Ниже показаны текущий этап, история заявки и доступные действия.</p>
+              </div>
+              <button
+                className="secondary-status-button"
+                type="button"
+                onClick={() => {
+                  setLookup("");
+                  setChangingRequest(true);
+                }}
+              >
+                Проверить другую заявку
+              </button>
+            </div>
+          ) : (
+            <form className="status-lookup" onSubmit={handleLookup}>
+              <div>
+                <span>Страница статуса</span>
+                <h1>{status ? "Проверить другую заявку" : "Проверьте статус заявки"}</h1>
+                <p>Введите номер обращения из SMS, звонка диспетчера или письма после отправки заявки.</p>
+              </div>
+              <div className="status-lookup-controls">
+                <input
+                  aria-label="Номер заявки"
+                  value={lookup}
+                  onChange={(event) => setLookup(event.target.value)}
+                  placeholder="CFX-20260605-000001"
+                />
+                <button className="submit-button" type="submit" disabled={loading}>
+                  {loading ? "Проверяем" : "Показать статус"}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {message ? <p className="status-message">{message}</p> : null}
+
+          {status ? (
+            <div className="status-dashboard">
+              <section className="status-summary">
+                <div>
+                  <span className="status-pill">{statusLabel(status.status)}</span>
+                  <h2>{status.customer.name}</h2>
+                  <p>{status.customer.phone_masked}</p>
+                </div>
+                <div>
+                  <span>Кофемашина</span>
+                  <strong>
+                    {status.machine.brand}
+                    {status.machine.model ? ` ${status.machine.model}` : ""}
+                  </strong>
+                  <p>{status.problem_summary}</p>
+                </div>
+              </section>
+
+              <section className="status-panel">
+                <div className="status-panel-heading">
+                  <Clock aria-hidden="true" />
+                  <h2>История заявки</h2>
+                </div>
+                <div className="timeline">
+                  {status.timeline.map((event) => (
+                    <article className="timeline-item" key={`${event.title}-${event.created_at}`}>
+                      <span />
+                      <div>
+                        <small>{statusLabel(event.status)}</small>
+                        <h3>{event.title}</h3>
+                        <p>{event.description}</p>
+                        <em>{event.created_at}</em>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <section className="status-panel clarification-panel">
+                <div className="status-panel-heading">
+                  <HelpCircle aria-hidden="true" />
+                  <h2>Вопрос диспетчера</h2>
+                </div>
+                {status.clarification ? (
+                  <>
+                    <p>{status.clarification.question}</p>
+                    {status.clarification.answer ? (
+                      <div className="saved-answer">
+                        <span>Ваш ответ</span>
+                        <strong>{status.clarification.answer}</strong>
+                      </div>
+                    ) : (
+                      <form className="status-answer-form" onSubmit={submitAnswer}>
+                        <textarea
+                          value={answer}
+                          onChange={(event) => setAnswer(event.target.value)}
+                          placeholder="Напишите ответ для диспетчера"
+                          required
+                          rows={3}
+                        />
+                        <button className="submit-button" type="submit">
+                          <Send aria-hidden="true" />
+                          Отправить ответ
+                        </button>
+                      </form>
+                    )}
+                  </>
+                ) : (
+                  <p>Сейчас нет открытых уточняющих вопросов.</p>
+                )}
+              </section>
+
+              <section className="status-panel telegram-panel">
+                <div className="status-panel-heading">
+                  <MessageCircle aria-hidden="true" />
+                  <h2>Telegram-уведомления</h2>
+                </div>
+                <p>Можно подключить уведомления по этой заявке без личного кабинета.</p>
+                <div className="telegram-controls">
+                  <input value={telegram ?? ""} onChange={(event) => setTelegram(event.target.value)} placeholder="@username" />
+                  <button className="submit-button" type="button" onClick={requestTelegramOptIn}>
+                    Подключить Telegram
+                  </button>
+                </div>
+              </section>
+            </div>
+          ) : null}
+        </section>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
 function RequestForm() {
   const [form, setForm] = useState<IntakeFormState>(initialForm);
   const [step, setStep] = useState<FormStep>(1);
   const [requestNumber, setRequestNumber] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const set = (key: keyof IntakeFormState) => (value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
+    setValidationWarning(null);
   };
+
+  function requireCurrentStepFields(): boolean {
+    const missingFields = validateIntakeStep(form, step);
+    if (missingFields.length === 0) {
+      setValidationWarning(null);
+      return true;
+    }
+    setValidationWarning(`Заполните: ${missingFields.join(", ")}`);
+    return false;
+  }
+
+  function goToNextStep() {
+    setSubmitError(null);
+    if (!requireCurrentStepFields()) return;
+    setStep(getNextFormStep(step));
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitError(null);
 
     if (step < 3) {
-      setStep(getNextFormStep(step));
+      goToNextStep();
       return;
     }
+
+    if (!requireCurrentStepFields()) return;
 
     setSubmitting(true);
     try {
@@ -546,7 +914,12 @@ function RequestForm() {
                 className={step === item ? "step active" : step > item ? "step complete" : "step"}
                 key={item}
                 type="button"
-                onClick={() => item < step && setStep(item)}
+                onClick={() => {
+                  if (item < step) {
+                    setValidationWarning(null);
+                    setStep(item);
+                  }
+                }}
               >
                 <span>{step > item ? "✓" : item}</span>
                 <strong>{item === 1 ? "Контакты" : item === 2 ? "Кофемашина и проблема" : "Адрес и время"}</strong>
@@ -639,14 +1012,21 @@ function RequestForm() {
 
         <div className="form-navigation">
           {step > 1 ? (
-            <button className="back-button" type="button" onClick={() => setStep((current) => (current - 1) as FormStep)}>
+            <button
+              className="back-button"
+              type="button"
+              onClick={() => {
+                setValidationWarning(null);
+                setStep((current) => (current - 1) as FormStep);
+              }}
+            >
               ← Назад
             </button>
           ) : (
             <span />
           )}
           {step < 3 ? (
-            <button className="next-button" type="button" onClick={() => setStep(getNextFormStep(step))}>
+            <button className="next-button" type="button" onClick={goToNextStep}>
               Далее
               <ChevronRight aria-hidden="true" />
             </button>
@@ -658,6 +1038,11 @@ function RequestForm() {
           )}
         </div>
         {step === 3 ? <p className="consent-copy">Нажимая кнопку, вы соглашаетесь с обработкой персональных данных.</p> : null}
+        {validationWarning ? (
+          <p className="validation-warning" role="alert">
+            {validationWarning}
+          </p>
+        ) : null}
         {submitError ? <p className="submit-error">{submitError}</p> : null}
       </form>
     </section>
@@ -771,62 +1156,6 @@ function TrustSection() {
   );
 }
 
-function StatusPreview() {
-  const [answer, setAnswer] = useState("");
-
-  return (
-    <section className="section white-section" id="status">
-      <div className="section-inner status-inner">
-        <div className="status-copy">
-          <h2>Статус заявки онлайн</h2>
-          <p>
-            После отправки заявки вы получите номер обращения и ссылку на страницу статуса. Там можно увидеть этап
-            ремонта, ответить на уточняющие вопросы и подключить Telegram-уведомления.
-          </p>
-          <ul>
-            {[
-              "Текущий статус и имя назначенного мастера",
-              "Ответы на уточняющие вопросы прямо в браузере",
-              "Telegram-уведомления по желанию - без лишних регистраций",
-            ].map((item) => (
-              <li key={item}>
-                <CheckCircle2 aria-hidden="true" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="status-card-wrap">
-          <p>Пример страницы статуса</p>
-          <div className="status-card">
-            <div className="ticket-heading">
-              <div>
-                <span>Заявка</span>
-                <strong>CFX-000123</strong>
-              </div>
-              <em>Ждет уточнения</em>
-            </div>
-            <div className="dispatcher-question">
-              <div>
-                <HelpCircle aria-hidden="true" />
-                <span>Вопрос диспетчера</span>
-              </div>
-              <p>Есть ли ошибка на дисплее?</p>
-            </div>
-            <div className="status-answer">
-              <input value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="Например: E8" />
-              <button type="button">
-                <Send aria-hidden="true" />
-                Отправить ответ
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function Footer() {
   return (
     <footer className="footer" id="footer">
@@ -843,9 +1172,9 @@ function Footer() {
         </div>
       </div>
       <div className="section-inner footer-main">
-        <FooterColumn title="Услуги" items={footerServices} href="#services" />
-        <FooterColumn title="Бренды" items={footerBrands} href="#brands" />
-        <FooterColumn title="Клиентам" items={footerClientLinks} href="#request-form" />
+        <FooterColumn title="Услуги" items={footerServices.map((label) => ({ label, href: "#services" }))} />
+        <FooterColumn title="Бренды" items={footerBrands.map((label) => ({ label, href: "#brands" }))} />
+        <FooterColumn title="Клиентам" items={footerClientLinks} />
         <div>
           <h3>Контакты</h3>
           <ul className="footer-contacts">
@@ -874,7 +1203,7 @@ function Footer() {
       </div>
       <div className="section-inner footer-bottom">
         <Logo />
-        <p>© 2024 CoffeeFix Pro. Ремонт и обслуживание кофемашин.</p>
+        <p>© 2026 CoffeeFix Pro. Ремонт и обслуживание кофемашин.</p>
         <div>
           <a href="#top">Политика конфиденциальности</a>
           <a href="#top">Публичная оферта</a>
@@ -884,14 +1213,14 @@ function Footer() {
   );
 }
 
-function FooterColumn({ title, items, href }: { title: string; items: string[]; href: string }) {
+function FooterColumn({ title, items }: { title: string; items: Array<{ label: string; href: string }> }) {
   return (
     <div>
       <h3>{title}</h3>
       <ul>
         {items.map((item) => (
-          <li key={item}>
-            <a href={href}>{item}</a>
+          <li key={item.label}>
+            <a href={item.href}>{item.label}</a>
           </li>
         ))}
       </ul>
@@ -909,6 +1238,9 @@ function SectionHeading({ title, copy }: { title: string; copy: string }) {
 }
 
 export function App() {
+  const isStatusRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/status");
+  if (isStatusRoute) return <StatusPage />;
+
   return (
     <div className="app-page">
       <ServiceBar />
@@ -920,7 +1252,6 @@ export function App() {
         <IssuesSection />
         <HowItWorks />
         <TrustSection />
-        <StatusPreview />
       </main>
       <Footer />
       <div className="mobile-sticky-cta">

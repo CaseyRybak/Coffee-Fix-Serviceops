@@ -1,6 +1,7 @@
 # Local agent runtime and installed skill cache.
 .agents/
 .codex/
+.playwright-cli/
 _index/
 
 # Python caches.

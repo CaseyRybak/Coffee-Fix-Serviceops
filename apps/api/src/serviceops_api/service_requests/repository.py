@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -59,6 +60,40 @@ class ServiceRequestRepository:
                 filename TEXT NOT NULL,
                 content_type TEXT NOT NULL,
                 size_bytes INTEGER NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS status_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                service_request_id INTEGER NOT NULL REFERENCES service_requests(id),
+                status TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS clarification_questions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                service_request_id INTEGER NOT NULL REFERENCES service_requests(id),
+                question TEXT NOT NULL,
+                answer TEXT,
+                answered_at TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS public_access_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                service_request_id INTEGER NOT NULL UNIQUE REFERENCES service_requests(id),
+                token TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS telegram_opt_ins (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                service_request_id INTEGER NOT NULL REFERENCES service_requests(id),
+                telegram TEXT,
+                token TEXT NOT NULL UNIQUE,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             """
@@ -125,6 +160,29 @@ class ServiceRequestRepository:
                     ),
                 )
 
+            self._connection.execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    request_id,
+                    record.status,
+                    "Заявка создана",
+                    "Мы получили обращение и передали его диспетчеру.",
+                    "system",
+                ),
+            )
+            self._connection.execute(
+                """
+                INSERT INTO public_access_tokens (service_request_id, token)
+                VALUES (?, ?)
+                """,
+                (request_id, self._new_token("status")),
+            )
+
     def get_request_snapshot(self, request_number: str) -> dict[str, Any]:
         request = self._connection.execute(
             """
@@ -190,3 +248,263 @@ class ServiceRequestRepository:
                 for attachment in attachments
             ],
         }
+
+    def add_status_event(
+        self,
+        request_number: str,
+        status: str,
+        title: str,
+        description: str,
+        actor: str,
+    ) -> None:
+        request_id = self._get_request_id(request_number)
+        with self._connection:
+            self._connection.execute(
+                "UPDATE service_requests SET status = ? WHERE id = ?",
+                (status, request_id),
+            )
+            self._connection.execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (request_id, status, title, description, actor),
+            )
+
+    def ask_clarification(self, request_number: str, question: str) -> int:
+        request_id = self._get_request_id(request_number)
+        with self._connection:
+            self._connection.execute(
+                "UPDATE service_requests SET status = ? WHERE id = ?",
+                ("needs_clarification", request_id),
+            )
+            cursor = self._connection.execute(
+                """
+                INSERT INTO clarification_questions (service_request_id, question)
+                VALUES (?, ?)
+                """,
+                (request_id, question),
+            )
+            self._connection.execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    request_id,
+                    "needs_clarification",
+                    "Нужно уточнить детали",
+                    "Диспетчер оставил вопрос на странице статуса.",
+                    "dispatcher",
+                ),
+            )
+        return int(cursor.lastrowid)
+
+    def ensure_public_access_token(self, request_number: str) -> str:
+        request_id = self._get_request_id(request_number)
+        existing = self._connection.execute(
+            """
+            SELECT token
+            FROM public_access_tokens
+            WHERE service_request_id = ?
+            """,
+            (request_id,),
+        ).fetchone()
+        if existing is not None:
+            return str(existing["token"])
+
+        token = self._new_token("status")
+        with self._connection:
+            self._connection.execute(
+                """
+                INSERT INTO public_access_tokens (service_request_id, token)
+                VALUES (?, ?)
+                """,
+                (request_id, token),
+            )
+        return token
+
+    def get_public_status_by_request_number(self, request_number: str) -> dict[str, Any]:
+        return self._get_public_status("sr.request_number = ?", request_number)
+
+    def get_public_status_by_token(self, token: str) -> dict[str, Any]:
+        return self._get_public_status("pat.token = ?", token)
+
+    def record_customer_answer(self, request_number: str, question_id: int, answer: str) -> str:
+        request_id = self._get_request_id(request_number)
+        question = self._connection.execute(
+            """
+            SELECT id
+            FROM clarification_questions
+            WHERE id = ? AND service_request_id = ?
+            """,
+            (question_id, request_id),
+        ).fetchone()
+        if question is None:
+            raise KeyError(str(question_id))
+
+        with self._connection:
+            self._connection.execute(
+                """
+                UPDATE clarification_questions
+                SET answer = ?, answered_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (answer, question_id),
+            )
+            self._connection.execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    request_id,
+                    "needs_clarification",
+                    "Клиент ответил на уточнение",
+                    "Ответ сохранен и доступен диспетчеру.",
+                    "customer",
+                ),
+            )
+        return self._get_request_status(request_number)
+
+    def create_telegram_opt_in(self, request_number: str, telegram: str | None) -> dict[str, Any]:
+        request_id = self._get_request_id(request_number)
+        token = self._new_token("tg")
+        with self._connection:
+            self._connection.execute(
+                """
+                INSERT INTO telegram_opt_ins (service_request_id, telegram, token)
+                VALUES (?, ?, ?)
+                """,
+                (request_id, telegram, token),
+            )
+        return {
+            "request_number": request_number,
+            "telegram": telegram,
+            "token": token,
+            "link": f"https://t.me/coffeefix_service_bot?start={token}",
+        }
+
+    def _get_request_id(self, request_number: str) -> int:
+        row = self._connection.execute(
+            "SELECT id FROM service_requests WHERE request_number = ?",
+            (request_number,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(request_number)
+        return int(row["id"])
+
+    def _get_request_status(self, request_number: str) -> str:
+        row = self._connection.execute(
+            "SELECT status FROM service_requests WHERE request_number = ?",
+            (request_number,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(request_number)
+        return str(row["status"])
+
+    def _get_public_status(self, predicate: str, value: str) -> dict[str, Any]:
+        request = self._connection.execute(
+            f"""
+            SELECT
+                sr.id,
+                sr.request_number,
+                sr.status,
+                sr.problem,
+                c.name,
+                c.phone,
+                c.telegram,
+                m.brand,
+                m.model,
+                pat.token AS public_token
+            FROM service_requests sr
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            JOIN public_access_tokens pat ON pat.service_request_id = sr.id
+            WHERE {predicate}
+            """,
+            (value,),
+        ).fetchone()
+        if request is None:
+            raise KeyError(value)
+
+        events = self._connection.execute(
+            """
+            SELECT status, title, description, actor, created_at
+            FROM status_events
+            WHERE service_request_id = ?
+            ORDER BY id
+            """,
+            (request["id"],),
+        ).fetchall()
+        clarification = self._connection.execute(
+            """
+            SELECT id, question, answer, answered_at
+            FROM clarification_questions
+            WHERE service_request_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (request["id"],),
+        ).fetchone()
+        opt_in = self._connection.execute(
+            """
+            SELECT id
+            FROM telegram_opt_ins
+            WHERE service_request_id = ?
+            LIMIT 1
+            """,
+            (request["id"],),
+        ).fetchone()
+
+        return {
+            "request_number": request["request_number"],
+            "public_token": request["public_token"],
+            "status": request["status"],
+            "customer": {
+                "name": request["name"],
+                "phone_masked": self._mask_phone(str(request["phone"])),
+                "telegram": request["telegram"],
+            },
+            "machine": {
+                "brand": request["brand"],
+                "model": request["model"],
+            },
+            "problem_summary": request["problem"],
+            "timeline": [
+                {
+                    "status": event["status"],
+                    "title": event["title"],
+                    "description": event["description"],
+                    "actor": event["actor"],
+                    "created_at": event["created_at"],
+                }
+                for event in events
+            ],
+            "clarification": None
+            if clarification is None
+            else {
+                "question_id": clarification["id"],
+                "question": clarification["question"],
+                "answer": clarification["answer"],
+                "answered_at": clarification["answered_at"],
+            },
+            "telegram_opt_in": {
+                "enabled": opt_in is not None,
+                "link": f"/service-requests/{request['request_number']}/telegram-opt-in",
+            },
+        }
+
+    def _new_token(self, prefix: str) -> str:
+        return f"{prefix}_{secrets.token_urlsafe(18)}"
+
+    def _mask_phone(self, phone: str) -> str:
+        if len(phone) < 9:
+            return "***"
+        return f"{phone[:-9]}***-**-{phone[-2:]}"

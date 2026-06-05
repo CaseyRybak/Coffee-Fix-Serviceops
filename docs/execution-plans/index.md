@@ -8,13 +8,13 @@ Before executing any phase, create a detailed implementation plan for that speci
 
 ## Active Phase
 
-- `phases/03-client-status-and-notifications.md`
+- `phases/04-dispatcher-mvp.md`
 
 The active phase points to the next phase that needs a detailed implementation plan before execution. `phases/` contains all phase slice maps, not only active work.
 
 ## Detailed Plans
 
-Detailed implementation plans are created just in time in `detailed/`. Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`.
+Detailed implementation plans are created just in time in `detailed/`. Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`.
 
 ## Phase Sequence
 

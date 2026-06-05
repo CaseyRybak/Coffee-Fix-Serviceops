@@ -35,6 +35,7 @@
 - `docs/execution-plans/completed/`: completed phase plans.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
+- `docs/review/phase-03-review.md`: Phase 03 review artifact for client status and notifications.
 
 ## Workflow Skills
 
@@ -43,9 +44,9 @@
 
 ## Code Areas
 
-- `apps/api`: FastAPI backend with `/health` and service request intake.
-- `apps/api/src/serviceops_api/service_requests`: service request intake API, use case, models, and repository.
-- `apps/web`: React/Vite public intake form and request-number success state.
+- `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, and Telegram opt-in contracts.
+- `apps/api/src/serviceops_api/service_requests`: service request intake/status API, use cases, models, and repository.
+- `apps/web`: React/Vite public intake form, request-number success state, and public status page.
 - `apps/worker`: Celery worker shell.
 - `apps/telegram-bot`: aiogram bot shell.
 - `packages/shared-kernel`: shared domain primitives.
