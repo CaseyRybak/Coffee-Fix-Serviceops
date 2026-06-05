@@ -1,0 +1,17 @@
+# Local agent runtime and installed skill cache.
+.agents/
+.codex/
+
+# Python caches.
+__pycache__/
+*.py[cod]
+
+# Node dependencies and build outputs.
+node_modules/
+dist/
+build/
+
+# Environment files.
+.env
+.env.*
+!.env.example
