@@ -71,3 +71,24 @@ The public status snapshot intentionally exposes only client-safe data:
 Clarification questions belong to the service-request lifecycle. A dispatcher can ask a question, the request moves to `needs_clarification`, and the customer answer is recorded against that question with a timeline event. Phase 03 records the answer for dispatcher visibility; it does not yet implement the dispatcher console that creates questions from the UI.
 
 Public access rule: request-number lookup is supported for MVP convenience, and token lookup is supported for direct links. Public responses must avoid internal IDs except the clarification `question_id` required to submit an answer.
+
+## Phase 04 Dispatcher Model
+
+The dispatcher workflow is internal and extends the service-request lifecycle without changing the public status contract.
+
+Dispatcher-visible request detail includes:
+
+- Full intake fields from the customer and machine snapshots.
+- Ordered status timeline.
+- Latest clarification question and answer.
+- Assignment metadata: technician name, optional technician phone, optional technician region, and visit window text.
+- Internal notes created by dispatchers.
+
+Public/private boundary:
+
+- Public status snapshots may show lifecycle status, customer-safe timeline events, clarification question/answer, machine summary, and Telegram opt-in state.
+- Public status snapshots must not show internal notes, technician phone numbers, dispatcher-only assignment metadata, internal database IDs, or operational comments.
+
+Phase 04 status actions use the existing status vocabulary. Manual assignment sets `technician_assigned` when only a technician is selected and `visit_scheduled` when a visit window is also recorded. Asking a clarification question sets `needs_clarification`.
+
+Every dispatcher status change, clarification question, and assignment action creates a status event with actor `dispatcher`.

@@ -32,6 +32,7 @@ REQUIRED_FILES = [
     "docs/execution-plans/detailed/02-service-request-intake-implementation.md",
     "docs/execution-plans/detailed/03-client-status-and-notifications-implementation.md",
     "docs/execution-plans/detailed/03a-postgres-persistence-implementation.md",
+    "docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md",
     "docs/review/phase-00-review.md",
     "docs/review/phase-01-review.md",
     "docs/review/phase-02-review.md",

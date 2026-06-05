@@ -33,6 +33,7 @@
 - `docs/execution-plans/phases/`: phase slice maps.
 - `docs/execution-plans/detailed/`: just-in-time detailed implementation plans.
 - `docs/execution-plans/detailed/03a-postgres-persistence-implementation.md`: PostgreSQL persistence technical slice between Phase 03 and Phase 04.
+- `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md`: ready-for-review detailed plan for the dispatcher MVP.
 - `docs/execution-plans/completed/`: completed phase plans.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.

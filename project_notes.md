@@ -28,17 +28,17 @@ The repository currently contains a Figma-exported React/Vite reference in `refe
 - 2026-06-05: Added the web status page with timeline, clarification answer form, Telegram opt-in action, and real success-state links.
 - 2026-06-05: Added `docs/execution-plans/detailed/03a-postgres-persistence-implementation.md` and connected Docker Compose API persistence to PostgreSQL.
 - 2026-06-05: Added a PostgreSQL service-request repository, repository selection from `SERVICEOPS_DATABASE_URL`, idempotent migration application, and psycopg runtime dependency.
+- 2026-06-05: Audited documentation readiness for Phase 04 and added `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md` with dispatcher API, persistence, web, testing, and review scope.
 
 ## Active Focus
 
-Phase 04 planning is the active focus: create a detailed implementation plan for `docs/execution-plans/phases/04-dispatcher-mvp.md` before implementing the dispatcher request list, request card, assignment, and clarification workflow.
+Phase 04 plan review is the active focus: review `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md` before implementing the dispatcher request list, request card, assignment, and clarification workflow.
 
 ## Next Steps
 
-1. Create a detailed implementation plan for Phase 04.
-2. Review the Phase 04 plan before execution.
-3. Execute Phase 04 only after the detailed plan exists.
-4. Keep `python3 tools/repo-checks/check_docs.py`, API tests, worker tests, Telegram bot tests, and web checks passing after harness changes.
+1. Review the Phase 04 detailed implementation plan.
+2. Execute Phase 04 only after the detailed plan review is accepted.
+3. Keep `python3 tools/repo-checks/check_docs.py`, API tests, worker tests, Telegram bot tests, and web checks passing after harness changes.
 
 ## Active Artifacts
 
@@ -52,6 +52,7 @@ Phase 04 planning is the active focus: create a detailed implementation plan for
 - Completed Phase 03 slice: `docs/execution-plans/phases/03-client-status-and-notifications.md`
 - Detailed Phase 03 plan: `docs/execution-plans/detailed/03-client-status-and-notifications-implementation.md`
 - Detailed PostgreSQL persistence plan: `docs/execution-plans/detailed/03a-postgres-persistence-implementation.md`
+- Detailed Phase 04 plan ready for review: `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md`
 - Next phase slice: `docs/execution-plans/phases/04-dispatcher-mvp.md`
 - Architecture map: `ARCHITECTURE.md`
 - Domain map: `docs/domain-maps/index.md`
@@ -78,3 +79,4 @@ Phase 04 planning is the active focus: create a detailed implementation plan for
 - Phase 03 records customer clarification answers in the service-request lifecycle; dispatcher UI creation of questions is deferred to Phase 04.
 - Phase 03 defines Telegram opt-in token/link generation but defers bot-side token consumption and outbound notification delivery.
 - Docker Compose API persistence uses PostgreSQL via `SERVICEOPS_DATABASE_URL`; direct Python defaults to sqlite for lightweight local imports and tests.
+- Phase 04 should keep dispatcher-only internal notes and assignment metadata out of public status snapshots.

@@ -68,7 +68,7 @@ Existing API tests should continue to inject `ServiceRequestRepository.in_memory
 
 Record that Docker Compose API persistence now uses PostgreSQL, while unit tests keep sqlite in-memory repositories.
 
-- [ ] **Step 2: Verify locally**
+- [x] **Step 2: Verify locally**
 
 Run:
 
