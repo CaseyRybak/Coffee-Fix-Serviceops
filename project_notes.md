@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The repository currently contains a Figma-exported React/Vite reference in `reference/figma` and a documentation harness for agent-first development. Phase 00 repository harness work is implemented: Git is initialized, the detailed implementation plan exists, the documentation check script exists, and local documentation verification passes.
+The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for agent-first development, and the Phase 01 runtime foundation. The API, web shell, worker shell, Telegram bot shell, environment template, and Docker Compose file exist with local verification commands.
 
 ## Latest Changes
 
@@ -16,28 +16,32 @@ The repository currently contains a Figma-exported React/Vite reference in `refe
 - 2026-06-05: Added `.gitignore` so local `.agents/` runtime files stay out of repository commits.
 - 2026-06-05: Added `.gitkeep` placeholders for empty scaffold directories and extended repo checks to validate required directories.
 - 2026-06-05: Renamed the initial Git branch to `main` for GitHub readiness and saved the Phase 00 review artifact in `docs/review/phase-00-review.md`.
+- 2026-06-05: Implemented Phase 01 foundation runtime with FastAPI `/health`, React/Vite shell, Celery worker shell, aiogram shell, Docker Compose, and runtime verification commands.
 
 ## Active Focus
 
-Phase 01 planning is the active focus: create a detailed implementation plan for `docs/execution-plans/phases/01-foundation-runtime.md` before generating application runtime code.
+Phase 02 planning is the active focus: create a detailed implementation plan for `docs/execution-plans/phases/02-service-request-intake.md` before implementing the first persisted request flow.
 
 ## Next Steps
 
-1. Create a detailed implementation plan for Phase 01.
-2. Review the Phase 01 plan before execution.
-3. Execute Phase 01 only after the detailed plan exists.
-4. Keep `python3 tools/repo-checks/check_docs.py` passing after harness changes.
+1. Create a detailed implementation plan for Phase 02.
+2. Review the Phase 02 plan before execution.
+3. Execute Phase 02 only after the detailed plan exists.
+4. Keep `python3 tools/repo-checks/check_docs.py` and Phase 01 runtime checks passing after harness changes.
 
 ## Active Artifacts
 
 - Plan index: `docs/execution-plans/index.md`
 - Completed phase slice: `docs/execution-plans/phases/00-repository-harness.md`
 - Detailed Phase 00 plan: `docs/execution-plans/detailed/00-repository-harness-implementation.md`
-- Next phase slice: `docs/execution-plans/phases/01-foundation-runtime.md`
+- Completed Phase 01 slice: `docs/execution-plans/phases/01-foundation-runtime.md`
+- Detailed Phase 01 plan: `docs/execution-plans/detailed/01-foundation-runtime-implementation.md`
+- Next phase slice: `docs/execution-plans/phases/02-service-request-intake.md`
 - Architecture map: `ARCHITECTURE.md`
 - Domain map: `docs/domain-maps/index.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
 - Phase 00 review: `docs/review/phase-00-review.md`
+- Phase 01 review: `docs/review/phase-01-review.md`
 
 ## Recent Decisions
 
@@ -48,4 +52,4 @@ Phase 01 planning is the active focus: create a detailed implementation plan for
 - `AGENTS.md` files act as maps and context entry points.
 - Repo-specific skills are stored as portable drafts in `docs/agent-skills` until the project is ready to activate them.
 - Before executing any phase, create a detailed implementation plan for that phase; current phase files are slice maps, not execution-ready implementation plans.
-- Phase 00 local documentation verification command is `python3 tools/repo-checks/check_docs.py`.
+- Phase 01 local verification commands are `python3 tools/repo-checks/check_docs.py`, `cd apps/api && uv run --extra dev pytest`, `cd apps/worker && uv run --extra dev pytest`, `cd apps/telegram-bot && uv run --extra dev pytest`, `cd apps/web && npm test`, and `cd apps/web && npm run build`.

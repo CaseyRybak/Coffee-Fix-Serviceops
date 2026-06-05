@@ -41,13 +41,22 @@
 
 ## Future Code Areas
 
-- `apps/api`: FastAPI backend.
-- `apps/web`: React/Vite frontend.
-- `apps/worker`: Celery worker.
-- `apps/telegram-bot`: aiogram bot.
+- `apps/api`: FastAPI backend with `/health`.
+- `apps/web`: React/Vite frontend shell.
+- `apps/worker`: Celery worker shell.
+- `apps/telegram-bot`: aiogram bot shell.
 - `packages/shared-kernel`: shared domain primitives.
 - `packages/observability`: logging and metrics helpers.
 - `packages/test-harness`: test utilities.
+
+## Runtime Harness
+
+- `.env.example`: local environment template.
+- `docker-compose.yml`: local PostgreSQL, Redis, API, web, worker, and optional Telegram bot profile.
+- `apps/api/Dockerfile`: API container definition.
+- `apps/web/Dockerfile`: web container definition.
+- `apps/worker/Dockerfile`: worker container definition.
+- `apps/telegram-bot/Dockerfile`: Telegram bot container definition.
 
 ## Repository Checks
 

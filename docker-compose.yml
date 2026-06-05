@@ -1,0 +1,76 @@
+services:
+  api:
+    build:
+      context: ./apps/api
+    environment:
+      SERVICEOPS_ENVIRONMENT: ${SERVICEOPS_ENVIRONMENT:-local}
+      SERVICEOPS_DATABASE_URL: ${SERVICEOPS_DATABASE_URL:-postgresql+psycopg://serviceops:serviceops@postgres:5432/serviceops}
+      SERVICEOPS_REDIS_URL: ${SERVICEOPS_REDIS_URL:-redis://redis:6379/0}
+    ports:
+      - "${SERVICEOPS_API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  web:
+    build:
+      context: ./apps/web
+    ports:
+      - "${SERVICEOPS_WEB_PORT:-5173}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./apps/worker
+    environment:
+      SERVICEOPS_REDIS_BROKER_URL: ${SERVICEOPS_REDIS_BROKER_URL:-redis://redis:6379/0}
+      SERVICEOPS_REDIS_RESULT_BACKEND: ${SERVICEOPS_REDIS_RESULT_BACKEND:-redis://redis:6379/1}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  telegram-bot:
+    build:
+      context: ./apps/telegram-bot
+    environment:
+      SERVICEOPS_TELEGRAM_BOT_TOKEN: ${SERVICEOPS_TELEGRAM_BOT_TOKEN:-}
+    profiles:
+      - integrations
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-serviceops}
+      POSTGRES_USER: ${POSTGRES_USER:-serviceops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-serviceops}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-serviceops} -d ${POSTGRES_DB:-serviceops}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres-data:
