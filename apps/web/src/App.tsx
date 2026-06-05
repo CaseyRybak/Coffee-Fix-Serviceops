@@ -289,7 +289,7 @@ const footerServices = [
 
 const footerBrands = ["Jura", "Saeco", "DeLonghi", "Philips", "Bosch", "Nivona", "WMF", "Nuova Simonelli"];
 const footerClientLinks = [
-  { label: "Оставить заявку", href: "#request-form" },
+  { label: "Оставить заявку", href: "/#request-form" },
   { label: "Отследить статус", href: "/status" },
   { label: "Telegram-уведомления", href: "/status" },
   { label: "Гарантийные условия", href: "#trust" },
@@ -456,7 +456,7 @@ function ChipGroup<T extends string>({
 
 function Logo() {
   return (
-    <a className="brand" href="#top" aria-label="CoffeeFix Pro">
+    <a className="brand" href="/" aria-label="CoffeeFix Pro">
       <span className="brand-mark">
         <Coffee aria-hidden="true" />
       </span>
@@ -491,7 +491,7 @@ function ServiceBar() {
             <Phone aria-hidden="true" />
             +7 (495) 000-00-00
           </a>
-          <a className="service-mini-cta" href="#request-form">
+          <a className="service-mini-cta" href="/#request-form">
             Вызвать мастера
           </a>
         </div>
@@ -515,7 +515,7 @@ function Header() {
           ))}
         </nav>
         <div className="header-actions">
-          <a className="header-cta" href="#request-form">
+          <a className="header-cta" href="/#request-form">
             Оставить заявку
           </a>
           <button className="menu-button" type="button" aria-label="Меню" onClick={() => setMobileOpen((open) => !open)}>
@@ -531,7 +531,7 @@ function Header() {
               {link.label}
             </a>
           ))}
-          <a className="mobile-nav-cta" href="#request-form" onClick={() => setMobileOpen(false)}>
+          <a className="mobile-nav-cta" href="/#request-form" onClick={() => setMobileOpen(false)}>
             Оставить заявку
           </a>
         </nav>
@@ -569,12 +569,12 @@ function HeroSection() {
             ))}
           </div>
           <div className="hero-actions">
-            <a className="primary-cta" href="#request-form">
+            <a className="primary-cta" href="/#request-form">
               Оставить заявку на ремонт
               <ArrowRight aria-hidden="true" />
             </a>
-            <a className="secondary-cta" href="#request-form">
-              Рассчитать стоимость
+            <a className="secondary-cta" href="/status">
+              Проверить статус заявки
             </a>
           </div>
           <p className="hero-footnote">После отправки заявки вы получите номер обращения и ссылку для отслеживания статуса.</p>
@@ -590,7 +590,7 @@ function HeroSection() {
   );
 }
 
-export function SuccessState({ requestNumber }: { requestNumber: string }) {
+export function SuccessState({ requestNumber, onCreateNew }: { requestNumber: string; onCreateNew?: () => void }) {
   return (
     <section className="request-card success-card" aria-live="polite">
       <div className="success-title">
@@ -607,6 +607,10 @@ export function SuccessState({ requestNumber }: { requestNumber: string }) {
           <MessageCircle aria-hidden="true" />
           Подключить Telegram-уведомления
         </a>
+        <button className="ghost-action" type="button" onClick={onCreateNew}>
+          <ClipboardList aria-hidden="true" />
+          Создать новую заявку
+        </button>
       </div>
       <div className="next-steps">
         <p>Что дальше?</p>
@@ -900,7 +904,21 @@ function RequestForm() {
     }
   }
 
-  if (requestNumber) return <SuccessState requestNumber={requestNumber} />;
+  function startNewRequest() {
+    setForm(initialForm);
+    setStep(1);
+    setRequestNumber(null);
+    setSubmitError(null);
+    setValidationWarning(null);
+  }
+
+  if (requestNumber) {
+    return (
+      <section className="request-section request-section-success" id="request-form">
+        <SuccessState requestNumber={requestNumber} onCreateNew={startNewRequest} />
+      </section>
+    );
+  }
 
   return (
     <section className="request-section" id="request-form">
@@ -1165,7 +1183,7 @@ function Footer() {
             <p>Кофемашина не работает?</p>
             <span>Оставьте заявку - мастер приедет в день обращения</span>
           </div>
-          <a href="#request-form">
+          <a href="/#request-form">
             Оставить заявку на ремонт
             <ArrowRight aria-hidden="true" />
           </a>
@@ -1258,7 +1276,7 @@ export function App() {
         <a href="tel:+74950000000" aria-label="Позвонить">
           <Phone aria-hidden="true" />
         </a>
-        <a href="#request-form">Оставить заявку</a>
+        <a href="/#request-form">Оставить заявку</a>
       </div>
     </div>
   );

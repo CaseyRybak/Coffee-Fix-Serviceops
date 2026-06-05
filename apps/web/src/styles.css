@@ -357,6 +357,10 @@ p {
   padding: 62px 16px 64px;
 }
 
+.request-section-success {
+  padding-bottom: 96px;
+}
+
 .request-card {
   width: min(672px, 100%);
   margin: 0 auto;
@@ -606,7 +610,8 @@ select:focus {
   margin-bottom: 26px;
 }
 
-.success-actions a {
+.success-actions a,
+.success-actions button {
   display: inline-flex;
   gap: 8px;
   align-items: center;
@@ -1134,6 +1139,11 @@ select:focus {
 
 .footer a:hover {
   color: #ffffff;
+}
+
+.footer-cta a:hover {
+  color: #5a3825;
+  background: #ffffff;
 }
 
 .footer-contacts li {

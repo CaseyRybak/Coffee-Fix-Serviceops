@@ -67,15 +67,36 @@ describe("App", () => {
     assert.match(nginxConfig, /try_files \$uri \$uri\/ \/index\.html;/);
   });
 
-  it("renders the success state with a request number", () => {
+  it("renders the success state with a request number and a new request action", () => {
     const html = renderToStaticMarkup(<SuccessState requestNumber="CFX-20260605-000001" />);
 
     assert.match(html, /Заявка CFX-20260605-000001 создана/);
     assert.match(html, /Диспетчер проверит описание/);
     assert.match(html, /Открыть страницу статуса/);
     assert.match(html, /Подключить Telegram-уведомления/);
+    assert.match(html, /Создать новую заявку/);
     assert.match(html, /href="\/status\/CFX-20260605-000001"/);
     assert.match(html, /href="\/service-requests\/CFX-20260605-000001\/telegram-opt-in"/);
+  });
+
+  it("keeps main request actions routable to the home form", () => {
+    const html = renderToStaticMarkup(<App />);
+
+    assert.match(html, /class="brand" href="\/"/);
+    assert.match(html, /class="service-mini-cta" href="\/#request-form"/);
+    assert.match(html, /class="header-cta" href="\/#request-form"/);
+    assert.match(html, /class="primary-cta" href="\/#request-form"/);
+    assert.match(html, /class="secondary-cta" href="\/status"/);
+    assert.match(html, /Проверить статус заявки/);
+    assert.doesNotMatch(html, /Рассчитать стоимость/);
+    assert.match(html, /href="\/#request-form">Оставить заявку<\/a>/);
+  });
+
+  it("keeps the footer CTA text readable on hover", () => {
+    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf-8");
+
+    assert.match(css, /\.footer-cta a:hover\s*{[^}]*color: #5a3825;/s);
+    assert.match(css, /\.footer-cta a:hover\s*{[^}]*background: #ffffff;/s);
   });
 
   it("keeps the address step reachable before submit", () => {
