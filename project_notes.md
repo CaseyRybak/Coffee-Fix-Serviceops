@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, the Phase 03 public status and notification opt-in flow, a PostgreSQL persistence slice for Docker Compose, and the Phase 04 dispatcher MVP. The API can create persisted service requests, expose public status snapshots, record clarification answers, create Telegram opt-in links, and support internal dispatcher list/detail/actions. Docker Compose API runs against PostgreSQL, while injected tests keep sqlite in-memory persistence.
+The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, the Phase 03 public status and notification opt-in flow, a PostgreSQL persistence slice for Docker Compose, the Phase 04 dispatcher MVP, and the Phase 05 staff access layer. The API can create persisted service requests, expose public status snapshots, record clarification answers, create Telegram opt-in links, support protected internal dispatcher list/detail/actions, and issue local-development staff tokens with role checks. Docker Compose API runs against PostgreSQL, while injected tests keep sqlite in-memory persistence.
 
 ## Latest Changes
 
@@ -31,15 +31,17 @@ The repository currently contains a Figma-exported React/Vite reference in `refe
 - 2026-06-05: Audited documentation readiness for Phase 04 and added `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md` with dispatcher API, persistence, web, testing, and review scope.
 - 2026-06-05: Implemented Phase 04 dispatcher MVP with internal dispatcher API routes, sqlite/PostgreSQL dispatcher persistence, manual assignment metadata, dispatcher-only internal notes, and a React dispatcher workspace.
 - 2026-06-06: Re-audited Phase 04 readiness and added a lightweight dispatcher-only technician candidate list to close the slice-map "technician list" gap without expanding into full technician profiles or availability.
+- 2026-06-06: Created `docs/execution-plans/detailed/05-staff-access-and-roles-implementation.md` and implemented Phase 05 staff access and roles.
+- 2026-06-06: Added `/staff/login`, local-development staff token issuing, dispatcher/admin/technician/inventory role vocabulary, backend dispatcher API role protection, a frontend `/staff/login` page, and a `/dispatcher` route guard.
 
 ## Active Focus
 
-Phase 05 planning is the active focus: create and review the detailed implementation plan for `docs/execution-plans/phases/05-staff-access-and-roles.md` before protecting internal workspaces and dispatcher APIs.
+Phase 06 planning is the active focus: create and review the detailed implementation plan for `docs/execution-plans/phases/06-knowledge-base-rag.md` before adding knowledge-base documents, chunks, embeddings, and retrieval with sources.
 
 ## Next Steps
 
-1. Create a detailed Phase 05 implementation plan from `docs/execution-plans/phases/05-staff-access-and-roles.md`.
-2. Review the Phase 05 detailed plan before implementing staff login, roles, and protected internal workspace/API access.
+1. Create a detailed Phase 06 implementation plan from `docs/execution-plans/phases/06-knowledge-base-rag.md`.
+2. Review the Phase 06 detailed plan before implementing knowledge-base ingestion, chunking, embeddings, and retrieval.
 3. Keep `python3 tools/repo-checks/check_docs.py`, API tests, worker tests, Telegram bot tests, and web checks passing after harness changes.
 
 ## Active Artifacts
@@ -56,7 +58,9 @@ Phase 05 planning is the active focus: create and review the detailed implementa
 - Detailed PostgreSQL persistence plan: `docs/execution-plans/detailed/03a-postgres-persistence-implementation.md`
 - Detailed Phase 04 plan: `docs/execution-plans/detailed/04-dispatcher-mvp-implementation.md`
 - Completed Phase 04 slice: `docs/execution-plans/phases/04-dispatcher-mvp.md`
-- Next phase slice: `docs/execution-plans/phases/05-staff-access-and-roles.md`
+- Detailed Phase 05 plan: `docs/execution-plans/detailed/05-staff-access-and-roles-implementation.md`
+- Completed Phase 05 slice: `docs/execution-plans/phases/05-staff-access-and-roles.md`
+- Next phase slice: `docs/execution-plans/phases/06-knowledge-base-rag.md`
 - Architecture map: `ARCHITECTURE.md`
 - Domain map: `docs/domain-maps/index.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
@@ -65,6 +69,7 @@ Phase 05 planning is the active focus: create and review the detailed implementa
 - Phase 02 review: `docs/review/phase-02-review.md`
 - Phase 03 review: `docs/review/phase-03-review.md`
 - Phase 04 review: `docs/review/phase-04-review.md`
+- Phase 05 review: `docs/review/phase-05-review.md`
 
 ## Recent Decisions
 
@@ -86,4 +91,7 @@ Phase 05 planning is the active focus: create and review the detailed implementa
 - Phase 04 should keep dispatcher-only internal notes and assignment metadata out of public status snapshots.
 - Phase 04 dispatcher routes are internal API contracts but still unauthenticated; an access gate is required before public deployment exposure.
 - Phase 04 keeps technician assignment manual and descriptive on the request. Full technician profiles, availability, confirmed appointments, and mobile technician workflows remain deferred.
-- Phase 05 should add staff login, role checks, frontend route guards, and backend protection for dispatcher APIs before expanding internal workflows further.
+- Phase 05 uses local-development staff users and stateless bearer tokens for MVP access control; production user management, password reset, SSO, OAuth, audit logs, and granular permissions remain deferred.
+- Dispatcher APIs require a staff bearer token with the `dispatcher` role; public intake, public status lookup, clarification answer, and Telegram opt-in flows remain unauthenticated.
+- No public homepage navigation exposes staff login, dispatcher, admin, technician, or inventory workspace links.
+- Phase 06 should add knowledge-base documents, chunks, embeddings, retrieval with sources, and keep AI workflow automation deferred to Phase 07.

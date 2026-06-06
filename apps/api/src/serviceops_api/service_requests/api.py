@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from serviceops_api.service_requests.models import (
     CustomerAnswerPayload,
@@ -88,8 +88,10 @@ def create_dispatcher_router(
     ask_clarification: AskDispatcherClarification,
     assign_technician: AssignDispatcherTechnician,
     save_internal_note: SaveDispatcherInternalNote,
+    staff_dependency: Depends | None = None,
 ) -> APIRouter:
-    router = APIRouter(prefix="/dispatcher/service-requests", tags=["dispatcher"])
+    dependencies = [Depends(staff_dependency)] if staff_dependency is not None else []
+    router = APIRouter(prefix="/dispatcher/service-requests", tags=["dispatcher"], dependencies=dependencies)
 
     @router.get("", response_model=DispatcherRequestListResponse)
     async def list_dispatcher_requests() -> DispatcherRequestListResponse:

@@ -31,24 +31,41 @@ def payload(
     }
 
 
-async def post_json(repository: ServiceRequestRepository, path: str, body: dict[str, object]) -> httpx.Response:
+async def post_json(
+    repository: ServiceRequestRepository,
+    path: str,
+    body: dict[str, object],
+    token: str | None = None,
+) -> httpx.Response:
     app = create_app(service_request_repository=repository)
     transport = httpx.ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {token}"} if token else None
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        return await client.post(path, json=body)
+        return await client.post(path, json=body, headers=headers)
 
 
-async def get_json(repository: ServiceRequestRepository, path: str) -> httpx.Response:
+async def get_json(repository: ServiceRequestRepository, path: str, token: str | None = None) -> httpx.Response:
     app = create_app(service_request_repository=repository)
     transport = httpx.ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {token}"} if token else None
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        return await client.get(path)
+        return await client.get(path, headers=headers)
 
 
 async def create_request(repository: ServiceRequestRepository, body: dict[str, object]) -> str:
     response = await post_json(repository, "/service-requests", body)
     assert response.status_code == 201
     return str(response.json()["request_number"])
+
+
+async def dispatcher_token(repository: ServiceRequestRepository) -> str:
+    response = await post_json(
+        repository,
+        "/staff/login",
+        {"username": "dispatcher@coffeefix.local", "password": "dispatcher-local"},
+    )
+    assert response.status_code == 200
+    return str(response.json()["access_token"])
 
 
 def test_dispatcher_can_list_and_open_request_details() -> None:
@@ -67,8 +84,9 @@ def test_dispatcher_can_list_and_open_request_details() -> None:
         description="Диспетчер проверил описание.",
         actor="dispatcher",
     )
+    token = asyncio.run(dispatcher_token(repository))
 
-    list_response = asyncio.run(get_json(repository, "/dispatcher/service-requests"))
+    list_response = asyncio.run(get_json(repository, "/dispatcher/service-requests", token=token))
 
     assert list_response.status_code == 200
     list_body = list_response.json()
@@ -86,7 +104,7 @@ def test_dispatcher_can_list_and_open_request_details() -> None:
     }
     assert list_body["items"][0]["created_at"]
 
-    detail_response = asyncio.run(get_json(repository, f"/dispatcher/service-requests/{first_request}"))
+    detail_response = asyncio.run(get_json(repository, f"/dispatcher/service-requests/{first_request}", token=token))
 
     assert detail_response.status_code == 200
     detail = detail_response.json()
@@ -116,6 +134,7 @@ def test_dispatcher_can_list_and_open_request_details() -> None:
 def test_dispatcher_status_clarification_assignment_and_internal_notes_are_recorded() -> None:
     repository = ServiceRequestRepository.in_memory()
     request_number = asyncio.run(create_request(repository, payload()))
+    token = asyncio.run(dispatcher_token(repository))
 
     status_response = asyncio.run(
         post_json(
@@ -126,6 +145,7 @@ def test_dispatcher_status_clarification_assignment_and_internal_notes_are_recor
                 "title": "Готово к назначению",
                 "description": "Описание проверено диспетчером.",
             },
+            token=token,
         )
     )
     clarification_response = asyncio.run(
@@ -133,6 +153,7 @@ def test_dispatcher_status_clarification_assignment_and_internal_notes_are_recor
             repository,
             f"/dispatcher/service-requests/{request_number}/clarifications",
             {"question": "Пришлите фото шильдика с моделью кофемашины."},
+            token=token,
         )
     )
     assignment_response = asyncio.run(
@@ -145,6 +166,7 @@ def test_dispatcher_status_clarification_assignment_and_internal_notes_are_recor
                 "technician_region": "ЦАО",
                 "visit_window": "Завтра 14:00-16:00",
             },
+            token=token,
         )
     )
     note_response = asyncio.run(
@@ -152,6 +174,7 @@ def test_dispatcher_status_clarification_assignment_and_internal_notes_are_recor
             repository,
             f"/dispatcher/service-requests/{request_number}/internal-notes",
             {"note": "Клиент просит звонить после 12:00."},
+            token=token,
         )
     )
 
@@ -177,7 +200,7 @@ def test_dispatcher_status_clarification_assignment_and_internal_notes_are_recor
         "message": "Internal note saved",
     }
 
-    detail = asyncio.run(get_json(repository, f"/dispatcher/service-requests/{request_number}")).json()
+    detail = asyncio.run(get_json(repository, f"/dispatcher/service-requests/{request_number}", token=token)).json()
     assert detail["status"] == "visit_scheduled"
     assert detail["assignment"] == {
         "technician_name": "Pavel Sokolov",
@@ -207,6 +230,7 @@ def test_dispatcher_status_clarification_assignment_and_internal_notes_are_recor
 def test_dispatcher_assignment_without_visit_window_marks_technician_assigned() -> None:
     repository = ServiceRequestRepository.in_memory()
     request_number = asyncio.run(create_request(repository, payload()))
+    token = asyncio.run(dispatcher_token(repository))
 
     response = asyncio.run(
         post_json(
@@ -216,6 +240,7 @@ def test_dispatcher_assignment_without_visit_window_marks_technician_assigned() 
                 "technician_name": "Sergey Morozov",
                 "technician_region": "ЦАО",
             },
+            token=token,
         )
     )
 
@@ -226,7 +251,7 @@ def test_dispatcher_assignment_without_visit_window_marks_technician_assigned() 
         "message": "Technician assignment recorded",
     }
 
-    detail = asyncio.run(get_json(repository, f"/dispatcher/service-requests/{request_number}")).json()
+    detail = asyncio.run(get_json(repository, f"/dispatcher/service-requests/{request_number}", token=token)).json()
     assert detail["status"] == "technician_assigned"
     assert detail["assignment"] == {
         "technician_name": "Sergey Morozov",
@@ -240,7 +265,8 @@ def test_dispatcher_assignment_without_visit_window_marks_technician_assigned() 
 
 def test_dispatcher_routes_return_404_for_missing_request() -> None:
     repository = ServiceRequestRepository.in_memory()
+    token = asyncio.run(dispatcher_token(repository))
 
-    response = asyncio.run(get_json(repository, "/dispatcher/service-requests/CFX-20260605-999999"))
+    response = asyncio.run(get_json(repository, "/dispatcher/service-requests/CFX-20260605-999999", token=token))
 
     assert response.status_code == 404

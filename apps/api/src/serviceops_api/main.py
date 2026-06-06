@@ -25,10 +25,12 @@ from serviceops_api.service_requests.use_cases import (
     SubmitCustomerAnswer,
     UpdateDispatcherStatus,
 )
+from serviceops_api.staff_auth import StaffAuthenticator, create_staff_auth_router, require_staff_role
 
 
 def create_app(
     service_request_repository: ServiceRequestRepository | PostgresServiceRequestRepository | None = None,
+    staff_authenticator: StaffAuthenticator | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Coffee Fix ServiceOps API")
     settings = get_settings()
@@ -36,10 +38,12 @@ def create_app(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["content-type"],
+        allow_headers=["authorization", "content-type"],
     )
     repository = service_request_repository or create_service_request_repository(settings)
+    authenticator = staff_authenticator or StaffAuthenticator(settings)
     get_public_status = GetPublicStatus(repository)
+    app.include_router(create_staff_auth_router(authenticator))
     app.include_router(
         create_service_requests_router(
             CreateServiceRequest(repository),
@@ -57,6 +61,7 @@ def create_app(
             AskDispatcherClarification(repository),
             AssignDispatcherTechnician(repository),
             SaveDispatcherInternalNote(repository),
+            staff_dependency=require_staff_role("dispatcher", authenticator),
         )
     )
 

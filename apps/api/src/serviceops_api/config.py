@@ -10,10 +10,19 @@ class Settings(BaseSettings):
     intake_sqlite_path: str = ".local/serviceops-api.sqlite3"
     redis_url: str = "redis://redis:6379/0"
     cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
+    staff_auth_secret: str = "local-dev-staff-auth-secret-change-me"
+    staff_token_ttl_seconds: int = 60 * 60 * 12
+    staff_dev_username: str = "dispatcher@coffeefix.local"
+    staff_dev_password: str = "dispatcher-local"
+    staff_dev_roles: str = "dispatcher"
 
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
+
+    @property
+    def staff_dev_roles_list(self) -> list[str]:
+        return [role.strip() for role in self.staff_dev_roles.split(",") if role.strip()]
 
     model_config = SettingsConfigDict(
         env_file=".env",

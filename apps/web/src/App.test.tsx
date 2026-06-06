@@ -6,6 +6,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   App,
   DispatcherPage,
+  ProtectedDispatcherPage,
+  StaffLoginPage,
   StatusPage,
   SuccessState,
   buildDispatcherAssignmentPath,
@@ -16,8 +18,12 @@ import {
   buildDispatcherStatusPath,
   buildCustomerAnswerPayload,
   buildServiceRequestPayload,
+  buildStaffLoginPath,
   buildStatusLookupPath,
   buildTelegramOptInPayload,
+  resolveApiBaseUrl,
+  getStoredStaffSession,
+  staffAuthHeaders,
   filterDispatcherItems,
   normalizeRequestNumber,
   statusPathFromRequestNumber,
@@ -154,6 +160,11 @@ describe("App", () => {
     assert.match(html, /Проверить статус заявки/);
     assert.doesNotMatch(html, /Рассчитать стоимость/);
     assert.match(html, /href="\/#request-form">Оставить заявку<\/a>/);
+    assert.doesNotMatch(html, /href="\/staff\/login/);
+    assert.doesNotMatch(html, /href="\/dispatcher/);
+    assert.doesNotMatch(html, /href="\/admin/);
+    assert.doesNotMatch(html, /href="\/technician/);
+    assert.doesNotMatch(html, /href="\/inventory/);
   });
 
   it("uses the wide hero image without cropping it", () => {
@@ -270,6 +281,13 @@ describe("App", () => {
     });
   });
 
+  it("uses the API port fallback for local Vite development", () => {
+    assert.equal(resolveApiBaseUrl(undefined, "http://localhost:3000"), "http://localhost:8000");
+    assert.equal(resolveApiBaseUrl(undefined, "http://127.0.0.1:3000"), "http://127.0.0.1:8000");
+    assert.equal(resolveApiBaseUrl("https://api.example.test", "http://localhost:3000"), "https://api.example.test");
+    assert.equal(resolveApiBaseUrl(undefined, "https://coffeefix.example"), "");
+  });
+
   it("builds dispatcher API paths", () => {
     assert.equal(buildDispatcherListPath(), "/dispatcher/service-requests");
     assert.equal(
@@ -292,6 +310,62 @@ describe("App", () => {
       buildDispatcherInternalNotePath("CFX-20260605-000001"),
       "/dispatcher/service-requests/CFX-20260605-000001/internal-notes",
     );
+  });
+
+  it("builds staff login paths and auth headers", () => {
+    assert.equal(buildStaffLoginPath("/dispatcher"), "/staff/login?next=%2Fdispatcher");
+    assert.equal(buildStaffLoginPath("/dispatcher/service-requests"), "/staff/login?next=%2Fdispatcher%2Fservice-requests");
+    assert.deepEqual(staffAuthHeaders(null), {});
+    assert.deepEqual(staffAuthHeaders({ accessToken: "staff-token", username: "dispatcher@coffeefix.local", roles: ["dispatcher"] }), {
+      Authorization: "Bearer staff-token",
+    });
+  });
+
+  it("reads stored staff sessions safely", () => {
+    const emptyStorage = {
+      getItem: () => null,
+    } as unknown as Storage;
+    const populatedStorage = {
+      getItem: () =>
+        JSON.stringify({
+          accessToken: "staff-token",
+          username: "dispatcher@coffeefix.local",
+          roles: ["dispatcher"],
+        }),
+    } as unknown as Storage;
+    const malformedStorage = {
+      getItem: () => "{not-json",
+    } as unknown as Storage;
+
+    assert.equal(getStoredStaffSession(emptyStorage), null);
+    assert.deepEqual(getStoredStaffSession(populatedStorage), {
+      accessToken: "staff-token",
+      username: "dispatcher@coffeefix.local",
+      roles: ["dispatcher"],
+    });
+    assert.equal(getStoredStaffSession(malformedStorage), null);
+  });
+
+  it("renders staff login and dispatcher route guard", () => {
+    const loginHtml = renderToStaticMarkup(<StaffLoginPage />);
+    const guardedHtml = renderToStaticMarkup(<ProtectedDispatcherPage hasSession={false} />);
+    const wrongRoleHtml = renderToStaticMarkup(
+      <ProtectedDispatcherPage
+        initialSession={{
+          accessToken: "technician-token",
+          username: "technician@coffeefix.local",
+          roles: ["technician"],
+        }}
+      />,
+    );
+
+    assert.match(loginHtml, /Вход для сотрудников/);
+    assert.match(loginHtml, /dispatcher@coffeefix.local/);
+    assert.match(loginHtml, /Пароль/);
+    assert.match(guardedHtml, /Требуется вход сотрудника/);
+    assert.match(guardedHtml, /href="\/staff\/login\?next=%2Fdispatcher"/);
+    assert.match(wrongRoleHtml, /Недостаточно прав/);
+    assert.doesNotMatch(wrongRoleHtml, /Заявки, статусы, уточнения/);
   });
 
   it("renders dispatcher list detail and action controls", () => {

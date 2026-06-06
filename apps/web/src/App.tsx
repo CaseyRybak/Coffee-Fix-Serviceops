@@ -17,6 +17,8 @@ import {
   ExternalLink,
   Eye,
   HelpCircle,
+  LogIn,
+  LogOut,
   Mail,
   MapPin,
   Menu,
@@ -143,6 +145,13 @@ interface DispatcherListResponse {
 
 type DispatcherStatusFilter = "all" | RequestStatus;
 type DispatcherUrgencyFilter = "all" | Urgency;
+type StaffRole = "dispatcher" | "admin" | "technician" | "inventory";
+
+interface StaffSession {
+  accessToken: string;
+  username: string;
+  roles: StaffRole[];
+}
 
 interface DispatcherRequestDetail {
   request_number: string;
@@ -369,6 +378,8 @@ const technicianCandidates = [
   },
 ];
 
+const staffSessionStorageKey = "serviceops.staffSession";
+
 export function getNextFormStep(step: FormStep): FormStep {
   return step < 3 ? ((step + 1) as FormStep) : 3;
 }
@@ -427,8 +438,18 @@ export function buildServiceRequestPayload(form: IntakeFormState): IntakePayload
   return payload;
 }
 
+export function resolveApiBaseUrl(configuredBaseUrl: string | undefined, origin: string | undefined): string {
+  if (configuredBaseUrl) return configuredBaseUrl;
+  if (origin === "http://localhost:3000") return "http://localhost:8000";
+  if (origin === "http://127.0.0.1:3000") return "http://127.0.0.1:8000";
+  return "";
+}
+
 function apiBaseUrl(): string {
-  return import.meta.env.VITE_SERVICEOPS_API_BASE_URL ?? "";
+  return resolveApiBaseUrl(
+    import.meta.env.VITE_SERVICEOPS_API_BASE_URL,
+    typeof window !== "undefined" ? window.location.origin : undefined,
+  );
 }
 
 export function normalizeRequestNumber(value: string): string {
@@ -486,6 +507,45 @@ export function buildDispatcherAssignmentPath(requestNumber: string): string {
 
 export function buildDispatcherInternalNotePath(requestNumber: string): string {
   return `${buildDispatcherDetailPath(requestNumber)}/internal-notes`;
+}
+
+export function buildStaffLoginPath(nextPath = "/dispatcher"): string {
+  return `/staff/login?next=${encodeURIComponent(nextPath)}`;
+}
+
+export function getStoredStaffSession(storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined): StaffSession | null {
+  if (!storage) return null;
+  const raw = storage.getItem(staffSessionStorageKey);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<StaffSession>;
+    if (!parsed.accessToken || !parsed.username || !Array.isArray(parsed.roles)) return null;
+    return {
+      accessToken: parsed.accessToken,
+      username: parsed.username,
+      roles: parsed.roles.filter((role): role is StaffRole =>
+        ["dispatcher", "admin", "technician", "inventory"].includes(String(role)),
+      ),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function storeStaffSession(session: StaffSession, storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined): void {
+  storage?.setItem(staffSessionStorageKey, JSON.stringify(session));
+}
+
+export function clearStaffSession(storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined): void {
+  storage?.removeItem(staffSessionStorageKey);
+}
+
+export function staffAuthHeaders(session: StaffSession | null = getStoredStaffSession()): Record<string, string> {
+  return session ? { Authorization: `Bearer ${session.accessToken}` } : {};
+}
+
+export function staffHasRole(session: StaffSession | null, role: StaffRole): boolean {
+  return Boolean(session?.roles.includes(role));
 }
 
 export function filterDispatcherItems(
@@ -658,12 +718,20 @@ function Header() {
   );
 }
 
-function WorkspaceHeader() {
+function WorkspaceHeader({ session, onLogout }: { session?: StaffSession | null; onLogout?: () => void }) {
   return (
     <header className="workspace-header">
       <div className="site-header-inner workspace-header-inner">
         <Logo />
-        <span className="workspace-header-label">Рабочий кабинет</span>
+        <div className="workspace-session-actions">
+          {session ? <span>{session.username}</span> : <span className="workspace-header-label">Рабочий кабинет</span>}
+          {onLogout ? (
+            <button type="button" onClick={onLogout} aria-label="Выйти">
+              <LogOut aria-hidden="true" />
+              Выйти
+            </button>
+          ) : null}
+        </div>
       </div>
     </header>
   );
@@ -979,9 +1047,13 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
 export function DispatcherPage({
   initialList,
   initialDetail,
+  session,
+  onLogout,
 }: {
   initialList?: DispatcherListResponse;
   initialDetail?: DispatcherRequestDetail;
+  session?: StaffSession | null;
+  onLogout?: () => void;
 }) {
   const [list, setList] = useState<DispatcherListResponse>(initialList ?? { items: [] });
   const [selected, setSelected] = useState(initialDetail?.request_number ?? initialList?.items[0]?.request_number ?? "");
@@ -1002,7 +1074,9 @@ export function DispatcherPage({
   const filteredItems = filterDispatcherItems(list.items, statusFilter, urgencyFilter);
 
   async function loadList() {
-    const response = await fetch(`${apiBaseUrl()}${buildDispatcherListPath()}`);
+    const response = await fetch(`${apiBaseUrl()}${buildDispatcherListPath()}`, {
+      headers: staffAuthHeaders(session),
+    });
     if (!response.ok) throw new Error(`Dispatcher list failed with ${response.status}`);
     const body = (await response.json()) as DispatcherListResponse;
     setList(body);
@@ -1012,7 +1086,9 @@ export function DispatcherPage({
 
   async function loadDetail(requestNumber: string) {
     if (!requestNumber) return;
-    const response = await fetch(`${apiBaseUrl()}${buildDispatcherDetailPath(requestNumber)}`);
+    const response = await fetch(`${apiBaseUrl()}${buildDispatcherDetailPath(requestNumber)}`, {
+      headers: staffAuthHeaders(session),
+    });
     if (!response.ok) throw new Error(`Dispatcher detail failed with ${response.status}`);
     const body = (await response.json()) as DispatcherRequestDetail;
     setDetail(body);
@@ -1049,7 +1125,7 @@ export function DispatcherPage({
     try {
       const response = await fetch(`${apiBaseUrl()}${path}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
         body: JSON.stringify(body),
       });
       if (!response.ok) throw new Error(`Dispatcher action failed with ${response.status}`);
@@ -1125,7 +1201,7 @@ export function DispatcherPage({
 
   return (
     <div className="app-page dispatcher-page">
-      <WorkspaceHeader />
+      <WorkspaceHeader session={session} onLogout={onLogout} />
       <main className="dispatcher-main">
         <section className="section-inner dispatcher-shell">
           <div className="dispatcher-topline">
@@ -1368,6 +1444,147 @@ export function DispatcherPage({
       </main>
     </div>
   );
+}
+
+export function StaffLoginPage() {
+  const [username, setUsername] = useState("dispatcher@coffeefix.local");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  function nextPath(): string {
+    if (typeof window === "undefined") return "/dispatcher";
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get("next");
+    return next?.startsWith("/") ? next : "/dispatcher";
+  }
+
+  async function submitLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}/staff/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      if (!response.ok) throw new Error(`Staff login failed with ${response.status}`);
+      const body = (await response.json()) as {
+        access_token: string;
+        staff: { username: string; roles: StaffRole[] };
+      };
+      storeStaffSession({
+        accessToken: body.access_token,
+        username: body.staff.username,
+        roles: body.staff.roles,
+      });
+      if (typeof window !== "undefined") window.location.href = nextPath();
+    } catch {
+      setMessage("Не удалось войти. Проверьте логин и пароль.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="app-page staff-login-page">
+      <WorkspaceHeader />
+      <main className="staff-login-main">
+        <section className="staff-login-card">
+          <div className="staff-login-badge">
+            <Shield aria-hidden="true" />
+          </div>
+          <span>Внутренний контур</span>
+          <h1>Вход для сотрудников</h1>
+          <p>Доступ к диспетчерской и другим рабочим зонам открыт только сотрудникам с ролью.</p>
+          <form className="staff-login-form" onSubmit={submitLogin}>
+            <label>
+              <span>Логин</span>
+              <input
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="dispatcher@coffeefix.local"
+                required
+                type="email"
+              />
+            </label>
+            <label>
+              <span>Пароль</span>
+              <input
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="dispatcher-local"
+                required
+                type="password"
+              />
+            </label>
+            <button className="submit-button" type="submit" disabled={submitting}>
+              <LogIn aria-hidden="true" />
+              {submitting ? "Входим" : "Войти"}
+            </button>
+          </form>
+          {message ? <p className="submit-error">{message}</p> : null}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+export function ProtectedDispatcherPage({
+  hasSession,
+  initialSession,
+}: {
+  hasSession?: boolean;
+  initialSession?: StaffSession | null;
+}) {
+  const [session, setSession] = useState<StaffSession | null>(() => {
+    if (initialSession !== undefined) return initialSession;
+    if (typeof hasSession === "boolean") {
+      return hasSession ? { accessToken: "test-token", username: "dispatcher@coffeefix.local", roles: ["dispatcher"] } : null;
+    }
+    return getStoredStaffSession();
+  });
+
+  useEffect(() => {
+    if (initialSession !== undefined) return;
+    if (typeof hasSession === "boolean") return;
+    const stored = getStoredStaffSession();
+    setSession(stored);
+    if ((!stored || !staffHasRole(stored, "dispatcher")) && typeof window !== "undefined") {
+      window.location.href = buildStaffLoginPath(window.location.pathname);
+    }
+  }, [hasSession, initialSession]);
+
+  function logout() {
+    clearStaffSession();
+    setSession(null);
+    if (typeof window !== "undefined") window.location.href = buildStaffLoginPath("/dispatcher");
+  }
+
+  if (!staffHasRole(session, "dispatcher")) {
+    const isAuthenticated = Boolean(session);
+    return (
+      <div className="app-page dispatcher-page">
+        <WorkspaceHeader />
+        <main className="dispatcher-main">
+          <section className="section-inner dispatcher-shell">
+            <div className="dispatcher-card protected-empty">
+              <Shield aria-hidden="true" />
+              <h1>{isAuthenticated ? "Недостаточно прав" : "Требуется вход сотрудника"}</h1>
+              <p>{isAuthenticated ? "Для диспетчерской нужна роль dispatcher." : "Диспетчерская находится во внутреннем контуре."}</p>
+              <a className="submit-button" href={buildStaffLoginPath("/dispatcher")}>
+                <LogIn aria-hidden="true" />
+                {isAuthenticated ? "Войти другим сотрудником" : "Войти"}
+              </a>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  return <DispatcherPage session={session} onLogout={logout} />;
 }
 
 function RequestForm() {
@@ -1780,8 +1997,10 @@ function SectionHeading({ title, copy }: { title: string; copy: string }) {
 
 export function App() {
   const isDispatcherRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/dispatcher");
+  const isStaffLoginRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/staff/login");
   const isStatusRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/status");
-  if (isDispatcherRoute) return <DispatcherPage />;
+  if (isStaffLoginRoute) return <StaffLoginPage />;
+  if (isDispatcherRoute) return <ProtectedDispatcherPage />;
   if (isStatusRoute) return <StatusPage />;
 
   return (
