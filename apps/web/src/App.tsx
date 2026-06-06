@@ -1277,6 +1277,7 @@ export function DispatcherPage({
 
                   <section className="dispatcher-card">
                     <h3>Обновить статус</h3>
+                    <p>Клиент увидит эти заголовок и описание в истории статуса.</p>
                     <form className="dispatcher-form" onSubmit={submitStatus}>
                       <select value={statusValue} onChange={(event) => setStatusValue(event.target.value as RequestStatus)}>
                         {[
@@ -1295,8 +1296,8 @@ export function DispatcherPage({
                           </option>
                         ))}
                       </select>
-                      <input value={statusTitle} onChange={(event) => setStatusTitle(event.target.value)} placeholder="Заголовок события" required />
-                      <textarea value={statusDescription} onChange={(event) => setStatusDescription(event.target.value)} placeholder="Описание для timeline" required rows={2} />
+                      <input value={statusTitle} onChange={(event) => setStatusTitle(event.target.value)} placeholder="Заголовок для клиента" required />
+                      <textarea value={statusDescription} onChange={(event) => setStatusDescription(event.target.value)} placeholder="Описание для клиента" required rows={2} />
                       <button className="submit-button" type="submit">Обновить статус</button>
                     </form>
                   </section>

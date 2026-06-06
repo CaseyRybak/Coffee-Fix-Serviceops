@@ -331,6 +331,9 @@ describe("App", () => {
     assert.match(html, /Jura, Saeco · ЦАО/);
     assert.match(html, /Клиент просит звонить после 12:00./);
     assert.match(html, /Обновить статус/);
+    assert.match(html, /Клиент увидит эти заголовок и описание в истории статуса/);
+    assert.match(html, /Заголовок для клиента/);
+    assert.match(html, /Описание для клиента/);
     assert.match(html, /Задать вопрос клиенту/);
     assert.match(html, /Назначить мастера/);
     assert.match(html, /Сохранить заметку/);

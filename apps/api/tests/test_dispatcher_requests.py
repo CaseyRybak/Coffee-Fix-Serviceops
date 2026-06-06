@@ -204,6 +204,40 @@ def test_dispatcher_status_clarification_assignment_and_internal_notes_are_recor
     assert "+7 999 222-33-44" not in public_text
 
 
+def test_dispatcher_assignment_without_visit_window_marks_technician_assigned() -> None:
+    repository = ServiceRequestRepository.in_memory()
+    request_number = asyncio.run(create_request(repository, payload()))
+
+    response = asyncio.run(
+        post_json(
+            repository,
+            f"/dispatcher/service-requests/{request_number}/assignment",
+            {
+                "technician_name": "Sergey Morozov",
+                "technician_region": "ЦАО",
+            },
+        )
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "request_number": request_number,
+        "status": "technician_assigned",
+        "message": "Technician assignment recorded",
+    }
+
+    detail = asyncio.run(get_json(repository, f"/dispatcher/service-requests/{request_number}")).json()
+    assert detail["status"] == "technician_assigned"
+    assert detail["assignment"] == {
+        "technician_name": "Sergey Morozov",
+        "technician_phone": None,
+        "technician_region": "ЦАО",
+        "visit_window": None,
+    }
+    assert detail["timeline"][-1]["status"] == "technician_assigned"
+    assert detail["timeline"][-1]["actor"] == "dispatcher"
+
+
 def test_dispatcher_routes_return_404_for_missing_request() -> None:
     repository = ServiceRequestRepository.in_memory()
 
