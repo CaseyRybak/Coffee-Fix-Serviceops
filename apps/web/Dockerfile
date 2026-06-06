@@ -6,6 +6,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY index.html tsconfig.json tsconfig.node.json vite.config.ts ./
+COPY public ./public
 COPY src ./src
 
 ARG VITE_SERVICEOPS_API_BASE_URL

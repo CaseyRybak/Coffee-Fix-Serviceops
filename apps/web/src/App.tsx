@@ -710,7 +710,7 @@ function HeroSection() {
         </div>
         <div className="hero-media">
           <img
-            src="https://images.unsplash.com/photo-1769326541255-c6612ab334a0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900"
+            src="/assets/hero-coffee-service-wide.png"
             alt="Профессиональная кофемашина на сервисном столе"
           />
         </div>

@@ -126,6 +126,7 @@ describe("App", () => {
     const dockerfile = readFileSync(new URL("../Dockerfile", import.meta.url), "utf-8");
     const nginxConfig = readFileSync(new URL("../nginx.conf", import.meta.url), "utf-8");
 
+    assert.match(dockerfile, /COPY public \.\/public/);
     assert.match(dockerfile, /COPY nginx\.conf \/etc\/nginx\/conf\.d\/default\.conf/);
     assert.match(nginxConfig, /try_files \$uri \$uri\/ \/index\.html;/);
   });
@@ -153,6 +154,15 @@ describe("App", () => {
     assert.match(html, /Проверить статус заявки/);
     assert.doesNotMatch(html, /Рассчитать стоимость/);
     assert.match(html, /href="\/#request-form">Оставить заявку<\/a>/);
+  });
+
+  it("uses the wide hero image without cropping it", () => {
+    const html = renderToStaticMarkup(<App />);
+    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf-8");
+
+    assert.match(html, /src="\/assets\/hero-coffee-service-wide\.png"/);
+    assert.match(css, /\.hero-media img\s*{[^}]*object-fit: contain;/s);
+    assert.doesNotMatch(css, /\.hero-media img\s*{[^}]*object-fit: cover;/s);
   });
 
   it("keeps the footer CTA text readable on hover", () => {
