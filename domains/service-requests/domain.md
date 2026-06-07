@@ -94,3 +94,9 @@ Phase 04 status actions use the existing status vocabulary. Manual assignment se
 Every dispatcher status change, clarification question, and assignment action creates a status event with actor `dispatcher`.
 
 The Phase 04 implementation persists dispatcher metadata in sqlite and PostgreSQL, exposes it through `/dispatcher/service-requests` routes, and keeps the public status DTO unchanged for client-safe visibility.
+
+## Phase 07 AI Suggestions Boundary
+
+Dispatcher request detail can include internal AI suggestions for staff review. Public status snapshots must not expose AI suggestions, prompt inputs, source chunks, provider metadata, or ignored drafts.
+
+Accepting an AI diagnostic-question suggestion creates a normal dispatcher clarification question and moves through the existing clarification lifecycle. AI suggestions never change request status, assign technicians, reserve parts, or send customer messages automatically.

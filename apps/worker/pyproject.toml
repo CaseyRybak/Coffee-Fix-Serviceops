@@ -5,6 +5,7 @@ description = "Coffee repair service operations worker"
 requires-python = ">=3.11"
 dependencies = [
   "celery>=5.4,<6.0",
+  "psycopg[binary]>=3.2,<4.0",
 ]
 
 [project.optional-dependencies]

@@ -2,6 +2,9 @@ import asyncio
 
 import httpx
 
+from serviceops_api.ai_agents.models import AiSuggestionCreate
+from serviceops_api.ai_agents.repository import SqliteAiSuggestionRepository
+from serviceops_api.config import get_settings
 from serviceops_api.main import create_app
 from serviceops_api.service_requests.repository import ServiceRequestRepository
 
@@ -128,7 +131,40 @@ def test_dispatcher_can_list_and_open_request_details() -> None:
     }
     assert detail["clarification"] is None
     assert detail["internal_notes"] == []
+    assert detail["ai_suggestions"] == []
     assert [event["title"] for event in detail["timeline"]] == ["Заявка создана", "Готово к назначению"]
+
+
+def test_injected_service_repository_does_not_mix_with_default_ai_suggestion_storage(tmp_path, monkeypatch) -> None:
+    default_storage_path = tmp_path / "default-serviceops.sqlite3"
+    monkeypatch.setenv("SERVICEOPS_DATABASE_URL", f"sqlite:///{default_storage_path}")
+    get_settings.cache_clear()
+    try:
+        service_repository = ServiceRequestRepository.in_memory()
+        request_number = asyncio.run(create_request(service_repository, payload()))
+        leaked_ai_repository = SqliteAiSuggestionRepository(default_storage_path)
+        leaked_ai_repository.save_suggestions(
+            request_number,
+            [
+                AiSuggestionCreate(
+                    kind="diagnostic_question",
+                    title="Leaked suggestion",
+                    content="This suggestion belongs to default local storage.",
+                    rationale="Диспетчер не должен видеть подсказку из другого persistence scope.",
+                    confidence=0.5,
+                )
+            ],
+        )
+        token = asyncio.run(dispatcher_token(service_repository))
+
+        detail_response = asyncio.run(
+            get_json(service_repository, f"/dispatcher/service-requests/{request_number}", token=token)
+        )
+
+        assert detail_response.status_code == 200
+        assert detail_response.json()["ai_suggestions"] == []
+    finally:
+        get_settings.cache_clear()
 
 
 def test_dispatcher_status_clarification_assignment_and_internal_notes_are_recorded() -> None:

@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     staff_dev_username: str = "dispatcher@coffeefix.local"
     staff_dev_password: str = "dispatcher-local"
     staff_dev_roles: str = "dispatcher"
+    knowledge_sqlite_path: str = ".local/serviceops-knowledge.sqlite3"
+    knowledge_embedding_dimensions: int = 12
+    knowledge_retrieval_limit: int = 5
+    ai_sqlite_path: str = ".local/serviceops-ai.sqlite3"
+    ai_provider: str = "deterministic"
+    ai_suggestion_limit: int = 5
 
     @property
     def cors_origins(self) -> list[str]:

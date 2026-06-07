@@ -11,6 +11,12 @@ services:
       SERVICEOPS_STAFF_DEV_USERNAME: ${SERVICEOPS_STAFF_DEV_USERNAME:-dispatcher@coffeefix.local}
       SERVICEOPS_STAFF_DEV_PASSWORD: ${SERVICEOPS_STAFF_DEV_PASSWORD:-dispatcher-local}
       SERVICEOPS_STAFF_DEV_ROLES: ${SERVICEOPS_STAFF_DEV_ROLES:-dispatcher}
+      SERVICEOPS_KNOWLEDGE_SQLITE_PATH: ${SERVICEOPS_KNOWLEDGE_SQLITE_PATH:-.local/serviceops-knowledge.sqlite3}
+      SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS: ${SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS:-12}
+      SERVICEOPS_KNOWLEDGE_RETRIEVAL_LIMIT: ${SERVICEOPS_KNOWLEDGE_RETRIEVAL_LIMIT:-5}
+      SERVICEOPS_AI_SQLITE_PATH: ${SERVICEOPS_AI_SQLITE_PATH:-.local/serviceops-ai.sqlite3}
+      SERVICEOPS_AI_PROVIDER: ${SERVICEOPS_AI_PROVIDER:-deterministic}
+      SERVICEOPS_AI_SUGGESTION_LIMIT: ${SERVICEOPS_AI_SUGGESTION_LIMIT:-5}
     ports:
       - "127.0.0.1:${SERVICEOPS_API_PORT:-8000}:8000"
     depends_on:
@@ -41,6 +47,8 @@ services:
     environment:
       SERVICEOPS_REDIS_BROKER_URL: ${SERVICEOPS_REDIS_BROKER_URL:-redis://redis:6379/0}
       SERVICEOPS_REDIS_RESULT_BACKEND: ${SERVICEOPS_REDIS_RESULT_BACKEND:-redis://redis:6379/1}
+      SERVICEOPS_DATABASE_URL: ${SERVICEOPS_DATABASE_URL:-postgresql+psycopg://serviceops:serviceops@postgres:5432/serviceops}
+      SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS: ${SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS:-12}
     depends_on:
       redis:
         condition: service_healthy
@@ -54,7 +62,7 @@ services:
       - integrations
 
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-serviceops}
       POSTGRES_USER: ${POSTGRES_USER:-serviceops}

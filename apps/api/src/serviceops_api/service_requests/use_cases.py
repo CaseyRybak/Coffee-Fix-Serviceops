@@ -67,6 +67,11 @@ class ServiceRequestStore(Protocol):
         """Save an internal dispatcher note."""
 
 
+class AiSuggestionReader(Protocol):
+    def list_suggestions(self, request_number: str) -> list[dict[str, object]]:
+        """Return AI suggestions for dispatcher detail."""
+
+
 class CreateServiceRequest:
     def __init__(self, repository: ServiceRequestStore) -> None:
         self._repository = repository
@@ -139,11 +144,15 @@ class ListDispatcherRequests:
 
 
 class GetDispatcherRequest:
-    def __init__(self, repository: ServiceRequestStore) -> None:
+    def __init__(self, repository: ServiceRequestStore, ai_suggestion_reader: AiSuggestionReader | None = None) -> None:
         self._repository = repository
+        self._ai_suggestion_reader = ai_suggestion_reader
 
     def execute(self, request_number: str) -> DispatcherRequestDetail:
-        return DispatcherRequestDetail.model_validate(self._repository.get_dispatcher_request(request_number))
+        detail = self._repository.get_dispatcher_request(request_number)
+        if self._ai_suggestion_reader is not None:
+            detail = {**detail, "ai_suggestions": self._ai_suggestion_reader.list_suggestions(request_number)}
+        return DispatcherRequestDetail.model_validate(detail)
 
 
 class UpdateDispatcherStatus:

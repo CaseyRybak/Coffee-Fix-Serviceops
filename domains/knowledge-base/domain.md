@@ -12,3 +12,18 @@ This domain manages RAG data for repair knowledge: documents, chunks, embeddings
 - Store vectors in PostgreSQL with pgvector.
 - Retrieve relevant chunks for a repair question.
 
+## Phase 06 Behavior
+
+The first implementation accepts text documents through the API and stores normalized chunks with stable ordering and character offsets. Each retrieval result includes the document title, source URI, chunk id, chunk index, offsets, content, and similarity score so later AI workflows can cite their sources instead of using anonymous context.
+
+Embeddings are generated behind an embedding-provider port. Tests and local development use deterministic signed-hash embeddings with a fixed 12-dimension vector, while PostgreSQL runtime stores chunk vectors in pgvector through `knowledge_chunks.embedding`.
+
+The worker owns a Celery task boundary for embedding documents. The task uses repository and embedding-provider protocols so provider calls remain isolated and can be replaced by an OpenAI-compatible adapter in a later slice.
+
+Phase 06 does not generate diagnostic answers, dispatcher suggestions, customer replies, or agent workflow decisions. Those AI workflow behaviors belong to Phase 07 and should consume retrieval results with source metadata.
+
+## Phase 07 Usage
+
+AI workflows can retrieve knowledge chunks for diagnostic and likely-cause suggestions. The retrieved source metadata must remain attached to the AI suggestion so a dispatcher can see which repair document supported the draft.
+
+Knowledge retrieval still returns context only. It does not decide the final diagnosis or create customer-visible content by itself.

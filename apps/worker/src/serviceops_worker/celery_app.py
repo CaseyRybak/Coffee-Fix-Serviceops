@@ -11,10 +11,11 @@ def create_celery_app() -> Celery:
     app.conf.update(
         task_default_queue="serviceops",
         task_ignore_result=False,
+        imports=("serviceops_worker.knowledge_base_tasks",),
         worker_hijack_root_logger=False,
     )
+    app.loader.import_default_modules()
     return app
 
 
 celery_app = create_celery_app()
-

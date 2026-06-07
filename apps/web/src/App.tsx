@@ -184,6 +184,33 @@ interface DispatcherRequestDetail {
     actor: string;
     created_at: string;
   }>;
+  ai_suggestions?: DispatcherAiSuggestion[];
+}
+
+type AiSuggestionKind =
+  | "intake_classification"
+  | "diagnostic_question"
+  | "likely_cause"
+  | "parts"
+  | "customer_reply";
+type AiSuggestionStatus = "pending" | "accepted" | "ignored";
+
+interface DispatcherAiSuggestion {
+  suggestion_id: number;
+  kind: AiSuggestionKind;
+  title: string;
+  content: string;
+  rationale: string;
+  confidence: number;
+  status: AiSuggestionStatus;
+  source_chunks: Array<{
+    document_title: string;
+    source_uri: string | null;
+    chunk_id: number;
+    score: number;
+  }>;
+  created_at: string;
+  acted_at: string | null;
 }
 
 const initialForm: IntakeFormState = {
@@ -509,6 +536,18 @@ export function buildDispatcherInternalNotePath(requestNumber: string): string {
   return `${buildDispatcherDetailPath(requestNumber)}/internal-notes`;
 }
 
+export function buildGenerateAiSuggestionsPath(requestNumber: string): string {
+  return `${buildDispatcherDetailPath(requestNumber)}/ai-suggestions/generate`;
+}
+
+export function buildAcceptAiClarificationPath(requestNumber: string, suggestionId: number): string {
+  return `${buildDispatcherDetailPath(requestNumber)}/ai-suggestions/${suggestionId}/accept-clarification`;
+}
+
+export function buildIgnoreAiSuggestionPath(requestNumber: string, suggestionId: number): string {
+  return `${buildDispatcherDetailPath(requestNumber)}/ai-suggestions/${suggestionId}/ignore`;
+}
+
 export function buildStaffLoginPath(nextPath = "/dispatcher"): string {
   return `/staff/login?next=${encodeURIComponent(nextPath)}`;
 }
@@ -585,6 +624,26 @@ function urgencyLabel(urgency: Urgency): string {
     planned: "Планово",
   };
   return labels[urgency];
+}
+
+function aiSuggestionKindLabel(kind: AiSuggestionKind): string {
+  const labels: Record<AiSuggestionKind, string> = {
+    intake_classification: "Классификация",
+    diagnostic_question: "Вопрос",
+    likely_cause: "Причина",
+    parts: "Запчасти",
+    customer_reply: "Ответ клиенту",
+  };
+  return labels[kind];
+}
+
+function aiSuggestionStatusLabel(status: AiSuggestionStatus): string {
+  const labels: Record<AiSuggestionStatus, string> = {
+    pending: "На проверке",
+    accepted: "Принято",
+    ignored: "Игнорировано",
+  };
+  return labels[status];
 }
 
 function Field({
@@ -1193,6 +1252,36 @@ export function DispatcherPage({
     );
   }
 
+  async function generateAiSuggestions() {
+    if (!detail) return;
+    await postAction(
+      buildGenerateAiSuggestionsPath(detail.request_number),
+      {},
+      () => undefined,
+      "AI-подсказки обновлены.",
+    );
+  }
+
+  async function acceptAiClarification(suggestionId: number) {
+    if (!detail) return;
+    await postAction(
+      buildAcceptAiClarificationPath(detail.request_number, suggestionId),
+      {},
+      () => undefined,
+      "AI-вопрос добавлен как уточнение клиенту.",
+    );
+  }
+
+  async function ignoreAiSuggestion(suggestionId: number) {
+    if (!detail) return;
+    await postAction(
+      buildIgnoreAiSuggestionPath(detail.request_number, suggestionId),
+      {},
+      () => undefined,
+      "AI-подсказка скрыта.",
+    );
+  }
+
   function selectTechnicianCandidate(candidate: (typeof technicianCandidates)[number]) {
     setTechnicianName(candidate.name);
     setTechnicianPhone(candidate.phone);
@@ -1316,6 +1405,56 @@ export function DispatcherPage({
                     </div>
                   </dl>
                 </div>
+
+                <section className="dispatcher-card ai-suggestions-panel">
+                  <div className="ai-suggestions-heading">
+                    <div>
+                      <h3>AI-подсказки</h3>
+                      <p>Черновики и рекомендации остаются внутренними, пока диспетчер не подтвердит действие.</p>
+                    </div>
+                    <button className="secondary-status-button" type="button" onClick={() => void generateAiSuggestions()} disabled={loading}>
+                      Сгенерировать
+                    </button>
+                  </div>
+                  {detail.ai_suggestions?.length ? (
+                    <div className="ai-suggestion-list">
+                      {detail.ai_suggestions.map((suggestion) => (
+                        <article className="ai-suggestion-item" key={suggestion.suggestion_id}>
+                          <div className="ai-suggestion-titleline">
+                            <span>{aiSuggestionKindLabel(suggestion.kind)}</span>
+                            <strong>{suggestion.title}</strong>
+                            <em>{aiSuggestionStatusLabel(suggestion.status)}</em>
+                          </div>
+                          <p>{suggestion.content}</p>
+                          <small>{suggestion.rationale}</small>
+                          {suggestion.source_chunks.length ? (
+                            <div className="ai-source-list">
+                              {suggestion.source_chunks.map((source) => (
+                                <span key={`${source.chunk_id}-${source.document_title}`}>
+                                  {source.document_title} · {Math.round(source.score * 100)}%
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                          {suggestion.status === "pending" ? (
+                            <div className="ai-suggestion-actions">
+                              {suggestion.kind === "diagnostic_question" ? (
+                                <button type="button" onClick={() => void acceptAiClarification(suggestion.suggestion_id)}>
+                                  Принять как вопрос
+                                </button>
+                              ) : null}
+                              <button type="button" onClick={() => void ignoreAiSuggestion(suggestion.suggestion_id)}>
+                                Игнорировать
+                              </button>
+                            </div>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>Подсказок пока нет. Сгенерируйте их после проверки описания заявки.</p>
+                  )}
+                </section>
 
                 <div className="dispatcher-grid">
                   <section className="dispatcher-card">

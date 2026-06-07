@@ -15,6 +15,9 @@ import {
   buildDispatcherDetailPath,
   buildDispatcherInternalNotePath,
   buildDispatcherListPath,
+  buildAcceptAiClarificationPath,
+  buildGenerateAiSuggestionsPath,
+  buildIgnoreAiSuggestionPath,
   buildDispatcherStatusPath,
   buildCustomerAnswerPayload,
   buildServiceRequestPayload,
@@ -84,6 +87,39 @@ describe("App", () => {
         note: "Клиент просит звонить после 12:00.",
         actor: "dispatcher",
         created_at: "2026-06-05 10:20:00",
+      },
+    ],
+    ai_suggestions: [
+      {
+        suggestion_id: 11,
+        kind: "diagnostic_question" as const,
+        title: "Уточнить перегрев",
+        content: "Когда именно перегревается группа?",
+        rationale: "Диспетчер должен подтвердить вопрос.",
+        confidence: 0.78,
+        status: "pending" as const,
+        source_chunks: [
+          {
+            document_title: "E61 overheating repair guide",
+            source_uri: "seed://repair/e61-overheating",
+            chunk_id: 5,
+            score: 0.82,
+          },
+        ],
+        created_at: "2026-06-05 10:25:00",
+        acted_at: null,
+      },
+      {
+        suggestion_id: 12,
+        kind: "customer_reply" as const,
+        title: "Черновик ответа",
+        content: "Спасибо, мы уточним режим перегрева.",
+        rationale: "Диспетчер редактирует и отправляет вручную.",
+        confidence: 0.7,
+        status: "ignored" as const,
+        source_chunks: [],
+        created_at: "2026-06-05 10:26:00",
+        acted_at: "2026-06-05 10:27:00",
       },
     ],
   };
@@ -310,6 +346,18 @@ describe("App", () => {
       buildDispatcherInternalNotePath("CFX-20260605-000001"),
       "/dispatcher/service-requests/CFX-20260605-000001/internal-notes",
     );
+    assert.equal(
+      buildGenerateAiSuggestionsPath("CFX-20260605-000001"),
+      "/dispatcher/service-requests/CFX-20260605-000001/ai-suggestions/generate",
+    );
+    assert.equal(
+      buildAcceptAiClarificationPath("CFX-20260605-000001", 11),
+      "/dispatcher/service-requests/CFX-20260605-000001/ai-suggestions/11/accept-clarification",
+    );
+    assert.equal(
+      buildIgnoreAiSuggestionPath("CFX-20260605-000001", 12),
+      "/dispatcher/service-requests/CFX-20260605-000001/ai-suggestions/12/ignore",
+    );
   });
 
   it("builds staff login paths and auth headers", () => {
@@ -411,6 +459,13 @@ describe("App", () => {
     assert.match(html, /Задать вопрос клиенту/);
     assert.match(html, /Назначить мастера/);
     assert.match(html, /Сохранить заметку/);
+    assert.match(html, /AI-подсказки/);
+    assert.match(html, /Уточнить перегрев/);
+    assert.match(html, /Когда именно перегревается группа/);
+    assert.match(html, /Принять как вопрос/);
+    assert.match(html, /E61 overheating repair guide/);
+    assert.match(html, /Черновик ответа/);
+    assert.match(html, /Игнорировано/);
   });
 
   it("filters dispatcher request list by status and urgency", () => {
@@ -546,5 +601,7 @@ describe("App", () => {
     assert.match(html, /Подключить Telegram/);
     assert.doesNotMatch(html, /Pavel Sokolov/);
     assert.doesNotMatch(html, /Клиент просит звонить/);
+    assert.doesNotMatch(html, /AI-подсказки/);
+    assert.doesNotMatch(html, /Уточнить перегрев/);
   });
 });

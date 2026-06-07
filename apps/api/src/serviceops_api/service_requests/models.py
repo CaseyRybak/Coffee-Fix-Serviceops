@@ -196,6 +196,26 @@ class DispatcherInternalNote(BaseModel):
     created_at: str
 
 
+class DispatcherAiSuggestionSource(BaseModel):
+    document_title: str
+    source_uri: str | None
+    chunk_id: int
+    score: float
+
+
+class DispatcherAiSuggestion(BaseModel):
+    suggestion_id: int
+    kind: str
+    title: str
+    content: str
+    rationale: str
+    confidence: float
+    status: str
+    source_chunks: list[DispatcherAiSuggestionSource] = Field(default_factory=list)
+    created_at: str
+    acted_at: str | None = None
+
+
 class DispatcherRequestDetail(BaseModel):
     request_number: str
     status: RequestStatus
@@ -209,6 +229,7 @@ class DispatcherRequestDetail(BaseModel):
     clarification: ClarificationSnapshot | None
     assignment: DispatcherAssignmentSnapshot
     internal_notes: list[DispatcherInternalNote]
+    ai_suggestions: list[DispatcherAiSuggestion] = Field(default_factory=list)
 
 
 class DispatcherStatusUpdatePayload(BaseModel):
