@@ -7,6 +7,8 @@ import {
   App,
   DispatcherPage,
   ProtectedDispatcherPage,
+  ProtectedInventoryPage,
+  ProtectedTechnicianPage,
   StaffLoginPage,
   StatusPage,
   SuccessState,
@@ -18,6 +20,13 @@ import {
   buildAcceptAiClarificationPath,
   buildGenerateAiSuggestionsPath,
   buildIgnoreAiSuggestionPath,
+  buildInventoryPartsPath,
+  buildInventoryStockPath,
+  buildTechnicianDetailPath,
+  buildTechnicianDiagnosisPath,
+  buildTechnicianListPath,
+  buildTechnicianPartsUsedPath,
+  buildTechnicianResultPath,
   buildDispatcherStatusPath,
   buildCustomerAnswerPayload,
   buildServiceRequestPayload,
@@ -25,6 +34,7 @@ import {
   buildStatusLookupPath,
   buildTelegramOptInPayload,
   resolveApiBaseUrl,
+  resolveStaffLandingPath,
   getStoredStaffSession,
   staffAuthHeaders,
   filterDispatcherItems,
@@ -360,6 +370,28 @@ describe("App", () => {
     );
   });
 
+  it("builds technician and inventory API paths", () => {
+    assert.equal(buildTechnicianListPath(), "/technician/service-requests");
+    assert.equal(
+      buildTechnicianDetailPath(" CFX-20260605-000001 "),
+      "/technician/service-requests/CFX-20260605-000001",
+    );
+    assert.equal(
+      buildTechnicianDiagnosisPath("CFX-20260605-000001"),
+      "/technician/service-requests/CFX-20260605-000001/diagnosis",
+    );
+    assert.equal(
+      buildTechnicianResultPath("CFX-20260605-000001"),
+      "/technician/service-requests/CFX-20260605-000001/result",
+    );
+    assert.equal(
+      buildTechnicianPartsUsedPath("CFX-20260605-000001"),
+      "/technician/service-requests/CFX-20260605-000001/parts-used",
+    );
+    assert.equal(buildInventoryPartsPath(), "/inventory/parts");
+    assert.equal(buildInventoryStockPath(7), "/inventory/parts/7/stock");
+  });
+
   it("builds staff login paths and auth headers", () => {
     assert.equal(buildStaffLoginPath("/dispatcher"), "/staff/login?next=%2Fdispatcher");
     assert.equal(buildStaffLoginPath("/dispatcher/service-requests"), "/staff/login?next=%2Fdispatcher%2Fservice-requests");
@@ -367,6 +399,33 @@ describe("App", () => {
     assert.deepEqual(staffAuthHeaders({ accessToken: "staff-token", username: "dispatcher@coffeefix.local", roles: ["dispatcher"] }), {
       Authorization: "Bearer staff-token",
     });
+  });
+
+  it("resolves one staff login landing path by role and validates next routes", () => {
+    assert.equal(
+      resolveStaffLandingPath({ username: "technician@coffeefix.local", roles: ["technician"] }, null),
+      "/technician",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "inventory@coffeefix.local", roles: ["inventory"] }, null),
+      "/inventory",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "dispatcher@coffeefix.local", roles: ["dispatcher"] }, null),
+      "/dispatcher",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "technician@coffeefix.local", roles: ["technician"] }, "/technician"),
+      "/technician",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "technician@coffeefix.local", roles: ["technician"] }, "/dispatcher"),
+      "/technician",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "inventory@coffeefix.local", roles: ["inventory"] }, "https://example.test"),
+      "/inventory",
+    );
   });
 
   it("reads stored staff sessions safely", () => {
@@ -414,6 +473,27 @@ describe("App", () => {
     assert.match(guardedHtml, /href="\/staff\/login\?next=%2Fdispatcher"/);
     assert.match(wrongRoleHtml, /Недостаточно прав/);
     assert.doesNotMatch(wrongRoleHtml, /Заявки, статусы, уточнения/);
+  });
+
+  it("renders technician and inventory route guards", () => {
+    const technicianGuard = renderToStaticMarkup(<ProtectedTechnicianPage hasSession={false} />);
+    const technicianWrongRole = renderToStaticMarkup(
+      <ProtectedTechnicianPage
+        initialSession={{ accessToken: "dispatcher-token", username: "dispatcher@coffeefix.local", roles: ["dispatcher"] }}
+      />,
+    );
+    const inventoryGuard = renderToStaticMarkup(<ProtectedInventoryPage hasSession={false} />);
+    const inventoryWrongRole = renderToStaticMarkup(
+      <ProtectedInventoryPage
+        initialSession={{ accessToken: "technician-token", username: "technician@coffeefix.local", roles: ["technician"] }}
+      />,
+    );
+
+    assert.match(technicianGuard, /Требуется вход сотрудника/);
+    assert.match(technicianGuard, /href="\/staff\/login\?next=%2Ftechnician"/);
+    assert.match(technicianWrongRole, /Для выездов нужна роль technician/);
+    assert.match(inventoryGuard, /href="\/staff\/login\?next=%2Finventory"/);
+    assert.match(inventoryWrongRole, /Для склада нужна роль inventory/);
   });
 
   it("renders dispatcher list detail and action controls", () => {
@@ -466,6 +546,90 @@ describe("App", () => {
     assert.match(html, /E61 overheating repair guide/);
     assert.match(html, /Черновик ответа/);
     assert.match(html, /Игнорировано/);
+  });
+
+  it("renders technician assigned visit workflow controls", () => {
+    const html = renderToStaticMarkup(
+      <ProtectedTechnicianPage
+        initialSession={{
+          accessToken: "technician-token",
+          username: "technician@coffeefix.local",
+          roles: ["technician"],
+        }}
+        initialList={{
+          items: [
+            {
+              request_number: "CFX-20260605-000001",
+              status: "visit_scheduled",
+              customer_name: "Anna Petrova",
+              machine_label: "Rocket Appartamento",
+              urgency: "today",
+              address: "Tverskaya district",
+              visit_window: "Сегодня 16:00-18:00",
+              latest_event_title: "Визит запланирован",
+            },
+          ],
+        }}
+        initialDetail={{
+          request_number: "CFX-20260605-000001",
+          status: "visit_scheduled",
+          customer_name: "Anna Petrova",
+          customer_phone: "+7 999 111-22-33",
+          machine_label: "Rocket Appartamento",
+          problem: "E61 group overheats after descaling.",
+          address: "Tverskaya district",
+          urgency: "today",
+          visit_window: "Сегодня 16:00-18:00",
+          diagnosis: null,
+          repair_result: null,
+        }}
+      />,
+    );
+
+    assert.match(html, /Выезды мастера/);
+    assert.match(html, /Rocket Appartamento/);
+    assert.match(html, /Сегодня 16:00-18:00/);
+    assert.match(html, /Чеклист диагностики/);
+    assert.match(html, /Питание включается/);
+    assert.match(html, /Результат ремонта/);
+    assert.match(html, /Использованные запчасти/);
+    assert.doesNotMatch(html, /class="service-bar"/);
+  });
+
+  it("renders inventory catalog and stock controls", () => {
+    const html = renderToStaticMarkup(
+      <ProtectedInventoryPage
+        initialSession={{
+          accessToken: "inventory-token",
+          username: "inventory@coffeefix.local",
+          roles: ["inventory"],
+        }}
+        initialParts={{
+          items: [
+            {
+              part_id: 1,
+              sku: "E61-GASKET-73",
+              name: "E61 group gasket 73mm",
+              brand: "Rocket",
+              model: "Appartamento",
+              unit: "pcs",
+              compatibility_note: "Fits common E61 groups.",
+              created_at: "2026-06-07 12:00:00",
+              quantity_on_hand: 4,
+              stock_updated_at: "2026-06-07 12:05:00",
+            },
+          ],
+        }}
+      />,
+    );
+
+    assert.match(html, /Склад запчастей/);
+    assert.match(html, /E61-GASKET-73/);
+    assert.match(html, /E61 group gasket 73mm/);
+    assert.match(html, /Остаток/);
+    assert.match(html, /Новая позиция/);
+    assert.match(html, /Обновить остаток/);
+    assert.doesNotMatch(html, /class="service-bar"/);
   });
 
   it("filters dispatcher request list by status and urgency", () => {

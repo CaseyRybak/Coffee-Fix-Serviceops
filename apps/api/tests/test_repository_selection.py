@@ -9,6 +9,11 @@ from serviceops_api.knowledge_base.repository import (
     SqliteKnowledgeBaseRepository,
     create_knowledge_base_repository,
 )
+from serviceops_api.inventory.repository import (
+    PostgresInventoryRepository,
+    SqliteInventoryRepository,
+    create_inventory_repository,
+)
 from psycopg.rows import dict_row
 
 from serviceops_api.service_requests.repository import (
@@ -93,6 +98,33 @@ def test_ai_suggestion_repository_factory_rejects_unknown_database_url() -> None
 
     try:
         create_ai_suggestion_repository(settings, initialize=False)
+    except ValueError as exc:
+        assert "Unsupported SERVICEOPS_DATABASE_URL" in str(exc)
+    else:
+        raise AssertionError("expected unsupported database URL to fail")
+
+
+def test_inventory_repository_factory_uses_postgres_for_postgresql_url() -> None:
+    settings = Settings(database_url="postgresql+psycopg://serviceops:serviceops@postgres:5432/serviceops")
+
+    repository = create_inventory_repository(settings, initialize=False)
+
+    assert isinstance(repository, PostgresInventoryRepository)
+
+
+def test_inventory_repository_factory_uses_sqlite_for_sqlite_url() -> None:
+    settings = Settings(database_url="sqlite:///:memory:")
+
+    repository = create_inventory_repository(settings)
+
+    assert isinstance(repository, SqliteInventoryRepository)
+
+
+def test_inventory_repository_factory_rejects_unknown_database_url() -> None:
+    settings = Settings(database_url="mysql://serviceops:serviceops@localhost/serviceops")
+
+    try:
+        create_inventory_repository(settings, initialize=False)
     except ValueError as exc:
         assert "Unsupported SERVICEOPS_DATABASE_URL" in str(exc)
     else:

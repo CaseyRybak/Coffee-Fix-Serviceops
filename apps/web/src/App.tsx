@@ -213,6 +213,66 @@ interface DispatcherAiSuggestion {
   acted_at: string | null;
 }
 
+interface TechnicianListItem {
+  request_number: string;
+  status: RequestStatus;
+  customer_name: string;
+  machine_label: string;
+  urgency: Urgency;
+  address: string;
+  visit_window: string | null;
+  latest_event_title: string;
+}
+
+interface TechnicianListResponse {
+  items: TechnicianListItem[];
+}
+
+interface TechnicianRequestDetail {
+  request_number: string;
+  status: RequestStatus;
+  customer_name: string;
+  customer_phone: string;
+  machine_label: string;
+  problem: string;
+  address: string;
+  urgency: Urgency;
+  visit_window: string | null;
+  diagnosis: {
+    machine_powered_on: boolean;
+    water_supply_checked: boolean;
+    leak_checked: boolean;
+    error_code_checked: boolean;
+    summary: string;
+    actor: string;
+    created_at: string;
+  } | null;
+  repair_result: {
+    result: "completed" | "waiting_for_parts" | "follow_up_required";
+    summary: string;
+    next_step: string | null;
+    actor: string;
+    created_at: string;
+  } | null;
+}
+
+interface InventoryPartItem {
+  part_id: number;
+  sku: string;
+  name: string;
+  brand: string | null;
+  model: string | null;
+  unit: string;
+  compatibility_note: string | null;
+  created_at: string;
+  quantity_on_hand: number;
+  stock_updated_at: string | null;
+}
+
+interface InventoryPartListResponse {
+  items: InventoryPartItem[];
+}
+
 const initialForm: IntakeFormState = {
   name: "",
   phone: "",
@@ -548,6 +608,34 @@ export function buildIgnoreAiSuggestionPath(requestNumber: string, suggestionId:
   return `${buildDispatcherDetailPath(requestNumber)}/ai-suggestions/${suggestionId}/ignore`;
 }
 
+export function buildTechnicianListPath(): string {
+  return "/technician/service-requests";
+}
+
+export function buildTechnicianDetailPath(requestNumber: string): string {
+  return `/technician/service-requests/${encodeURIComponent(normalizeRequestNumber(requestNumber))}`;
+}
+
+export function buildTechnicianDiagnosisPath(requestNumber: string): string {
+  return `${buildTechnicianDetailPath(requestNumber)}/diagnosis`;
+}
+
+export function buildTechnicianResultPath(requestNumber: string): string {
+  return `${buildTechnicianDetailPath(requestNumber)}/result`;
+}
+
+export function buildTechnicianPartsUsedPath(requestNumber: string): string {
+  return `${buildTechnicianDetailPath(requestNumber)}/parts-used`;
+}
+
+export function buildInventoryPartsPath(): string {
+  return "/inventory/parts";
+}
+
+export function buildInventoryStockPath(partId: number): string {
+  return `/inventory/parts/${partId}/stock`;
+}
+
 export function buildStaffLoginPath(nextPath = "/dispatcher"): string {
   return `/staff/login?next=${encodeURIComponent(nextPath)}`;
 }
@@ -585,6 +673,22 @@ export function staffAuthHeaders(session: StaffSession | null = getStoredStaffSe
 
 export function staffHasRole(session: StaffSession | null, role: StaffRole): boolean {
   return Boolean(session?.roles.includes(role));
+}
+
+export function resolveStaffLandingPath(staff: { roles: StaffRole[]; username?: string }, requestedNext: string | null): string {
+  const routeRoles: Array<{ prefix: string; role: StaffRole }> = [
+    { prefix: "/dispatcher", role: "dispatcher" },
+    { prefix: "/technician", role: "technician" },
+    { prefix: "/inventory", role: "inventory" },
+  ];
+  const safeNext = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : null;
+  const matchingRoute = safeNext ? routeRoles.find((route) => safeNext.startsWith(route.prefix)) : undefined;
+  if (safeNext && matchingRoute && staff.roles.includes(matchingRoute.role)) return safeNext;
+  if (staff.roles.includes("dispatcher")) return "/dispatcher";
+  if (staff.roles.includes("technician")) return "/technician";
+  if (staff.roles.includes("inventory")) return "/inventory";
+  if (staff.roles.includes("admin")) return "/dispatcher";
+  return "/staff/login";
 }
 
 export function filterDispatcherItems(
@@ -1591,11 +1695,11 @@ export function StaffLoginPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  function nextPath(): string {
+  function requestedNextPath(): string | null {
     if (typeof window === "undefined") return "/dispatcher";
     const params = new URLSearchParams(window.location.search);
     const next = params.get("next");
-    return next?.startsWith("/") ? next : "/dispatcher";
+    return next?.startsWith("/") ? next : null;
   }
 
   async function submitLogin(event: FormEvent<HTMLFormElement>) {
@@ -1618,7 +1722,7 @@ export function StaffLoginPage() {
         username: body.staff.username,
         roles: body.staff.roles,
       });
-      if (typeof window !== "undefined") window.location.href = nextPath();
+      if (typeof window !== "undefined") window.location.href = resolveStaffLandingPath(body.staff, requestedNextPath());
     } catch {
       setMessage("Не удалось войти. Проверьте логин и пароль.");
     } finally {
@@ -1724,6 +1828,534 @@ export function ProtectedDispatcherPage({
   }
 
   return <DispatcherPage session={session} onLogout={logout} />;
+}
+
+export function TechnicianPage({
+  initialList,
+  initialDetail,
+  session,
+  onLogout,
+}: {
+  initialList?: TechnicianListResponse;
+  initialDetail?: TechnicianRequestDetail;
+  session?: StaffSession | null;
+  onLogout?: () => void;
+}) {
+  const [list, setList] = useState<TechnicianListResponse>(initialList ?? { items: [] });
+  const [selected, setSelected] = useState(initialDetail?.request_number ?? initialList?.items[0]?.request_number ?? "");
+  const [detail, setDetail] = useState<TechnicianRequestDetail | null>(initialDetail ?? null);
+  const [diagnosisSummary, setDiagnosisSummary] = useState("");
+  const [resultSummary, setResultSummary] = useState("");
+  const [nextStep, setNextStep] = useState("");
+  const [partId, setPartId] = useState("");
+  const [partQuantity, setPartQuantity] = useState("1");
+  const [partNote, setPartNote] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function loadList() {
+    const response = await fetch(`${apiBaseUrl()}${buildTechnicianListPath()}`, { headers: staffAuthHeaders(session) });
+    if (!response.ok) throw new Error(`Technician list failed with ${response.status}`);
+    const body = (await response.json()) as TechnicianListResponse;
+    setList(body);
+    if (!selected && body.items[0]) setSelected(body.items[0].request_number);
+    return body;
+  }
+
+  async function loadDetail(requestNumber: string) {
+    if (!requestNumber) return;
+    const response = await fetch(`${apiBaseUrl()}${buildTechnicianDetailPath(requestNumber)}`, {
+      headers: staffAuthHeaders(session),
+    });
+    if (!response.ok) throw new Error(`Technician detail failed with ${response.status}`);
+    const body = (await response.json()) as TechnicianRequestDetail;
+    setDetail(body);
+    setSelected(body.request_number);
+  }
+
+  async function refresh(requestNumber = selected) {
+    setLoading(true);
+    setMessage(null);
+    try {
+      await loadList();
+      if (requestNumber) await loadDetail(requestNumber);
+    } catch {
+      setMessage("Не удалось обновить выезды мастера.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (initialList || initialDetail) return;
+    void refresh();
+  }, [initialList, initialDetail]);
+
+  useEffect(() => {
+    if (!selected || selected === detail?.request_number) return;
+    void loadDetail(selected).catch(() => setMessage("Не удалось открыть выезд."));
+  }, [selected, detail?.request_number]);
+
+  async function postTechnicianAction(path: string, body: object, successMessage: string, afterSuccess: () => void = () => undefined) {
+    if (!detail) return;
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error(`Technician action failed with ${response.status}`);
+      afterSuccess();
+      await refresh(detail.request_number);
+      setMessage(successMessage);
+    } catch {
+      setMessage("Не удалось сохранить действие мастера.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitDiagnosis(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!detail) return;
+    await postTechnicianAction(
+      buildTechnicianDiagnosisPath(detail.request_number),
+      {
+        machine_powered_on: true,
+        water_supply_checked: true,
+        leak_checked: false,
+        error_code_checked: true,
+        summary: diagnosisSummary.trim(),
+      },
+      "Диагностика сохранена.",
+      () => setDiagnosisSummary(""),
+    );
+  }
+
+  async function submitResult(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!detail) return;
+    await postTechnicianAction(
+      buildTechnicianResultPath(detail.request_number),
+      {
+        result: "waiting_for_parts",
+        summary: resultSummary.trim(),
+        next_step: nextStep.trim() || undefined,
+      },
+      "Результат выезда сохранен.",
+      () => {
+        setResultSummary("");
+        setNextStep("");
+      },
+    );
+  }
+
+  async function submitPartsUsed(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!detail) return;
+    await postTechnicianAction(
+      buildTechnicianPartsUsedPath(detail.request_number),
+      {
+        part_id: Number(partId),
+        quantity: Number(partQuantity),
+        note: partNote.trim() || undefined,
+      },
+      "Запчасти списаны по заявке.",
+      () => {
+        setPartId("");
+        setPartQuantity("1");
+        setPartNote("");
+      },
+    );
+  }
+
+  return (
+    <div className="app-page dispatcher-page technician-page">
+      <WorkspaceHeader session={session} onLogout={onLogout} />
+      <main className="dispatcher-main">
+        <section className="section-inner dispatcher-shell">
+          <div className="dispatcher-topline">
+            <div>
+              <span>Мобильный контур</span>
+              <h1>Выезды мастера</h1>
+              <p>Назначенные заявки, диагностика, результат ремонта и списание запчастей.</p>
+            </div>
+            <button className="secondary-status-button" type="button" onClick={() => void refresh()} disabled={loading}>
+              {loading ? "Обновляем" : "Обновить"}
+            </button>
+          </div>
+          {message ? <p className="status-message">{message}</p> : null}
+          <div className="dispatcher-workspace technician-workspace">
+            <aside className="dispatcher-list">
+              {list.items.length ? (
+                list.items.map((item) => (
+                  <button
+                    className={selected === item.request_number ? "dispatcher-list-item active" : "dispatcher-list-item"}
+                    key={item.request_number}
+                    type="button"
+                    onClick={() => setSelected(item.request_number)}
+                  >
+                    <span>{statusLabel(item.status)}</span>
+                    <strong>{item.request_number}</strong>
+                    <em>{item.customer_name}</em>
+                    <small>{item.machine_label}</small>
+                    <small>{item.visit_window ?? item.latest_event_title}</small>
+                  </button>
+                ))
+              ) : (
+                <p className="dispatcher-empty">Назначенных выездов нет.</p>
+              )}
+            </aside>
+            {detail ? (
+              <section className="dispatcher-detail">
+                <div className="dispatcher-card dispatcher-summary-card">
+                  <div>
+                    <span className="status-pill">{statusLabel(detail.status)}</span>
+                    <h2>{detail.request_number}</h2>
+                    <p>{detail.problem}</p>
+                  </div>
+                  <dl>
+                    <div>
+                      <dt>Клиент</dt>
+                      <dd>{detail.customer_name}</dd>
+                    </div>
+                    <div>
+                      <dt>Телефон</dt>
+                      <dd>{detail.customer_phone}</dd>
+                    </div>
+                    <div>
+                      <dt>Кофемашина</dt>
+                      <dd>{detail.machine_label}</dd>
+                    </div>
+                    <div>
+                      <dt>Окно визита</dt>
+                      <dd>{detail.visit_window ?? "Не указано"}</dd>
+                    </div>
+                    <div>
+                      <dt>Адрес</dt>
+                      <dd>{detail.address}</dd>
+                    </div>
+                    <div>
+                      <dt>Срочность</dt>
+                      <dd>{urgencyLabel(detail.urgency)}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="dispatcher-grid technician-action-grid">
+                  <section className="dispatcher-card technician-card">
+                    <h3>Чеклист диагностики</h3>
+                    <ul className="checklist-preview">
+                      <li><CheckSquare aria-hidden="true" /> Питание включается</li>
+                      <li><Droplets aria-hidden="true" /> Подача воды проверена</li>
+                      <li><Eye aria-hidden="true" /> Протечки осмотрены</li>
+                      <li><Monitor aria-hidden="true" /> Код ошибки проверен</li>
+                    </ul>
+                    {detail.diagnosis ? <p>{detail.diagnosis.summary}</p> : null}
+                    <form className="dispatcher-form" onSubmit={submitDiagnosis}>
+                      <textarea value={diagnosisSummary} onChange={(event) => setDiagnosisSummary(event.target.value)} placeholder="Итог диагностики" required rows={3} />
+                      <button className="submit-button" type="submit">Сохранить диагностику</button>
+                    </form>
+                  </section>
+
+                  <section className="dispatcher-card technician-card">
+                    <h3>Результат ремонта</h3>
+                    {detail.repair_result ? <p>{detail.repair_result.summary}</p> : <p>Результат еще не зафиксирован.</p>}
+                    <form className="dispatcher-form" onSubmit={submitResult}>
+                      <textarea value={resultSummary} onChange={(event) => setResultSummary(event.target.value)} placeholder="Что сделано или что требуется" required rows={3} />
+                      <input value={nextStep} onChange={(event) => setNextStep(event.target.value)} placeholder="Следующий шаг" />
+                      <button className="submit-button" type="submit">Сохранить результат</button>
+                    </form>
+                  </section>
+
+                  <section className="dispatcher-card technician-card">
+                    <h3>Использованные запчасти</h3>
+                    <p>Списание уменьшает остаток на складе и добавляет событие в историю заявки.</p>
+                    <form className="dispatcher-form compact-form" onSubmit={submitPartsUsed}>
+                      <input value={partId} onChange={(event) => setPartId(event.target.value)} placeholder="ID запчасти" required type="number" min="1" />
+                      <input value={partQuantity} onChange={(event) => setPartQuantity(event.target.value)} placeholder="Количество" required type="number" min="1" />
+                      <input value={partNote} onChange={(event) => setPartNote(event.target.value)} placeholder="Комментарий" />
+                      <button className="submit-button" type="submit">Списать запчасть</button>
+                    </form>
+                  </section>
+                </div>
+              </section>
+            ) : (
+              <section className="dispatcher-detail dispatcher-card">
+                <h2>Выберите выезд</h2>
+                <p>Откройте назначенную заявку, чтобы зафиксировать работу.</p>
+              </section>
+            )}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+export function ProtectedTechnicianPage({
+  hasSession,
+  initialSession,
+  initialList,
+  initialDetail,
+}: {
+  hasSession?: boolean;
+  initialSession?: StaffSession | null;
+  initialList?: TechnicianListResponse;
+  initialDetail?: TechnicianRequestDetail;
+}) {
+  const [session, setSession] = useState<StaffSession | null>(() => {
+    if (initialSession !== undefined) return initialSession;
+    if (typeof hasSession === "boolean") {
+      return hasSession ? { accessToken: "test-token", username: "technician@coffeefix.local", roles: ["technician"] } : null;
+    }
+    return getStoredStaffSession();
+  });
+
+  useEffect(() => {
+    if (initialSession !== undefined || typeof hasSession === "boolean") return;
+    const stored = getStoredStaffSession();
+    setSession(stored);
+    if ((!stored || !staffHasRole(stored, "technician")) && typeof window !== "undefined") {
+      window.location.href = buildStaffLoginPath(window.location.pathname);
+    }
+  }, [hasSession, initialSession]);
+
+  function logout() {
+    clearStaffSession();
+    setSession(null);
+    if (typeof window !== "undefined") window.location.href = buildStaffLoginPath("/technician");
+  }
+
+  if (!staffHasRole(session, "technician")) {
+    const isAuthenticated = Boolean(session);
+    return (
+      <div className="app-page dispatcher-page">
+        <WorkspaceHeader />
+        <main className="dispatcher-main">
+          <section className="section-inner dispatcher-shell">
+            <div className="dispatcher-card protected-empty">
+              <Shield aria-hidden="true" />
+              <h1>{isAuthenticated ? "Недостаточно прав" : "Требуется вход сотрудника"}</h1>
+              <p>{isAuthenticated ? "Для выездов нужна роль technician." : "Выезды мастера находятся во внутреннем контуре."}</p>
+              <a className="submit-button" href={buildStaffLoginPath("/technician")}>
+                <LogIn aria-hidden="true" />
+                {isAuthenticated ? "Войти другим сотрудником" : "Войти"}
+              </a>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  return <TechnicianPage session={session} onLogout={logout} initialList={initialList} initialDetail={initialDetail} />;
+}
+
+export function InventoryPage({
+  initialParts,
+  session,
+  onLogout,
+}: {
+  initialParts?: InventoryPartListResponse;
+  session?: StaffSession | null;
+  onLogout?: () => void;
+}) {
+  const [parts, setParts] = useState<InventoryPartListResponse>(initialParts ?? { items: [] });
+  const [sku, setSku] = useState("");
+  const [name, setName] = useState("");
+  const [brand, setBrand] = useState("");
+  const [model, setModel] = useState("");
+  const [unit, setUnit] = useState("pcs");
+  const [stockPartId, setStockPartId] = useState("");
+  const [stockCount, setStockCount] = useState("0");
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function loadParts() {
+    const response = await fetch(`${apiBaseUrl()}${buildInventoryPartsPath()}`, { headers: staffAuthHeaders(session) });
+    if (!response.ok) throw new Error(`Inventory parts failed with ${response.status}`);
+    const body = (await response.json()) as InventoryPartListResponse;
+    setParts(body);
+  }
+
+  useEffect(() => {
+    if (initialParts) return;
+    void loadParts().catch(() => setMessage("Не удалось загрузить склад."));
+  }, [initialParts]);
+
+  async function submitPart(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${buildInventoryPartsPath()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
+        body: JSON.stringify({
+          sku: sku.trim(),
+          name: name.trim(),
+          brand: brand.trim() || undefined,
+          model: model.trim() || undefined,
+          unit: unit.trim(),
+        }),
+      });
+      if (!response.ok) throw new Error(`Create part failed with ${response.status}`);
+      setSku("");
+      setName("");
+      setBrand("");
+      setModel("");
+      setUnit("pcs");
+      await loadParts();
+      setMessage("Позиция добавлена.");
+    } catch {
+      setMessage("Не удалось добавить позицию.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitStock(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${buildInventoryStockPath(Number(stockPartId))}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
+        body: JSON.stringify({ quantity_on_hand: Number(stockCount) }),
+      });
+      if (!response.ok) throw new Error(`Stock update failed with ${response.status}`);
+      setStockPartId("");
+      setStockCount("0");
+      await loadParts();
+      setMessage("Остаток обновлен.");
+    } catch {
+      setMessage("Не удалось обновить остаток.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="app-page dispatcher-page inventory-page">
+      <WorkspaceHeader session={session} onLogout={onLogout} />
+      <main className="dispatcher-main">
+        <section className="section-inner dispatcher-shell">
+          <div className="dispatcher-topline">
+            <div>
+              <span>Складской контур</span>
+              <h1>Склад запчастей</h1>
+              <p>Каталог, совместимость и базовые остатки для ремонтных выездов.</p>
+            </div>
+            <button className="secondary-status-button" type="button" onClick={() => void loadParts()} disabled={loading}>
+              {loading ? "Обновляем" : "Обновить"}
+            </button>
+          </div>
+          {message ? <p className="status-message">{message}</p> : null}
+          <div className="inventory-workspace">
+            <section className="dispatcher-card inventory-table-card">
+              <h2>Каталог</h2>
+              <div className="inventory-table">
+                {parts.items.length ? (
+                  parts.items.map((part) => (
+                    <article key={part.part_id}>
+                      <strong>{part.sku}</strong>
+                      <span>{part.name}</span>
+                      <small>
+                        {[part.brand, part.model].filter(Boolean).join(" ") || "Без привязки к модели"}
+                      </small>
+                      <em>Остаток: {part.quantity_on_hand} {part.unit}</em>
+                    </article>
+                  ))
+                ) : (
+                  <p>Каталог пока пуст.</p>
+                )}
+              </div>
+            </section>
+            <section className="dispatcher-card">
+              <h2>Новая позиция</h2>
+              <form className="dispatcher-form" onSubmit={submitPart}>
+                <input value={sku} onChange={(event) => setSku(event.target.value)} placeholder="SKU" required />
+                <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Название" required />
+                <input value={brand} onChange={(event) => setBrand(event.target.value)} placeholder="Бренд" />
+                <input value={model} onChange={(event) => setModel(event.target.value)} placeholder="Модель" />
+                <input value={unit} onChange={(event) => setUnit(event.target.value)} placeholder="Единица" required />
+                <button className="submit-button" type="submit">Добавить позицию</button>
+              </form>
+            </section>
+            <section className="dispatcher-card">
+              <h2>Обновить остаток</h2>
+              <form className="dispatcher-form compact-form" onSubmit={submitStock}>
+                <input value={stockPartId} onChange={(event) => setStockPartId(event.target.value)} placeholder="ID позиции" type="number" min="1" required />
+                <input value={stockCount} onChange={(event) => setStockCount(event.target.value)} placeholder="Остаток" type="number" min="0" required />
+                <button className="submit-button" type="submit">Обновить остаток</button>
+              </form>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+export function ProtectedInventoryPage({
+  hasSession,
+  initialSession,
+  initialParts,
+}: {
+  hasSession?: boolean;
+  initialSession?: StaffSession | null;
+  initialParts?: InventoryPartListResponse;
+}) {
+  const [session, setSession] = useState<StaffSession | null>(() => {
+    if (initialSession !== undefined) return initialSession;
+    if (typeof hasSession === "boolean") {
+      return hasSession ? { accessToken: "test-token", username: "inventory@coffeefix.local", roles: ["inventory"] } : null;
+    }
+    return getStoredStaffSession();
+  });
+
+  useEffect(() => {
+    if (initialSession !== undefined || typeof hasSession === "boolean") return;
+    const stored = getStoredStaffSession();
+    setSession(stored);
+    if ((!stored || !staffHasRole(stored, "inventory")) && typeof window !== "undefined") {
+      window.location.href = buildStaffLoginPath(window.location.pathname);
+    }
+  }, [hasSession, initialSession]);
+
+  function logout() {
+    clearStaffSession();
+    setSession(null);
+    if (typeof window !== "undefined") window.location.href = buildStaffLoginPath("/inventory");
+  }
+
+  if (!staffHasRole(session, "inventory")) {
+    const isAuthenticated = Boolean(session);
+    return (
+      <div className="app-page dispatcher-page">
+        <WorkspaceHeader />
+        <main className="dispatcher-main">
+          <section className="section-inner dispatcher-shell">
+            <div className="dispatcher-card protected-empty">
+              <Shield aria-hidden="true" />
+              <h1>{isAuthenticated ? "Недостаточно прав" : "Требуется вход сотрудника"}</h1>
+              <p>{isAuthenticated ? "Для склада нужна роль inventory." : "Склад находится во внутреннем контуре."}</p>
+              <a className="submit-button" href={buildStaffLoginPath("/inventory")}>
+                <LogIn aria-hidden="true" />
+                {isAuthenticated ? "Войти другим сотрудником" : "Войти"}
+              </a>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  return <InventoryPage session={session} onLogout={logout} initialParts={initialParts} />;
 }
 
 function RequestForm() {
@@ -2136,10 +2768,14 @@ function SectionHeading({ title, copy }: { title: string; copy: string }) {
 
 export function App() {
   const isDispatcherRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/dispatcher");
+  const isTechnicianRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/technician");
+  const isInventoryRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/inventory");
   const isStaffLoginRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/staff/login");
   const isStatusRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/status");
   if (isStaffLoginRoute) return <StaffLoginPage />;
   if (isDispatcherRoute) return <ProtectedDispatcherPage />;
+  if (isTechnicianRoute) return <ProtectedTechnicianPage />;
+  if (isInventoryRoute) return <ProtectedInventoryPage />;
   if (isStatusRoute) return <StatusPage />;
 
   return (

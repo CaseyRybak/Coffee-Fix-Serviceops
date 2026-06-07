@@ -8,7 +8,7 @@ Before executing any phase, create a detailed implementation plan for that speci
 
 ## Active Phase
 
-- `phases/08-technician-and-inventory.md`
+- `phases/09-staff-admin-and-user-management.md`
 
 The active phase points to the next phase that needs a detailed implementation plan before execution. `phases/` contains all phase slice maps, not only active work.
 
@@ -16,9 +16,9 @@ The active phase points to the next phase that needs a detailed implementation p
 
 Detailed implementation plans are created just in time in `detailed/`.
 
-Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`, `detailed/04-dispatcher-mvp-implementation.md`, `detailed/05-staff-access-and-roles-implementation.md`, `detailed/06-knowledge-base-rag-implementation.md`, `detailed/07-ai-agent-workflows-implementation.md`.
+Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`, `detailed/04-dispatcher-mvp-implementation.md`, `detailed/05-staff-access-and-roles-implementation.md`, `detailed/06-knowledge-base-rag-implementation.md`, `detailed/07-ai-agent-workflows-implementation.md`, `detailed/08-technician-and-inventory-implementation.md`.
 
-Ready for review before execution: none.
+Ready for review before execution: `detailed/09-staff-admin-and-user-management-implementation.md`.
 
 ## Phase Sequence
 
@@ -31,7 +31,8 @@ Ready for review before execution: none.
 7. `phases/06-knowledge-base-rag.md`: RAG documents, chunks, embeddings, retrieval with sources.
 8. `phases/07-ai-agent-workflows.md`: intake, diagnostic, parts, dispatcher, and reply workflows.
 9. `phases/08-technician-and-inventory.md`: technician mobile flow and basic parts tracking.
-10. `phases/09-deployment-and-operations.md`: Dokploy deployment, backups, observability, n8n flows.
+10. `phases/09-staff-admin-and-user-management.md`: persisted staff accounts, admin workspace, role assignment, and account lifecycle.
+11. `phases/10-deployment-and-operations.md`: Dokploy deployment, backups, observability, n8n flows.
 
 ## Review
 

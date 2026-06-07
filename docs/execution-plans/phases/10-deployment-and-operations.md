@@ -1,4 +1,4 @@
-# Phase 09: Deployment And Operations
+# Phase 10: Deployment And Operations
 
 > For implementation workers: implement this phase as a bounded slice, then request subagent review using `docs/review/subagent-review-protocol.md`.
 

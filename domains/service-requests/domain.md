@@ -100,3 +100,9 @@ The Phase 04 implementation persists dispatcher metadata in sqlite and PostgreSQ
 Dispatcher request detail can include internal AI suggestions for staff review. Public status snapshots must not expose AI suggestions, prompt inputs, source chunks, provider metadata, or ignored drafts.
 
 Accepting an AI diagnostic-question suggestion creates a normal dispatcher clarification question and moves through the existing clarification lifecycle. AI suggestions never change request status, assign technicians, reserve parts, or send customer messages automatically.
+
+## Phase 08 Technician And Inventory Boundary
+
+Technician workflow extends the service-request lifecycle after dispatcher assignment. Assigned technicians can record diagnosis, repair result, and parts-used actions through protected technician routes. Those actions update status history with actor `technician` and statuses such as `diagnostics`, `waiting_for_parts`, `repair_in_progress`, and `completed`.
+
+Public status snapshots may show customer-safe technician status event titles and descriptions. They must not expose technician-only checklist summaries, repair result internal notes, parts-used notes, stock counts, part IDs, or inventory metadata.

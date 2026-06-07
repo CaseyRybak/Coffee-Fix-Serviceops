@@ -11,7 +11,9 @@ from psycopg.rows import dict_row
 from serviceops_api.service_requests.models import ServiceRequestRecord
 
 
-MIGRATION_PATH = Path(__file__).resolve().parents[1] / "migrations" / "0001_service_request_intake.sql"
+MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations"
+MIGRATION_PATH = MIGRATIONS_DIR / "0001_service_request_intake.sql"
+TECHNICIAN_INVENTORY_MIGRATION_PATH = MIGRATIONS_DIR / "0004_technician_inventory.sql"
 
 
 class ServiceRequestRepository:
@@ -111,6 +113,28 @@ class ServiceRequestRepository:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 service_request_id INTEGER NOT NULL REFERENCES service_requests(id),
                 note TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS technician_diagnoses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_number TEXT NOT NULL,
+                machine_powered_on INTEGER NOT NULL,
+                water_supply_checked INTEGER NOT NULL,
+                leak_checked INTEGER NOT NULL,
+                error_code_checked INTEGER NOT NULL,
+                summary TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS technician_repair_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_number TEXT NOT NULL,
+                result TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                next_step TEXT,
                 actor TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
@@ -538,6 +562,207 @@ class ServiceRequestRepository:
             )
         return self._get_request_status(request_number)
 
+    def list_requests_for_technician(self, technician_identifier: str) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            """
+            SELECT
+                sr.request_number,
+                sr.status,
+                sr.urgency,
+                sr.address,
+                sr.visit_window,
+                c.name AS customer_name,
+                m.brand,
+                m.model,
+                (
+                    SELECT se.title
+                    FROM status_events se
+                    WHERE se.service_request_id = sr.id
+                    ORDER BY se.id DESC
+                    LIMIT 1
+                ) AS latest_event_title
+            FROM service_requests sr
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE sr.assigned_technician_name = ?
+            ORDER BY sr.id DESC
+            """,
+            (technician_identifier,),
+        ).fetchall()
+        return [
+            {
+                "request_number": row["request_number"],
+                "status": row["status"],
+                "customer_name": row["customer_name"],
+                "machine_label": f"{row['brand']}{f' {row['model']}' if row['model'] else ''}",
+                "urgency": row["urgency"],
+                "address": row["address"],
+                "visit_window": row["visit_window"],
+                "latest_event_title": row["latest_event_title"] or "",
+            }
+            for row in rows
+        ]
+
+    def get_technician_request(self, request_number: str, technician_identifier: str) -> dict[str, Any]:
+        row = self._connection.execute(
+            """
+            SELECT
+                sr.request_number,
+                sr.status,
+                sr.problem,
+                sr.address,
+                sr.urgency,
+                sr.visit_window,
+                c.name AS customer_name,
+                c.phone AS customer_phone,
+                m.brand,
+                m.model
+            FROM service_requests sr
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE sr.request_number = ? AND sr.assigned_technician_name = ?
+            """,
+            (request_number, technician_identifier),
+        ).fetchone()
+        if row is None:
+            raise KeyError(request_number)
+        diagnosis = self._latest_technician_diagnosis(request_number)
+        repair_result = self._latest_technician_repair_result(request_number)
+        return {
+            "request_number": row["request_number"],
+            "status": row["status"],
+            "customer_name": row["customer_name"],
+            "customer_phone": row["customer_phone"],
+            "machine_label": f"{row['brand']}{f' {row['model']}' if row['model'] else ''}",
+            "problem": row["problem"],
+            "address": row["address"],
+            "urgency": row["urgency"],
+            "visit_window": row["visit_window"],
+            "diagnosis": diagnosis,
+            "repair_result": repair_result,
+        }
+
+    def record_technician_diagnosis(
+        self,
+        request_number: str,
+        technician_identifier: str,
+        checklist: dict[str, bool],
+        summary: str,
+        actor: str,
+    ) -> str:
+        self.get_technician_request(request_number, technician_identifier)
+        with self._connection:
+            self._connection.execute(
+                """
+                INSERT INTO technician_diagnoses (
+                    request_number, machine_powered_on, water_supply_checked, leak_checked, error_code_checked,
+                    summary, actor
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    request_number,
+                    int(checklist["machine_powered_on"]),
+                    int(checklist["water_supply_checked"]),
+                    int(checklist["leak_checked"]),
+                    int(checklist["error_code_checked"]),
+                    summary,
+                    actor,
+                ),
+            )
+        self.add_status_event(
+            request_number=request_number,
+            status="diagnostics",
+            title="Диагностика начата",
+            description="Мастер проверяет кофемашину и фиксирует результат диагностики.",
+            actor=actor,
+        )
+        return self._get_request_status(request_number)
+
+    def record_technician_result(
+        self,
+        request_number: str,
+        technician_identifier: str,
+        result: str,
+        summary: str,
+        next_step: str | None,
+        actor: str,
+    ) -> str:
+        self.get_technician_request(request_number, technician_identifier)
+        status = "completed" if result == "completed" else "waiting_for_parts" if result == "waiting_for_parts" else "repair_in_progress"
+        title = "Ремонт завершен" if status == "completed" else "Ожидаем запчасти" if status == "waiting_for_parts" else "Нужен повторный шаг"
+        description = "Мастер обновил результат выезда по заявке."
+        with self._connection:
+            self._connection.execute(
+                """
+                INSERT INTO technician_repair_results (request_number, result, summary, next_step, actor)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (request_number, result, summary, next_step, actor),
+            )
+        self.add_status_event(request_number, status, title, description, actor)
+        return self._get_request_status(request_number)
+
+    def record_technician_parts_used_status(
+        self,
+        request_number: str,
+        technician_identifier: str,
+        actor: str,
+    ) -> str:
+        self.get_technician_request(request_number, technician_identifier)
+        self.add_status_event(
+            request_number=request_number,
+            status="repair_in_progress",
+            title="Запчасти использованы",
+            description="Мастер использовал запчасти и продолжает ремонт.",
+            actor=actor,
+        )
+        return self._get_request_status(request_number)
+
+    def _latest_technician_diagnosis(self, request_number: str) -> dict[str, Any] | None:
+        row = self._connection.execute(
+            """
+            SELECT *
+            FROM technician_diagnoses
+            WHERE request_number = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (request_number,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "machine_powered_on": bool(row["machine_powered_on"]),
+            "water_supply_checked": bool(row["water_supply_checked"]),
+            "leak_checked": bool(row["leak_checked"]),
+            "error_code_checked": bool(row["error_code_checked"]),
+            "summary": row["summary"],
+            "actor": row["actor"],
+            "created_at": row["created_at"],
+        }
+
+    def _latest_technician_repair_result(self, request_number: str) -> dict[str, Any] | None:
+        row = self._connection.execute(
+            """
+            SELECT *
+            FROM technician_repair_results
+            WHERE request_number = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (request_number,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "result": row["result"],
+            "summary": row["summary"],
+            "next_step": row["next_step"],
+            "actor": row["actor"],
+            "created_at": row["created_at"],
+        }
+
     def _get_request_id(self, request_number: str) -> int:
         row = self._connection.execute(
             "SELECT id FROM service_requests WHERE request_number = ?",
@@ -761,6 +986,8 @@ class PostgresServiceRequestRepository:
 
     def initialize(self) -> None:
         self._connect().execute(MIGRATION_PATH.read_text(encoding="utf-8"))
+        if TECHNICIAN_INVENTORY_MIGRATION_PATH.exists():
+            self._connect().execute(TECHNICIAN_INVENTORY_MIGRATION_PATH.read_text(encoding="utf-8"))
         self._connect().commit()
 
     def next_sequence(self) -> int:
@@ -1183,6 +1410,204 @@ class PostgresServiceRequestRepository:
         )
         self._connect().commit()
         return self._get_request_status(request_number)
+
+    def list_requests_for_technician(self, technician_identifier: str) -> list[dict[str, Any]]:
+        rows = self._connect().execute(
+            """
+            SELECT
+                sr.request_number,
+                sr.status,
+                sr.urgency,
+                sr.address,
+                sr.visit_window,
+                c.name AS customer_name,
+                m.brand,
+                m.model,
+                (
+                    SELECT se.title
+                    FROM status_events se
+                    WHERE se.service_request_id = sr.id
+                    ORDER BY se.id DESC
+                    LIMIT 1
+                ) AS latest_event_title
+            FROM service_requests sr
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE sr.assigned_technician_name = %s
+            ORDER BY sr.id DESC
+            """,
+            (technician_identifier,),
+        ).fetchall()
+        return [
+            {
+                "request_number": row["request_number"],
+                "status": row["status"],
+                "customer_name": row["customer_name"],
+                "machine_label": f"{row['brand']}{f' {row['model']}' if row['model'] else ''}",
+                "urgency": row["urgency"],
+                "address": row["address"],
+                "visit_window": row["visit_window"],
+                "latest_event_title": row["latest_event_title"] or "",
+            }
+            for row in rows
+        ]
+
+    def get_technician_request(self, request_number: str, technician_identifier: str) -> dict[str, Any]:
+        row = self._connect().execute(
+            """
+            SELECT
+                sr.request_number,
+                sr.status,
+                sr.problem,
+                sr.address,
+                sr.urgency,
+                sr.visit_window,
+                c.name AS customer_name,
+                c.phone AS customer_phone,
+                m.brand,
+                m.model
+            FROM service_requests sr
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE sr.request_number = %s AND sr.assigned_technician_name = %s
+            """,
+            (request_number, technician_identifier),
+        ).fetchone()
+        if row is None:
+            raise KeyError(request_number)
+        return {
+            "request_number": row["request_number"],
+            "status": row["status"],
+            "customer_name": row["customer_name"],
+            "customer_phone": row["customer_phone"],
+            "machine_label": f"{row['brand']}{f' {row['model']}' if row['model'] else ''}",
+            "problem": row["problem"],
+            "address": row["address"],
+            "urgency": row["urgency"],
+            "visit_window": row["visit_window"],
+            "diagnosis": self._latest_technician_diagnosis(request_number),
+            "repair_result": self._latest_technician_repair_result(request_number),
+        }
+
+    def record_technician_diagnosis(
+        self,
+        request_number: str,
+        technician_identifier: str,
+        checklist: dict[str, bool],
+        summary: str,
+        actor: str,
+    ) -> str:
+        self.get_technician_request(request_number, technician_identifier)
+        self._connect().execute(
+            """
+            INSERT INTO technician_diagnoses (
+                request_number, machine_powered_on, water_supply_checked, leak_checked, error_code_checked,
+                summary, actor
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                request_number,
+                checklist["machine_powered_on"],
+                checklist["water_supply_checked"],
+                checklist["leak_checked"],
+                checklist["error_code_checked"],
+                summary,
+                actor,
+            ),
+        )
+        self._connect().commit()
+        self.add_status_event(
+            request_number=request_number,
+            status="diagnostics",
+            title="Диагностика начата",
+            description="Мастер проверяет кофемашину и фиксирует результат диагностики.",
+            actor=actor,
+        )
+        return self._get_request_status(request_number)
+
+    def record_technician_result(
+        self,
+        request_number: str,
+        technician_identifier: str,
+        result: str,
+        summary: str,
+        next_step: str | None,
+        actor: str,
+    ) -> str:
+        self.get_technician_request(request_number, technician_identifier)
+        status = "completed" if result == "completed" else "waiting_for_parts" if result == "waiting_for_parts" else "repair_in_progress"
+        title = "Ремонт завершен" if status == "completed" else "Ожидаем запчасти" if status == "waiting_for_parts" else "Нужен повторный шаг"
+        self._connect().execute(
+            """
+            INSERT INTO technician_repair_results (request_number, result, summary, next_step, actor)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (request_number, result, summary, next_step, actor),
+        )
+        self._connect().commit()
+        self.add_status_event(request_number, status, title, "Мастер обновил результат выезда по заявке.", actor)
+        return self._get_request_status(request_number)
+
+    def record_technician_parts_used_status(
+        self,
+        request_number: str,
+        technician_identifier: str,
+        actor: str,
+    ) -> str:
+        self.get_technician_request(request_number, technician_identifier)
+        self.add_status_event(
+            request_number=request_number,
+            status="repair_in_progress",
+            title="Запчасти использованы",
+            description="Мастер использовал запчасти и продолжает ремонт.",
+            actor=actor,
+        )
+        return self._get_request_status(request_number)
+
+    def _latest_technician_diagnosis(self, request_number: str) -> dict[str, Any] | None:
+        row = self._connect().execute(
+            """
+            SELECT *
+            FROM technician_diagnoses
+            WHERE request_number = %s
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (request_number,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "machine_powered_on": row["machine_powered_on"],
+            "water_supply_checked": row["water_supply_checked"],
+            "leak_checked": row["leak_checked"],
+            "error_code_checked": row["error_code_checked"],
+            "summary": row["summary"],
+            "actor": row["actor"],
+            "created_at": self._format_timestamp(row["created_at"]),
+        }
+
+    def _latest_technician_repair_result(self, request_number: str) -> dict[str, Any] | None:
+        row = self._connect().execute(
+            """
+            SELECT *
+            FROM technician_repair_results
+            WHERE request_number = %s
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (request_number,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "result": row["result"],
+            "summary": row["summary"],
+            "next_step": row["next_step"],
+            "actor": row["actor"],
+            "created_at": self._format_timestamp(row["created_at"]),
+        }
 
     def _connect(self) -> psycopg.Connection[dict[str, Any]]:
         if self._connection is None or self._connection.closed:

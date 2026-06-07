@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, the Phase 03 public status and notification opt-in flow, a PostgreSQL persistence slice for Docker Compose, the Phase 04 dispatcher MVP, the Phase 05 staff access layer, the Phase 06 knowledge-base RAG slice, and the Phase 07 AI agent workflow slice. The API can create persisted service requests, expose public status snapshots, record clarification answers, create Telegram opt-in links, support protected internal dispatcher list/detail/actions, issue local-development staff tokens with role checks, ingest repair knowledge documents, chunk/embed them, retrieve source-backed chunks, generate dispatcher-reviewed AI suggestions, and accept diagnostic-question suggestions as normal clarification questions. Docker Compose API runs against PostgreSQL with pgvector, while injected tests keep sqlite in-memory persistence.
+The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, the Phase 03 public status and notification opt-in flow, a PostgreSQL persistence slice for Docker Compose, the Phase 04 dispatcher MVP, the Phase 05 staff access layer, the Phase 06 knowledge-base RAG slice, the Phase 07 AI agent workflow slice, and the Phase 08 technician and inventory slice. The API can create persisted service requests, expose public status snapshots, record clarification answers, create Telegram opt-in links, support protected internal dispatcher list/detail/actions, issue local-development staff tokens with role checks, ingest repair knowledge documents, chunk/embed them, retrieve source-backed chunks, generate dispatcher-reviewed AI suggestions, accept diagnostic-question suggestions as normal clarification questions, expose assigned technician visits, record technician diagnosis/results, manage a basic parts catalog, track stock counts, and record parts used on requests. Docker Compose API runs against PostgreSQL with pgvector, while injected tests keep sqlite in-memory persistence.
 
 ## Latest Changes
 
@@ -37,15 +37,18 @@ The repository currently contains a Figma-exported React/Vite reference in `refe
 - 2026-06-07: Implemented Phase 06 knowledge-base RAG with text document ingestion, deterministic chunking, source-backed retrieval, sqlite and PostgreSQL pgvector repositories, a worker embedding task boundary, and an E61 overheating seed repair document.
 - 2026-06-07: Created `docs/execution-plans/detailed/07-ai-agent-workflows-implementation.md` and marked it ready for review before executing Phase 07.
 - 2026-06-07: Implemented Phase 07 AI agent workflows with deterministic prompt assembly, source-backed dispatcher suggestions, sqlite/PostgreSQL AI suggestion persistence, protected dispatcher AI routes, and a dispatcher AI suggestion panel.
+- 2026-06-07: Created `docs/execution-plans/detailed/08-technician-and-inventory-implementation.md` and marked it ready for review before executing Phase 08.
+- 2026-06-07: Implemented Phase 08 technician and inventory with protected technician visit workflow, diagnosis/result capture, parts catalog, stock counts, parts-used stock decrement, technician status events, and technician/inventory web workspaces.
+- 2026-06-07: Inserted Phase 09 Staff Admin and User Management before deployment, moved deployment and operations to Phase 10, and created `docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md`.
 
 ## Active Focus
 
-Phase 08 planning is the active focus: create and review a detailed implementation plan before adding technician mobile flow or basic parts tracking.
+Phase 09 plan review is the active focus: review the detailed Staff Admin and User Management implementation plan before replacing local-development-only staff users.
 
 ## Next Steps
 
-1. Create the detailed Phase 08 implementation plan for technician mobile flow and basic parts tracking.
-2. Review the Phase 08 detailed plan before implementation.
+1. Review the detailed Phase 09 implementation plan for persisted staff accounts and admin user management.
+2. After plan review, implement Phase 09 as a bounded staff administration slice.
 3. Keep `python3 tools/repo-checks/check_docs.py`, API tests, worker tests, Telegram bot tests, and web checks passing after harness changes.
 
 ## Active Artifacts
@@ -69,7 +72,12 @@ Phase 08 planning is the active focus: create and review a detailed implementati
 - Completed Phase 07 slice: `docs/execution-plans/phases/07-ai-agent-workflows.md`
 - Detailed Phase 07 plan: `docs/execution-plans/detailed/07-ai-agent-workflows-implementation.md`
 - Phase 07 review: `docs/review/phase-07-review.md`
-- Next phase slice: `docs/execution-plans/phases/08-technician-and-inventory.md`
+- Completed Phase 08 slice: `docs/execution-plans/phases/08-technician-and-inventory.md`
+- Detailed Phase 08 plan: `docs/execution-plans/detailed/08-technician-and-inventory-implementation.md`
+- Phase 08 review: `docs/review/phase-08-review.md`
+- Next phase slice: `docs/execution-plans/phases/09-staff-admin-and-user-management.md`
+- Detailed Phase 09 plan: `docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md`
+- Following phase slice: `docs/execution-plans/phases/10-deployment-and-operations.md`
 - Architecture map: `ARCHITECTURE.md`
 - Domain map: `docs/domain-maps/index.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
@@ -110,3 +118,7 @@ Phase 08 planning is the active focus: create and review a detailed implementati
 - Only accepted diagnostic-question suggestions create customer-visible clarification questions; likely causes, parts, and customer replies remain dispatcher-reviewed drafts.
 - Phase 07 parts suggestions are inventory concepts only. Live catalog, stock, reservations, and technician parts workflows remain Phase 08 scope.
 - Public status snapshots never expose AI suggestions, source chunks, prompt inputs, or provider metadata.
+- Phase 08 technician actions require the `technician` staff role and only expose requests assigned to the staff username stored in dispatcher assignment metadata.
+- Phase 08 inventory management requires the `inventory` staff role; parts-used actions decrement stock immediately and reject insufficient stock before service-request status changes.
+- Public status snapshots can show customer-safe technician timeline events but not technician checklist summaries, repair-result internal details, parts-used notes, stock counts, part IDs, or inventory metadata.
+- Phase 09 should add persisted staff accounts and admin user management before production deployment; local-development staff users must remain separated from production account management.

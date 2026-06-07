@@ -16,6 +16,13 @@ from serviceops_api.ai_agents.use_cases import (
 )
 from serviceops_api.config import get_settings
 from serviceops_api.health import HealthStatus, build_health_status
+from serviceops_api.inventory.api import create_inventory_router
+from serviceops_api.inventory.repository import (
+    PostgresInventoryRepository,
+    SqliteInventoryRepository,
+    create_inventory_repository,
+)
+from serviceops_api.inventory.use_cases import CreatePart, ListParts, SetStockCount
 from serviceops_api.knowledge_base.api import create_knowledge_base_router
 from serviceops_api.knowledge_base.embeddings import DeterministicEmbeddingProvider
 from serviceops_api.knowledge_base.repository import (
@@ -47,12 +54,21 @@ from serviceops_api.service_requests.use_cases import (
     UpdateDispatcherStatus,
 )
 from serviceops_api.staff_auth import StaffAuthenticator, create_staff_auth_router, require_staff_role
+from serviceops_api.technicians.api import create_technician_router
+from serviceops_api.technicians.use_cases import (
+    GetTechnicianRequest,
+    ListTechnicianRequests,
+    RecordTechnicianDiagnosis,
+    RecordTechnicianPartsUsed,
+    RecordTechnicianResult,
+)
 
 
 def create_app(
     service_request_repository: ServiceRequestRepository | PostgresServiceRequestRepository | None = None,
     knowledge_base_repository: SqliteKnowledgeBaseRepository | PostgresKnowledgeBaseRepository | None = None,
     ai_suggestion_repository: SqliteAiSuggestionRepository | PostgresAiSuggestionRepository | None = None,
+    inventory_repository: SqliteInventoryRepository | PostgresInventoryRepository | None = None,
     staff_authenticator: StaffAuthenticator | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Coffee Fix ServiceOps API")
@@ -67,6 +83,7 @@ def create_app(
         service_request_repository is not None
         or knowledge_base_repository is not None
         or ai_suggestion_repository is not None
+        or inventory_repository is not None
     )
     repository = service_request_repository or create_service_request_repository(settings)
     knowledge_repository = knowledge_base_repository or (
@@ -78,6 +95,11 @@ def create_app(
         SqliteAiSuggestionRepository.in_memory()
         if has_injected_repository
         else create_ai_suggestion_repository(settings)
+    )
+    inventory_store = inventory_repository or (
+        SqliteInventoryRepository.in_memory()
+        if has_injected_repository
+        else create_inventory_repository(settings)
     )
     embedding_provider = DeterministicEmbeddingProvider(settings.knowledge_embedding_dimensions)
     retrieve_knowledge = RetrieveKnowledge(knowledge_repository, embedding_provider)
@@ -124,6 +146,24 @@ def create_app(
             AcceptAiClarificationSuggestion(repository, ai_repository),
             IgnoreAiSuggestion(ai_repository),
             staff_dependency=require_staff_role("dispatcher", authenticator),
+        )
+    )
+    app.include_router(
+        create_inventory_router(
+            CreatePart(inventory_store),
+            ListParts(inventory_store),
+            SetStockCount(inventory_store),
+            staff_dependency=require_staff_role("inventory", authenticator),
+        )
+    )
+    app.include_router(
+        create_technician_router(
+            ListTechnicianRequests(repository),
+            GetTechnicianRequest(repository),
+            RecordTechnicianDiagnosis(repository),
+            RecordTechnicianResult(repository),
+            RecordTechnicianPartsUsed(repository, inventory_store),
+            staff_dependency=require_staff_role("technician", authenticator),
         )
     )
 
