@@ -1,0 +1,114 @@
+# Smoke Tests
+
+## Compose Config
+
+```bash
+docker compose -f docker-compose.production.yml --env-file .env.example config
+```
+
+For a real environment, run the same command with the production env file or Dokploy-rendered environment.
+
+## Scripted Check
+
+```bash
+SERVICEOPS_PUBLIC_API_BASE_URL=https://api.example.com \
+SERVICEOPS_PUBLIC_WEB_BASE_URL=https://app.example.com \
+N8N_TEST_WEBHOOK_URL=https://n8n.example.com/webhook/serviceops-smoke \
+tools/operations/smoke_test.sh
+```
+
+`N8N_TEST_WEBHOOK_URL` is optional. When omitted, the script prints manual n8n follow-up checks.
+
+## Manual API Health
+
+```bash
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/health"
+```
+
+Expected: JSON status with `status` equal to `healthy`.
+
+## Manual Web Root
+
+```bash
+curl -fsS "$SERVICEOPS_PUBLIC_WEB_BASE_URL/"
+```
+
+Expected: successful HTTP response containing the web shell.
+
+## Manual Request Intake
+
+```bash
+curl -fsS -X POST "$SERVICEOPS_PUBLIC_API_BASE_URL/service-requests" \
+  -H "content-type: application/json" \
+  -d '{
+    "customer": {"name": "Smoke Test", "phone": "+15555550100"},
+    "machine": {"brand": "La Marzocco", "model": "Linea Mini"},
+    "problem_description": "Smoke test request",
+    "urgency": "standard"
+  }'
+```
+
+Expected: response includes `request_number` and `public_token`.
+
+## Manual Status Lookup
+
+```bash
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/service-requests/<request-number>/status"
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/status/<public-token>"
+```
+
+Expected: public-safe status snapshot. Internal notes, AI suggestions, staff accounts, and inventory metadata must not be present.
+
+## Staff Login And Dispatcher Route
+
+```bash
+token="$(curl -fsS -X POST "$SERVICEOPS_PUBLIC_API_BASE_URL/staff/login" \
+  -H "content-type: application/json" \
+  -d '{"username":"dispatcher@example.com","password":"<password>"}' \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')"
+
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/dispatcher/service-requests" \
+  -H "authorization: Bearer $token"
+```
+
+Expected: dispatcher list response for a persisted dispatcher account.
+
+## Worker
+
+```bash
+docker compose -f docker-compose.production.yml logs --tail=100 worker
+docker compose -f docker-compose.production.yml exec worker \
+  celery -A serviceops_worker.celery_app:celery_app inspect ping
+```
+
+Expected: worker process is running and Celery responds when the container is healthy.
+
+## Telegram Bot
+
+```bash
+docker compose -f docker-compose.production.yml --profile integrations logs --tail=100 telegram-bot
+```
+
+Expected: disabled-token log when no token is configured, or polling startup with a production token.
+
+## n8n Webhook Path
+
+Create a temporary test workflow with a webhook path such as `/webhook/serviceops-smoke`, then run:
+
+```bash
+curl -fsS -X POST "$N8N_TEST_WEBHOOK_URL" \
+  -H "content-type: application/json" \
+  -d '{"source":"serviceops-smoke"}'
+```
+
+Expected: n8n receives the payload and the workflow execution succeeds.
+
+## Backup Check
+
+On a non-production database or during a controlled maintenance window:
+
+```bash
+tools/operations/postgres_backup.sh
+```
+
+Expected: a `.dump` file and `.sha256` file are created in `SERVICEOPS_BACKUP_DIR`.

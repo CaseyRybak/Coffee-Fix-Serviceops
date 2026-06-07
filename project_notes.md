@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, the Phase 03 public status and notification opt-in flow, a PostgreSQL persistence slice for Docker Compose, the Phase 04 dispatcher MVP, the Phase 05 staff access layer, the Phase 06 knowledge-base RAG slice, the Phase 07 AI agent workflow slice, the Phase 08 technician and inventory slice, and the Phase 09 staff admin and user management slice. The API can create persisted service requests, expose public status snapshots, record clarification answers, create Telegram opt-in links, support protected internal dispatcher list/detail/actions, authenticate persisted staff accounts with development seed fallback, manage staff accounts through admin-only APIs, record staff-management audit events, ingest repair knowledge documents, chunk/embed them, retrieve source-backed chunks, generate dispatcher-reviewed AI suggestions, accept diagnostic-question suggestions as normal clarification questions, expose assigned technician visits, record technician diagnosis/results, manage a basic parts catalog, track stock counts, and record parts used on requests. Docker Compose API runs against PostgreSQL with pgvector, while injected tests keep sqlite in-memory persistence.
+The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, the Phase 03 public status and notification opt-in flow, a PostgreSQL persistence slice for Docker Compose, the Phase 04 dispatcher MVP, the Phase 05 staff access layer, the Phase 06 knowledge-base RAG slice, the Phase 07 AI agent workflow slice, the Phase 08 technician and inventory slice, the Phase 09 staff admin and user management slice, and the Phase 10 deployment and operations slice. The API can create persisted service requests, expose public status snapshots, record clarification answers, create Telegram opt-in links, support protected internal dispatcher list/detail/actions, authenticate persisted staff accounts with development seed fallback, manage staff accounts through admin-only APIs, record staff-management audit events, ingest repair knowledge documents, chunk/embed them, retrieve source-backed chunks, generate dispatcher-reviewed AI suggestions, accept diagnostic-question suggestions as normal clarification questions, expose assigned technician visits, record technician diagnosis/results, manage a basic parts catalog, track stock counts, record parts used on requests, emit structured JSON logs, and run PostgreSQL migration initialization through an operations command. Docker Compose API runs against PostgreSQL with pgvector, production-oriented Compose covers Dokploy/VPS services including n8n, and injected tests keep sqlite in-memory persistence.
 
 ## Latest Changes
 
@@ -42,16 +42,20 @@ The repository currently contains a Figma-exported React/Vite reference in `refe
 - 2026-06-07: Inserted Phase 09 Staff Admin and User Management before deployment, moved deployment and operations to Phase 10, and created `docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md`.
 - 2026-06-07: Implemented Phase 09 staff admin and user management with persisted staff accounts, password hashes, admin-only account lifecycle API, audit events, persisted login before development seed fallback, and an `/admin` workspace.
 - 2026-06-07: Added a local-only persisted staff seed command for dispatcher, technician, and inventory development accounts.
+- 2026-06-07: Created `docs/execution-plans/detailed/10-deployment-and-operations-implementation.md` to prepare the Dokploy deployment, operations, backup, structured logging, n8n workflow, and smoke-test slice.
+- 2026-06-07: Implemented Phase 10 deployment and operations with production Compose, expanded environment documentation, JSON logging setup, PostgreSQL migration command, backup/restore scripts, smoke-test script, n8n workflow records, and concrete operations runbooks.
+- 2026-06-07: Completed Phase 10 local review, fixed smoke-test status endpoints, clarified private-network PostgreSQL backup guidance, and moved active focus to backlog grooming or the next approved slice.
 
 ## Active Focus
 
-Phase 10 deployment and operations is the active focus: prepare the Dokploy deployment, backups, observability, and n8n operational flow slice after staff account management.
+Phase 10 deployment and operations is locally reviewed and ready to close. The active focus is backlog grooming or selecting the next user-approved implementation slice; create a detailed implementation plan before executing the next slice.
 
 ## Next Steps
 
-1. Create the detailed Phase 10 implementation plan before executing deployment and operations work.
-2. Review deployment safety assumptions around production staff accounts, database migrations, backups, and public exposure.
-3. Keep `python3 tools/repo-checks/check_docs.py`, API tests, worker tests, Telegram bot tests, and web checks passing after harness changes.
+1. Select the next approved implementation slice and create its detailed plan before execution.
+2. Run deployment smoke checks against a real Dokploy/VPS environment before public launch.
+3. Add backend-to-n8n webhook emission and delivery-result persistence when notification automation moves beyond design records.
+4. Keep `python3 tools/repo-checks/check_docs.py`, API tests, worker tests, Telegram bot tests, web checks, production Compose config, and operations shell syntax checks passing after harness changes.
 
 ## Active Artifacts
 
@@ -79,7 +83,8 @@ Phase 10 deployment and operations is the active focus: prepare the Dokploy depl
 - Phase 08 review: `docs/review/phase-08-review.md`
 - Detailed Phase 09 plan: `docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md`
 - Phase 09 review: `docs/review/phase-09-review.md`
-- Next phase slice: `docs/execution-plans/phases/10-deployment-and-operations.md`
+- Detailed Phase 10 plan: `docs/execution-plans/detailed/10-deployment-and-operations-implementation.md`
+- Phase 10 review: `docs/review/phase-10-review.md`
 - Architecture map: `ARCHITECTURE.md`
 - Domain map: `docs/domain-maps/index.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
@@ -128,3 +133,8 @@ Phase 10 deployment and operations is the active focus: prepare the Dokploy depl
 - Local developers can persist the dispatcher, technician, and inventory seed users with `cd apps/api && uv run --extra dev python -m serviceops_api.staff_management.seed_local_staff`.
 - Phase 09 admin account lifecycle actions require the `admin` role, create staff audit records, and block deactivating the last active admin account.
 - Public status snapshots and public navigation still do not expose staff accounts, admin routes, password reset data, audit events, or internal workspaces.
+- Production deployment uses `docker-compose.production.yml` for Dokploy/VPS while the local Compose file remains localhost-only.
+- PostgreSQL and Redis must remain private Docker-network services in production; public routing is only for web, API, and n8n through Dokploy or the reverse proxy.
+- API, worker, and Telegram bot services emit structured JSON logs to stdout for Dokploy log collection.
+- n8n automates delivery and operational routing around backend events, but it does not own service-request state, staff identity, customer answers, inventory counts, or repair lifecycle transitions.
+- Production backups use PostgreSQL custom-format dumps with checksum files, and restore drills should run against a non-production database.

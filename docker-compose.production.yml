@@ -1,0 +1,123 @@
+services:
+  api:
+    build:
+      context: ./apps/api
+    environment:
+      SERVICEOPS_ENVIRONMENT: production
+      SERVICEOPS_DATABASE_URL: ${SERVICEOPS_DATABASE_URL:-postgresql+psycopg://serviceops:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-serviceops}}
+      SERVICEOPS_REDIS_URL: ${SERVICEOPS_REDIS_URL:-redis://redis:6379/0}
+      SERVICEOPS_CORS_ALLOWED_ORIGINS: ${SERVICEOPS_CORS_ALLOWED_ORIGINS:?set SERVICEOPS_CORS_ALLOWED_ORIGINS}
+      SERVICEOPS_STAFF_AUTH_SECRET: ${SERVICEOPS_STAFF_AUTH_SECRET:?set SERVICEOPS_STAFF_AUTH_SECRET}
+      SERVICEOPS_STAFF_TOKEN_TTL_SECONDS: ${SERVICEOPS_STAFF_TOKEN_TTL_SECONDS:-43200}
+      SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS: ${SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS:-12}
+      SERVICEOPS_KNOWLEDGE_RETRIEVAL_LIMIT: ${SERVICEOPS_KNOWLEDGE_RETRIEVAL_LIMIT:-5}
+      SERVICEOPS_AI_PROVIDER: ${SERVICEOPS_AI_PROVIDER:-deterministic}
+      SERVICEOPS_AI_SUGGESTION_LIMIT: ${SERVICEOPS_AI_SUGGESTION_LIMIT:-5}
+      SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET: ${SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET:?set SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET}
+    expose:
+      - "8000"
+    ports:
+      - "${SERVICEOPS_API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        VITE_SERVICEOPS_API_BASE_URL: ${SERVICEOPS_PUBLIC_API_BASE_URL:?set SERVICEOPS_PUBLIC_API_BASE_URL}
+    expose:
+      - "80"
+    ports:
+      - "${SERVICEOPS_WEB_PORT:-3000}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./apps/worker
+    environment:
+      SERVICEOPS_ENVIRONMENT: production
+      SERVICEOPS_REDIS_BROKER_URL: ${SERVICEOPS_REDIS_BROKER_URL:-redis://redis:6379/0}
+      SERVICEOPS_REDIS_RESULT_BACKEND: ${SERVICEOPS_REDIS_RESULT_BACKEND:-redis://redis:6379/1}
+      SERVICEOPS_DATABASE_URL: ${SERVICEOPS_DATABASE_URL:-postgresql+psycopg://serviceops:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-serviceops}}
+      SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS: ${SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS:-12}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  telegram-bot:
+    build:
+      context: ./apps/telegram-bot
+    environment:
+      SERVICEOPS_ENVIRONMENT: production
+      SERVICEOPS_TELEGRAM_BOT_TOKEN: ${SERVICEOPS_TELEGRAM_BOT_TOKEN:-}
+    profiles:
+      - integrations
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-serviceops}
+      POSTGRES_USER: ${POSTGRES_USER:-serviceops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-serviceops} -d ${POSTGRES_DB:-serviceops}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  n8n:
+    image: n8nio/n8n:2.22.3
+    environment:
+      N8N_HOST: ${N8N_HOST:?set N8N_HOST}
+      N8N_PORT: ${N8N_PORT:-5678}
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-https}
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL:?set N8N_WEBHOOK_URL}
+      N8N_BASIC_AUTH_ACTIVE: ${N8N_BASIC_AUTH_ACTIVE:-true}
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:?set N8N_BASIC_AUTH_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:?set N8N_BASIC_AUTH_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?set N8N_ENCRYPTION_KEY}
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:-serviceops}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-serviceops}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      DB_TABLE_PREFIX: n8n_
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  n8n-data:

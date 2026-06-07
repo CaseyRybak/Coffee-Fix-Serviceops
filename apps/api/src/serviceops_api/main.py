@@ -16,6 +16,7 @@ from serviceops_api.ai_agents.use_cases import (
 )
 from serviceops_api.config import get_settings
 from serviceops_api.health import HealthStatus, build_health_status
+from serviceops_api.observability import configure_logging
 from serviceops_api.inventory.api import create_inventory_router
 from serviceops_api.inventory.repository import (
     PostgresInventoryRepository,
@@ -89,6 +90,7 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Coffee Fix ServiceOps API")
     settings = get_settings()
+    configure_logging(settings.service_name, settings.environment)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

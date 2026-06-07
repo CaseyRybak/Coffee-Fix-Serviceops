@@ -8,7 +8,7 @@ description: Use when preparing CoffeeFix Pro for VPS deployment, Docker Compose
 ## Context To Open
 
 - `docs/architecture/tech-stack.md`
-- Phase 09 plan.
+- Phase 10 deployment plan.
 - `project_notes.md`
 
 ## Pattern

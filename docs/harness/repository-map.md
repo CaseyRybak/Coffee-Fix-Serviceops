@@ -7,6 +7,7 @@
 - `ARCHITECTURE.md`: system and domain architecture overview.
 - `README.md`: human-readable project introduction.
 - `package.json`: root developer scripts for local web checks and dev server.
+- `docker-compose.production.yml`: production-oriented Compose definition for Dokploy/VPS deployment.
 - `reference/figma`: exported Figma/Vite reference for the public UI.
 
 ## Product Docs
@@ -39,6 +40,7 @@
 - `docs/execution-plans/detailed/07-ai-agent-workflows-implementation.md`: completed detailed plan for AI-assisted dispatcher workflows.
 - `docs/execution-plans/detailed/08-technician-and-inventory-implementation.md`: completed detailed plan for technician mobile flow and basic parts tracking.
 - `docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md`: completed detailed plan for persisted staff accounts and admin user management.
+- `docs/execution-plans/detailed/10-deployment-and-operations-implementation.md`: completed detailed plan for Dokploy deployment, backups, observability, n8n workflows, and smoke tests.
 - `docs/execution-plans/completed/`: completed phase plans.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
@@ -49,11 +51,20 @@
 - `docs/review/phase-07-review.md`: Phase 07 review artifact for AI agent workflows.
 - `docs/review/phase-08-review.md`: Phase 08 review artifact for technician workflow and inventory basics.
 - `docs/review/phase-09-review.md`: Phase 09 review artifact for staff admin and user management.
+- `docs/review/phase-10-review.md`: Phase 10 review artifact for deployment and operations.
 
 ## Workflow Skills
 
 - `docs/agent-skills/skill-catalog.md`: skill list.
 - `docs/agent-skills/<skill>/SKILL.md`: portable repo-specific workflow drafts.
+
+## Operations Docs
+
+- `docs/operations/deployment-runbook.md`: concrete Dokploy/VPS deployment runbook.
+- `docs/operations/backup-restore.md`: PostgreSQL backup, restore, checksum, retention, and restore-drill procedure.
+- `docs/operations/smoke-tests.md`: manual and scripted deployment smoke-test checklist.
+- `docs/operations/n8n-workflows.md`: n8n workflow design records for request and status notifications.
+- `tools/operations/`: operational shell scripts and regression checks for backup, restore, and smoke checks.
 
 ## Code Areas
 
@@ -75,6 +86,7 @@
 
 - `.env.example`: local environment template.
 - `docker-compose.yml`: localhost-only local PostgreSQL, Redis, API using PostgreSQL persistence, web on port 3000, worker, and optional Telegram bot profile.
+- `docker-compose.production.yml`: production-oriented API, web, worker, Telegram bot, PostgreSQL, Redis, and n8n Compose definition.
 - `apps/api/Dockerfile`: API container definition.
 - `apps/web/Dockerfile`: web container definition.
 - `apps/worker/Dockerfile`: worker container definition.

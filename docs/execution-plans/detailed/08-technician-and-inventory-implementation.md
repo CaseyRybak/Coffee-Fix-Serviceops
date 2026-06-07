@@ -374,7 +374,7 @@ Add Phase 08 implementation artifacts to `docs/harness/repository-map.md` and `t
 
 - [ ] **Step 3: Update operational status**
 
-After implementation and review, update `project_notes.md` to mark Phase 08 complete and Phase 09 active. Update `docs/execution-plans/index.md` so active phase is `phases/09-deployment-and-operations.md` and detailed Phase 08 is listed as completed.
+After implementation and review, update `project_notes.md` to mark Phase 08 complete and Phase 09 active. Update `docs/execution-plans/index.md` so active phase is `phases/09-staff-admin-and-user-management.md` and detailed Phase 08 is listed as completed.
 
 - [ ] **Step 4: Run full verification**
 

@@ -10,7 +10,7 @@ description: Use when adding Telegram bot flows for request linking, status noti
 - `domains/notifications/AGENTS.md`
 - `domains/notifications/domain.md`
 - `domains/service-requests/domain.md`
-- Phase 03 or Phase 09 plan.
+- Phase 03 or Phase 10 plan.
 
 ## Pattern
 

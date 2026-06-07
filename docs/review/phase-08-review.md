@@ -65,7 +65,7 @@ None remaining.
 
 ## Suggested Follow-Up Slice
 
-- Phase 09 deployment and operations planning.
+- Phase 09 staff admin and user-management planning.
 - Later scheduling work can add confirmed appointments and rescheduling rules.
 - Later inventory work can add catalog search, reservations, suppliers, warehouses, purchasing, and stock adjustment audit trails.
 
@@ -75,4 +75,4 @@ None remaining. Phase 08 domain boundaries, repository map, plan index, review a
 
 ## Final Recommendation
 
-Phase 08 is ready to move to Phase 09 planning. Readiness score: 8.5/10.
+Phase 08 is ready to move to Phase 09 staff admin planning. Readiness score: 8.5/10.

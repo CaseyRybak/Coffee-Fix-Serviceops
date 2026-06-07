@@ -38,6 +38,16 @@ REQUIRED_FILES = [
     "docs/execution-plans/detailed/07-ai-agent-workflows-implementation.md",
     "docs/execution-plans/detailed/08-technician-and-inventory-implementation.md",
     "docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md",
+    "docs/execution-plans/detailed/10-deployment-and-operations-implementation.md",
+    "docker-compose.production.yml",
+    "docs/operations/deployment-runbook.md",
+    "docs/operations/backup-restore.md",
+    "docs/operations/smoke-tests.md",
+    "docs/operations/n8n-workflows.md",
+    "tools/operations/postgres_backup.sh",
+    "tools/operations/postgres_restore.sh",
+    "tools/operations/smoke_test.sh",
+    "tools/operations/test_smoke_script_contract.py",
     "docs/review/phase-00-review.md",
     "docs/review/phase-01-review.md",
     "docs/review/phase-02-review.md",
@@ -48,6 +58,7 @@ REQUIRED_FILES = [
     "docs/review/phase-07-review.md",
     "docs/review/phase-08-review.md",
     "docs/review/phase-09-review.md",
+    "docs/review/phase-10-review.md",
     ".env.example",
     "docker-compose.yml",
     "apps/api/Dockerfile",
@@ -305,6 +316,12 @@ def main() -> None:
     require_text("docker-compose.yml", "127.0.0.1:${SERVICEOPS_WEB_PORT:-3000}:80")
     require_text("docker-compose.yml", "127.0.0.1:${POSTGRES_PORT:-5432}:5432")
     require_text("docker-compose.yml", "127.0.0.1:6379:6379")
+    require_text("docker-compose.production.yml", "n8n:")
+    require_text("docker-compose.production.yml", "pgvector/pgvector:pg16")
+    require_text("docker-compose.production.yml", "SERVICEOPS_STAFF_AUTH_SECRET")
+    require_text(".env.example", "SERVICEOPS_PUBLIC_API_BASE_URL")
+    require_text(".env.example", "N8N_WEBHOOK_URL")
+    require_text(".env.example", "SERVICEOPS_BACKUP_DIR")
 
     scan_for_markers()
     validate_local_links()

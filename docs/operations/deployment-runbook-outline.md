@@ -1,6 +1,13 @@
 # Deployment Runbook Outline
 
-This outline becomes the concrete runbook during Phase 09.
+This outline was converted into concrete Phase 10 operations documents.
+
+## Concrete Documents
+
+- `docs/operations/deployment-runbook.md`
+- `docs/operations/backup-restore.md`
+- `docs/operations/smoke-tests.md`
+- `docs/operations/n8n-workflows.md`
 
 ## Services
 
