@@ -19,7 +19,8 @@ After meaningful work, update the smallest artifact that helps the next contribu
 
 ## Update Targets
 
-- `project_notes.md`: current status, latest changes, active focus, next steps.
+- `project_notes.md`: compact current operating dashboard, active focus, next steps, verification commands, and current decisions.
+- `docs/harness/project-history.md`: historical phase chronology, older decisions, and deferred work ledger.
 - Domain docs: vocabulary or lifecycle changes.
 - Phase plans: completion status or new follow-up slices.
 - Decision docs: durable architectural or product choices.

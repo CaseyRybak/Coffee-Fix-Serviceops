@@ -17,6 +17,7 @@ REQUIRED_FILES = [
     "project_notes.md",
     "package.json",
     "docs/harness/repository-map.md",
+    "docs/harness/project-history.md",
     "docs/execution-plans/index.md",
     "docs/review/subagent-review-protocol.md",
     "docs/product/vision.md",
@@ -59,6 +60,7 @@ REQUIRED_FILES = [
     "docs/review/phase-08-review.md",
     "docs/review/phase-09-review.md",
     "docs/review/phase-10-review.md",
+    "docs/review/documentation-audit-2026-06-07.md",
     ".env.example",
     "docker-compose.yml",
     "apps/api/Dockerfile",
@@ -200,6 +202,7 @@ ENTRY_DOCS = [
     "README.md",
     "ARCHITECTURE.md",
     "project_notes.md",
+    "docs/harness/project-history.md",
     "docs/harness/repository-map.md",
     "docs/execution-plans/index.md",
 ]
@@ -322,6 +325,9 @@ def main() -> None:
     require_text(".env.example", "SERVICEOPS_PUBLIC_API_BASE_URL")
     require_text(".env.example", "N8N_WEBHOOK_URL")
     require_text(".env.example", "SERVICEOPS_BACKUP_DIR")
+    require_text("project_notes.md", "current operating dashboard")
+    require_text("docs/harness/project-history.md", "Deferred Work Ledger")
+    require_text("docs/harness/repository-map.md", "compact current operating dashboard")
 
     scan_for_markers()
     validate_local_links()

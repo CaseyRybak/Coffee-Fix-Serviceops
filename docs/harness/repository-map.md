@@ -3,7 +3,8 @@
 ## Root
 
 - `AGENTS.md`: entry map for contributors.
-- `project_notes.md`: current status, latest changes, active focus, and next steps.
+- `project_notes.md`: compact current operating dashboard, active focus, next steps, entry points, verification commands, and current decisions.
+- `docs/harness/project-history.md`: archived phase chronology, historical decisions, and deferred work ledger.
 - `ARCHITECTURE.md`: system and domain architecture overview.
 - `README.md`: human-readable project introduction.
 - `package.json`: root developer scripts for local web checks and dev server.
@@ -52,6 +53,7 @@
 - `docs/review/phase-08-review.md`: Phase 08 review artifact for technician workflow and inventory basics.
 - `docs/review/phase-09-review.md`: Phase 09 review artifact for staff admin and user management.
 - `docs/review/phase-10-review.md`: Phase 10 review artifact for deployment and operations.
+- `docs/review/documentation-audit-2026-06-07.md`: documentation consistency and quality audit after Phase 10.
 
 ## Workflow Skills
 

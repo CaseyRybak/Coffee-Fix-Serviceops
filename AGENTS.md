@@ -8,11 +8,12 @@ Never create commits or push changes unless the user gives a direct instruction 
 
 ## Start Here
 
-1. Read `project_notes.md` for current status, recent changes, active focus, and next steps.
+1. Read `project_notes.md` for the current operating dashboard, active focus, next steps, and verification commands.
 2. Read `ARCHITECTURE.md` for the system map and domain boundaries.
 3. Read `docs/execution-plans/index.md` to choose the active slice.
 4. Read the relevant `domains/<domain>/AGENTS.md` before working inside a domain.
 5. Read `docs/review/subagent-review-protocol.md` before marking a slice ready.
+6. Read `docs/harness/project-history.md` only when older phase chronology or deferred-work context matters.
 
 ## Product Context
 

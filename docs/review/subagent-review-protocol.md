@@ -47,4 +47,4 @@ Store review results as a durable artifact when a phase is marked complete. Use 
 
 ## Slice Completion
 
-A slice is complete when blocking review issues are resolved, verification commands pass, and `project_notes.md` points to the next active phase.
+A slice is complete when blocking review issues are resolved, verification commands pass, and `project_notes.md` points to the next active focus or next approved phase.

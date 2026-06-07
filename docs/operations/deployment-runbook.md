@@ -8,6 +8,7 @@
 - The repository is available to Dokploy.
 - Production `.env` values are set from `.env.example` with real secrets.
 - A persistent backup directory exists on the host and is covered by host-level retention.
+- A production-safe first-admin bootstrap procedure exists before public launch. The current local seed command is intentionally blocked in production.
 
 ## Services
 
@@ -88,7 +89,16 @@ The Telegram bot is allowed to log that it is disabled when `SERVICEOPS_TELEGRAM
 
 ## Production Staff Accounts
 
-Create the first persisted admin before public operations. Then use the admin workspace to create dispatcher, technician, and inventory users. Local-development seed users are fallback-only and must not be treated as production account management.
+Production staff accounts are persisted and managed through the admin API/workspace after an admin exists.
+
+Current limitation: the repository does not yet provide a production-safe first-admin bootstrap command. The local seed command is intentionally limited to `local`, `development`, `dev`, and `test` environments and must not be used as a production account bootstrap.
+
+Before public launch, add and verify one of these bootstrap paths:
+
+1. A one-time production admin bootstrap command that creates the first persisted admin from environment-provided credentials and refuses to run when an active admin already exists.
+2. A controlled database migration/runbook step that inserts the first admin with a properly hashed password and records the operational audit trail.
+
+After the first admin exists, use the admin workspace to create dispatcher, technician, and inventory users. Do not expose the deployment publicly while relying on local-development seed users.
 
 ## Rollback
 

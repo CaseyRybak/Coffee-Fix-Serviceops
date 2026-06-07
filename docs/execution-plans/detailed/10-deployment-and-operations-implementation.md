@@ -430,7 +430,7 @@ Update `docs/execution-plans/index.md`:
 Update `project_notes.md`:
 
 - Current Status includes Phase 10 deployment and operations artifacts.
-- Latest Changes records the implementation date and major artifacts.
+- `docs/harness/project-history.md` records the implementation date and major artifacts.
 - Active Focus becomes backlog grooming or the next user-approved phase.
 - Next Steps point to running deployment smoke checks against a real Dokploy environment and selecting the next approved slice.
 - Active Artifacts includes the Phase 10 detailed plan and `docs/review/phase-10-review.md`.

@@ -6,10 +6,10 @@ The project is a modular monolith with DDD and hexagonal architecture. The monol
 
 ## Applications
 
-- `apps/api`: FastAPI REST API.
-- `apps/web`: React/Vite public site, status page, and later dispatcher UI.
-- `apps/worker`: background jobs for embeddings, notifications, AI processing, and maintenance.
-- `apps/telegram-bot`: aiogram bot for status tracking and notifications.
+- `apps/api`: FastAPI REST API plus operational migration entry points.
+- `apps/web`: React/Vite public site, status page, dispatcher workspace, technician workspace, inventory workspace, and admin workspace.
+- `apps/worker`: Celery background jobs for embeddings and later notification/AI maintenance.
+- `apps/telegram-bot`: aiogram bot shell for future request linking and notifications.
 
 ## Domain Areas
 

@@ -9,7 +9,7 @@
 - Dispatcher request list and request card.
 - Manual status transitions.
 - Manual technician assignment.
-- Telegram opt-in and status notifications.
+- Telegram opt-in contract and notification workflow design. Outbound Telegram/n8n delivery remains deferred until a notification delivery slice.
 - PostgreSQL persistence.
 - Basic RAG document ingestion with pgvector.
 - First AI workflows for intake classification and diagnostic questions.

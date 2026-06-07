@@ -72,6 +72,13 @@ Clarification questions belong to the service-request lifecycle. A dispatcher ca
 
 Public access rule: request-number lookup is supported for MVP convenience, and token lookup is supported for direct links. Public responses must avoid internal IDs except the clarification `question_id` required to submit an answer.
 
+Current public status API paths:
+
+- `GET /service-requests/{request_number}/status` reads a public-safe status snapshot by request number.
+- `GET /status/{public_token}` reads the same public-safe snapshot by token.
+- `POST /service-requests/{request_number}/answers` records a customer clarification answer.
+- `POST /service-requests/{request_number}/telegram-opt-in` creates a Telegram opt-in token and bot deep link.
+
 ## Phase 04 Dispatcher Model
 
 The dispatcher workflow is internal and extends the service-request lifecycle without changing the public status contract.

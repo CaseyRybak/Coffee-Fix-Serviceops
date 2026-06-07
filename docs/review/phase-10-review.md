@@ -25,7 +25,6 @@ Independent Codex review pass for Phase 10 deployability, secret handling, opera
 - `tools/operations/postgres_restore.sh`
 - `tools/operations/smoke_test.sh`
 - `tools/operations/test_smoke_script_contract.py`
-- `tools/operations/test_smoke_script_contract.py`
 - `docs/operations/deployment-runbook.md`
 - `docs/operations/backup-restore.md`
 - `docs/operations/smoke-tests.md`
@@ -50,7 +49,6 @@ Independent Codex review pass for Phase 10 deployability, secret handling, opera
 - `bash -n tools/operations/postgres_backup.sh`: passed.
 - `bash -n tools/operations/postgres_restore.sh`: passed.
 - `bash -n tools/operations/smoke_test.sh`: passed.
-- `python3 tools/operations/test_smoke_script_contract.py`: passed.
 
 ## Blocking Issues
 
@@ -61,6 +59,7 @@ Independent Codex review pass for Phase 10 deployability, secret handling, opera
 - Production smoke tests against an actual Dokploy/VPS environment were not run locally.
 - n8n workflow documents define operational contracts, but backend event emission to n8n remains future integration work.
 - The direct backup script requires a private database endpoint; the operations docs now prioritize a Compose-network backup path because production PostgreSQL is intentionally not public.
+- Production first-admin bootstrap is not implemented yet. Local seed users are disabled outside local/dev/test environments, so a production-safe first-admin bootstrap command or controlled runbook step is required before public launch.
 
 ## Review Fixes Applied
 
@@ -73,6 +72,7 @@ Independent Codex review pass for Phase 10 deployability, secret handling, opera
 
 - Choose the next approved backlog slice and create its detailed implementation plan before execution.
 - Add delivery-result persistence and backend-to-n8n webhook emission when notification automation moves beyond design records.
+- Add a production-safe first-admin bootstrap command before exposing a real deployment.
 - Add log shipping, uptime monitoring, and alerting after the first Dokploy deployment.
 
 ## Documentation Updates Needed
@@ -81,4 +81,4 @@ Independent Codex review pass for Phase 10 deployability, secret handling, opera
 
 ## Final Recommendation
 
-Phase 10 is locally ready to close and ready for selection of the next approved slice. Public launch still requires running the deployment smoke checks against the actual Dokploy/VPS environment.
+Phase 10 is locally reviewed and ready for selection of the next approved slice. Public launch still requires production-safe first-admin bootstrap and deployment smoke checks against the actual Dokploy/VPS environment.

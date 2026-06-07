@@ -5,8 +5,9 @@
 - Python.
 - FastAPI.
 - Pydantic.
-- SQLAlchemy 2.x.
-- Alembic.
+- sqlite3 for deterministic local/test repositories.
+- psycopg for PostgreSQL repositories.
+- Hand-written SQL migration files applied by repository initialization and the operations migration command.
 - pytest.
 - httpx.
 
@@ -45,3 +46,7 @@
 - VPS.
 - Dokploy.
 - HTTPS through Dokploy or reverse proxy.
+
+## Deferred Stack Choices
+
+- SQLAlchemy 2.x and Alembic are not part of the current runtime implementation. Revisit them only if the hand-written repository and migration approach becomes too costly to maintain.
