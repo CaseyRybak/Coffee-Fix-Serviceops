@@ -315,6 +315,156 @@ p {
   font-weight: 800;
 }
 
+.admin-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.admin-staff-card {
+  grid-row: span 2;
+}
+
+.admin-section-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.admin-section-heading h2 {
+  margin: 0;
+}
+
+.admin-section-heading span {
+  padding: 5px 9px;
+  color: #5a3825;
+  background: #f4ede3;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.admin-staff-table,
+.admin-audit-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-staff-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.9fr) minmax(240px, 1fr) minmax(220px, 0.85fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 92px;
+  padding: 14px;
+  background: #fffaf2;
+  border: 1px solid rgba(90, 56, 37, 0.12);
+  border-radius: 8px;
+}
+
+.admin-staff-row.inactive {
+  background: #f3f0eb;
+  opacity: 0.82;
+}
+
+.admin-staff-row strong,
+.admin-staff-row span,
+.admin-staff-row small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-staff-row strong {
+  color: #241d18;
+}
+
+.admin-staff-row span,
+.admin-staff-row small {
+  color: #75665d;
+  font-size: 0.84rem;
+}
+
+.role-chip-row,
+.admin-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.role-chip,
+.admin-row-actions button {
+  min-height: 34px;
+  padding: 0 10px;
+  color: #5a3825;
+  background: #ffffff;
+  border: 1px solid #d8c8b8;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.role-chip.selected {
+  color: #ffffff;
+  background: #2f6b4f;
+  border-color: #2f6b4f;
+}
+
+.admin-row-actions button {
+  color: #2f241c;
+}
+
+.admin-role-control {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-role-control > span {
+  color: #717182;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.temporary-password-result {
+  margin: 0;
+  padding: 14px 16px;
+  color: #214f39;
+  background: #edf5ee;
+  border: 1px solid #bfd7c5;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.temporary-password-result strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.admin-audit-list article {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  background: #fffaf2;
+  border: 1px solid rgba(90, 56, 37, 0.12);
+  border-radius: 8px;
+}
+
+.admin-audit-list strong {
+  color: #2f241c;
+  font-size: 0.9rem;
+}
+
+.admin-audit-list span,
+.admin-audit-list small {
+  min-width: 0;
+  color: #75665d;
+  overflow-wrap: anywhere;
+}
+
 .workspace-header-label {
   display: inline-flex;
   align-items: center;
@@ -1857,6 +2007,26 @@ select:focus {
   .repair-step::after {
     display: none !important;
   }
+
+  .dispatcher-workspace,
+  .inventory-workspace,
+  .admin-workspace,
+  .dispatcher-summary-card,
+  .dispatcher-grid,
+  .technician-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inventory-table-card,
+  .admin-staff-card {
+    grid-row: auto;
+  }
+
+  .admin-staff-row,
+  .inventory-table article {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1982,6 +2152,32 @@ select:focus {
   .footer-bottom > div {
     justify-content: center;
     flex-wrap: wrap;
+  }
+
+  .dispatcher-topline,
+  .ai-suggestions-heading,
+  .admin-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dispatcher-card {
+    padding: 16px;
+  }
+
+  .dispatcher-summary-card dl {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-row-actions,
+  .role-chip-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-row-actions button,
+  .role-chip {
+    width: 100%;
   }
 
   .mobile-sticky-cta {

@@ -153,6 +153,31 @@ interface StaffSession {
   roles: StaffRole[];
 }
 
+interface StaffAccountItem {
+  username: string;
+  display_name: string;
+  roles: StaffRole[];
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface StaffAccountListResponse {
+  items: StaffAccountItem[];
+}
+
+interface StaffAuditEvent {
+  actor_username: string;
+  target_username: string;
+  action: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+interface StaffAuditListResponse {
+  items: StaffAuditEvent[];
+}
+
 interface DispatcherRequestDetail {
   request_number: string;
   status: RequestStatus;
@@ -636,6 +661,30 @@ export function buildInventoryStockPath(partId: number): string {
   return `/inventory/parts/${partId}/stock`;
 }
 
+export function buildAdminStaffPath(): string {
+  return "/admin/staff";
+}
+
+export function buildAdminStaffRolesPath(username: string): string {
+  return `/admin/staff/${encodeURIComponent(username)}/roles`;
+}
+
+export function buildAdminStaffActivatePath(username: string): string {
+  return `/admin/staff/${encodeURIComponent(username)}/activate`;
+}
+
+export function buildAdminStaffDeactivatePath(username: string): string {
+  return `/admin/staff/${encodeURIComponent(username)}/deactivate`;
+}
+
+export function buildAdminStaffResetPasswordPath(username: string): string {
+  return `/admin/staff/${encodeURIComponent(username)}/reset-password`;
+}
+
+export function buildAdminStaffAuditPath(): string {
+  return "/admin/staff/audit";
+}
+
 export function buildStaffLoginPath(nextPath = "/dispatcher"): string {
   return `/staff/login?next=${encodeURIComponent(nextPath)}`;
 }
@@ -680,6 +729,7 @@ export function resolveStaffLandingPath(staff: { roles: StaffRole[]; username?: 
     { prefix: "/dispatcher", role: "dispatcher" },
     { prefix: "/technician", role: "technician" },
     { prefix: "/inventory", role: "inventory" },
+    { prefix: "/admin", role: "admin" },
   ];
   const safeNext = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : null;
   const matchingRoute = safeNext ? routeRoles.find((route) => safeNext.startsWith(route.prefix)) : undefined;
@@ -687,7 +737,7 @@ export function resolveStaffLandingPath(staff: { roles: StaffRole[]; username?: 
   if (staff.roles.includes("dispatcher")) return "/dispatcher";
   if (staff.roles.includes("technician")) return "/technician";
   if (staff.roles.includes("inventory")) return "/inventory";
-  if (staff.roles.includes("admin")) return "/dispatcher";
+  if (staff.roles.includes("admin")) return "/admin";
   return "/staff/login";
 }
 
@@ -1690,7 +1740,7 @@ export function DispatcherPage({
 }
 
 export function StaffLoginPage() {
-  const [username, setUsername] = useState("dispatcher@coffeefix.local");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -1747,7 +1797,7 @@ export function StaffLoginPage() {
               <input
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                placeholder="dispatcher@coffeefix.local"
+                placeholder="name@company.example"
                 required
                 type="email"
               />
@@ -1757,7 +1807,7 @@ export function StaffLoginPage() {
               <input
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="dispatcher-local"
+                placeholder="Введите пароль"
                 required
                 type="password"
               />
@@ -1828,6 +1878,346 @@ export function ProtectedDispatcherPage({
   }
 
   return <DispatcherPage session={session} onLogout={logout} />;
+}
+
+const staffRoleOptions: StaffRole[] = ["admin", "dispatcher", "technician", "inventory"];
+
+export function AdminPage({
+  initialSession,
+  initialStaff,
+  initialAudit,
+  onLogout,
+}: {
+  initialSession?: StaffSession | null;
+  initialStaff?: StaffAccountListResponse;
+  initialAudit?: StaffAuditListResponse;
+  onLogout?: () => void;
+}) {
+  const session = initialSession ?? getStoredStaffSession();
+  const [staff, setStaff] = useState<StaffAccountListResponse>(initialStaff ?? { items: [] });
+  const [audit, setAudit] = useState<StaffAuditListResponse>(initialAudit ?? { items: [] });
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
+  const [createRoles, setCreateRoles] = useState<StaffRole[]>(["dispatcher"]);
+  const [roleDrafts, setRoleDrafts] = useState<Record<string, StaffRole[]>>(() =>
+    Object.fromEntries((initialStaff?.items ?? []).map((item) => [item.username, item.roles])),
+  );
+  const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function loadStaff() {
+    const response = await fetch(`${apiBaseUrl()}${buildAdminStaffPath()}`, { headers: staffAuthHeaders(session) });
+    if (!response.ok) throw new Error(`Admin staff list failed with ${response.status}`);
+    const body = (await response.json()) as StaffAccountListResponse;
+    setStaff(body);
+    setRoleDrafts(Object.fromEntries(body.items.map((item) => [item.username, item.roles])));
+    return body;
+  }
+
+  async function loadAudit() {
+    const response = await fetch(`${apiBaseUrl()}${buildAdminStaffAuditPath()}`, { headers: staffAuthHeaders(session) });
+    if (!response.ok) throw new Error(`Admin audit list failed with ${response.status}`);
+    const body = (await response.json()) as StaffAuditListResponse;
+    setAudit(body);
+  }
+
+  async function refresh() {
+    setLoading(true);
+    setMessage(null);
+    try {
+      await loadStaff();
+      await loadAudit();
+    } catch {
+      setMessage("Не удалось обновить учетные записи сотрудников.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (initialStaff || initialAudit) return;
+    void refresh();
+  }, [initialStaff, initialAudit]);
+
+  function toggleRole(roles: StaffRole[], role: StaffRole): StaffRole[] {
+    const next = roles.includes(role) ? roles.filter((item) => item !== role) : [...roles, role];
+    return next.length ? staffRoleOptions.filter((item) => next.includes(item)) : roles;
+  }
+
+  async function submitCreateStaff(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    setTemporaryPassword(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${buildAdminStaffPath()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
+        body: JSON.stringify({
+          username: username.trim(),
+          display_name: displayName.trim(),
+          password,
+          roles: createRoles,
+        }),
+      });
+      if (!response.ok) throw new Error(`Create staff failed with ${response.status}`);
+      setUsername("");
+      setDisplayName("");
+      setPassword("");
+      setCreateRoles(["dispatcher"]);
+      await refresh();
+      setMessage("Сотрудник создан.");
+    } catch {
+      setMessage("Не удалось создать сотрудника.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function postAdminAction(path: string, body: object, successMessage: string) {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error(`Admin action failed with ${response.status}`);
+      if (path.endsWith("/reset-password")) {
+        const resetBody = (await response.json()) as { temporary_password: string };
+        setTemporaryPassword(resetBody.temporary_password);
+      } else {
+        setTemporaryPassword(null);
+      }
+      await refresh();
+      setMessage(successMessage);
+    } catch {
+      setMessage("Не удалось сохранить действие администратора.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="app-page dispatcher-page admin-page">
+      <WorkspaceHeader session={session} onLogout={onLogout} />
+      <main className="dispatcher-main">
+        <section className="section-inner dispatcher-shell">
+          <div className="dispatcher-topline">
+            <div>
+              <span>Административный контур</span>
+              <h1>Администрирование</h1>
+              <p>Учетные записи сотрудников, роли, жизненный цикл доступа и аудит действий.</p>
+            </div>
+            <button className="secondary-status-button" type="button" onClick={() => void refresh()} disabled={loading}>
+              {loading ? "Обновляем" : "Обновить"}
+            </button>
+          </div>
+          {message ? <p className="status-message">{message}</p> : null}
+          {temporaryPassword ? (
+            <p className="temporary-password-result">
+              Временный пароль: <strong>{temporaryPassword}</strong>
+            </p>
+          ) : null}
+          <div className="admin-workspace">
+            <section className="dispatcher-card admin-staff-card">
+              <div className="admin-section-heading">
+                <h2>Учетные записи сотрудников</h2>
+                <span>{staff.items.length} записей</span>
+              </div>
+              <div className="admin-staff-table">
+                {staff.items.length ? (
+                  staff.items.map((account) => {
+                    const draftRoles = roleDrafts[account.username] ?? account.roles;
+                    return (
+                      <article className={account.active ? "admin-staff-row" : "admin-staff-row inactive"} key={account.username}>
+                        <div>
+                          <strong>{account.display_name}</strong>
+                          <span>{account.username}</span>
+                          <small>{account.active ? "Активен" : "Отключен"} · обновлен {account.updated_at}</small>
+                        </div>
+                        <div className="role-chip-row" aria-label={`Роли ${account.username}`}>
+                          {staffRoleOptions.map((role) => (
+                            <button
+                              className={draftRoles.includes(role) ? "role-chip selected" : "role-chip"}
+                              key={role}
+                              type="button"
+                              onClick={() =>
+                                setRoleDrafts((current) => ({
+                                  ...current,
+                                  [account.username]: toggleRole(draftRoles, role),
+                                }))
+                              }
+                            >
+                              {role}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="admin-row-actions">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void postAdminAction(
+                                buildAdminStaffRolesPath(account.username),
+                                { roles: draftRoles },
+                                "Роли сотрудника обновлены.",
+                              )
+                            }
+                          >
+                            Сохранить роли
+                          </button>
+                          {account.active ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void postAdminAction(buildAdminStaffDeactivatePath(account.username), {}, "Сотрудник отключен.")
+                              }
+                            >
+                              Отключить
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void postAdminAction(buildAdminStaffActivatePath(account.username), {}, "Сотрудник активирован.")
+                              }
+                            >
+                              Активировать
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void postAdminAction(buildAdminStaffResetPasswordPath(account.username), {}, "Пароль сброшен.")
+                            }
+                          >
+                            Сбросить пароль
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })
+                ) : (
+                  <p>Сотрудники пока не добавлены.</p>
+                )}
+              </div>
+            </section>
+
+            <section className="dispatcher-card admin-create-card">
+              <h2>Новый сотрудник</h2>
+              <form className="dispatcher-form" onSubmit={submitCreateStaff}>
+                <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="email сотрудника" required type="email" />
+                <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Имя в интерфейсе" required />
+                <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Временный пароль" required type="password" minLength={8} />
+                <div className="admin-role-control">
+                  <span>Роли сотрудника</span>
+                  <div className="role-chip-row">
+                    {staffRoleOptions.map((role) => (
+                      <button
+                        className={createRoles.includes(role) ? "role-chip selected" : "role-chip"}
+                        key={role}
+                        type="button"
+                        onClick={() => setCreateRoles((current) => toggleRole(current, role))}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button className="submit-button" type="submit" disabled={loading}>
+                  Создать сотрудника
+                </button>
+              </form>
+            </section>
+
+            <section className="dispatcher-card admin-audit-card">
+              <div className="admin-section-heading">
+                <h2>Аудит действий</h2>
+                <span>{audit.items.length} событий</span>
+              </div>
+              <div className="admin-audit-list">
+                {audit.items.length ? (
+                  audit.items.map((event) => (
+                    <article key={`${event.created_at}-${event.action}-${event.target_username}`}>
+                      <strong>{event.action}</strong>
+                      <span>{event.target_username}</span>
+                      <small>
+                        {event.actor_username} · {event.created_at}
+                      </small>
+                    </article>
+                  ))
+                ) : (
+                  <p>Событий аудита пока нет.</p>
+                )}
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+export function ProtectedAdminPage({
+  hasSession,
+  initialSession,
+  initialStaff,
+  initialAudit,
+}: {
+  hasSession?: boolean;
+  initialSession?: StaffSession | null;
+  initialStaff?: StaffAccountListResponse;
+  initialAudit?: StaffAuditListResponse;
+}) {
+  const [session, setSession] = useState<StaffSession | null>(() => {
+    if (initialSession !== undefined) return initialSession;
+    if (typeof hasSession === "boolean") {
+      return hasSession ? { accessToken: "test-token", username: "admin@coffeefix.local", roles: ["admin"] } : null;
+    }
+    return getStoredStaffSession();
+  });
+
+  useEffect(() => {
+    if (initialSession !== undefined || typeof hasSession === "boolean") return;
+    const stored = getStoredStaffSession();
+    setSession(stored);
+    if ((!stored || !staffHasRole(stored, "admin")) && typeof window !== "undefined") {
+      window.location.href = buildStaffLoginPath(window.location.pathname);
+    }
+  }, [hasSession, initialSession]);
+
+  function logout() {
+    clearStaffSession();
+    setSession(null);
+    if (typeof window !== "undefined") window.location.href = buildStaffLoginPath("/admin");
+  }
+
+  if (!staffHasRole(session, "admin")) {
+    const isAuthenticated = Boolean(session);
+    return (
+      <div className="app-page dispatcher-page">
+        <WorkspaceHeader />
+        <main className="dispatcher-main">
+          <section className="section-inner dispatcher-shell">
+            <div className="dispatcher-card protected-empty">
+              <Shield aria-hidden="true" />
+              <h1>{isAuthenticated ? "Недостаточно прав" : "Требуется вход сотрудника"}</h1>
+              <p>{isAuthenticated ? "Для управления сотрудниками нужна роль admin." : "Администрирование находится во внутреннем контуре."}</p>
+              <a className="submit-button" href={buildStaffLoginPath("/admin")}>
+                <LogIn aria-hidden="true" />
+                {isAuthenticated ? "Войти другим сотрудником" : "Войти"}
+              </a>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  return <AdminPage initialSession={session} onLogout={logout} initialStaff={initialStaff} initialAudit={initialAudit} />;
 }
 
 export function TechnicianPage({
@@ -2770,9 +3160,11 @@ export function App() {
   const isDispatcherRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/dispatcher");
   const isTechnicianRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/technician");
   const isInventoryRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/inventory");
+  const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
   const isStaffLoginRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/staff/login");
   const isStatusRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/status");
   if (isStaffLoginRoute) return <StaffLoginPage />;
+  if (isAdminRoute) return <ProtectedAdminPage />;
   if (isDispatcherRoute) return <ProtectedDispatcherPage />;
   if (isTechnicianRoute) return <ProtectedTechnicianPage />;
   if (isInventoryRoute) return <ProtectedInventoryPage />;

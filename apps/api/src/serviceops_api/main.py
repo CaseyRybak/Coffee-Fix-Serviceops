@@ -54,6 +54,21 @@ from serviceops_api.service_requests.use_cases import (
     UpdateDispatcherStatus,
 )
 from serviceops_api.staff_auth import StaffAuthenticator, create_staff_auth_router, require_staff_role
+from serviceops_api.staff_management.api import create_staff_management_router
+from serviceops_api.staff_management.repository import (
+    PostgresStaffAccountRepository,
+    SqliteStaffAccountRepository,
+    create_staff_account_repository,
+)
+from serviceops_api.staff_management.use_cases import (
+    ActivateStaffAccount,
+    CreateStaffAccount,
+    DeactivateStaffAccount,
+    ListStaffAccounts,
+    ListStaffAuditEvents,
+    ResetStaffPassword,
+    UpdateStaffRoles,
+)
 from serviceops_api.technicians.api import create_technician_router
 from serviceops_api.technicians.use_cases import (
     GetTechnicianRequest,
@@ -69,6 +84,7 @@ def create_app(
     knowledge_base_repository: SqliteKnowledgeBaseRepository | PostgresKnowledgeBaseRepository | None = None,
     ai_suggestion_repository: SqliteAiSuggestionRepository | PostgresAiSuggestionRepository | None = None,
     inventory_repository: SqliteInventoryRepository | PostgresInventoryRepository | None = None,
+    staff_account_repository: SqliteStaffAccountRepository | PostgresStaffAccountRepository | None = None,
     staff_authenticator: StaffAuthenticator | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Coffee Fix ServiceOps API")
@@ -84,6 +100,7 @@ def create_app(
         or knowledge_base_repository is not None
         or ai_suggestion_repository is not None
         or inventory_repository is not None
+        or staff_account_repository is not None
     )
     repository = service_request_repository or create_service_request_repository(settings)
     knowledge_repository = knowledge_base_repository or (
@@ -101,12 +118,29 @@ def create_app(
         if has_injected_repository
         else create_inventory_repository(settings)
     )
+    staff_account_store = staff_account_repository or (
+        SqliteStaffAccountRepository.in_memory()
+        if has_injected_repository
+        else create_staff_account_repository(settings)
+    )
     embedding_provider = DeterministicEmbeddingProvider(settings.knowledge_embedding_dimensions)
     retrieve_knowledge = RetrieveKnowledge(knowledge_repository, embedding_provider)
     suggestion_provider = DeterministicAiSuggestionProvider()
-    authenticator = staff_authenticator or StaffAuthenticator(settings)
+    authenticator = staff_authenticator or StaffAuthenticator(settings, staff_account_store)
     get_public_status = GetPublicStatus(repository)
     app.include_router(create_staff_auth_router(authenticator))
+    app.include_router(
+        create_staff_management_router(
+            CreateStaffAccount(staff_account_store),
+            ListStaffAccounts(staff_account_store),
+            UpdateStaffRoles(staff_account_store),
+            ActivateStaffAccount(staff_account_store),
+            DeactivateStaffAccount(staff_account_store),
+            ResetStaffPassword(staff_account_store),
+            ListStaffAuditEvents(staff_account_store),
+            staff_dependency=require_staff_role("admin", authenticator),
+        )
+    )
     app.include_router(
         create_service_requests_router(
             CreateServiceRequest(repository),

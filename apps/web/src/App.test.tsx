@@ -5,7 +5,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   App,
+  AdminPage,
   DispatcherPage,
+  ProtectedAdminPage,
   ProtectedDispatcherPage,
   ProtectedInventoryPage,
   ProtectedTechnicianPage,
@@ -18,6 +20,12 @@ import {
   buildDispatcherInternalNotePath,
   buildDispatcherListPath,
   buildAcceptAiClarificationPath,
+  buildAdminStaffActivatePath,
+  buildAdminStaffAuditPath,
+  buildAdminStaffDeactivatePath,
+  buildAdminStaffPath,
+  buildAdminStaffResetPasswordPath,
+  buildAdminStaffRolesPath,
   buildGenerateAiSuggestionsPath,
   buildIgnoreAiSuggestionPath,
   buildInventoryPartsPath,
@@ -401,6 +409,27 @@ describe("App", () => {
     });
   });
 
+  it("builds admin staff management API paths", () => {
+    assert.equal(buildAdminStaffPath(), "/admin/staff");
+    assert.equal(
+      buildAdminStaffRolesPath("admin user@coffeefix.local"),
+      "/admin/staff/admin%20user%40coffeefix.local/roles",
+    );
+    assert.equal(
+      buildAdminStaffActivatePath("admin@coffeefix.local"),
+      "/admin/staff/admin%40coffeefix.local/activate",
+    );
+    assert.equal(
+      buildAdminStaffDeactivatePath("admin@coffeefix.local"),
+      "/admin/staff/admin%40coffeefix.local/deactivate",
+    );
+    assert.equal(
+      buildAdminStaffResetPasswordPath("admin@coffeefix.local"),
+      "/admin/staff/admin%40coffeefix.local/reset-password",
+    );
+    assert.equal(buildAdminStaffAuditPath(), "/admin/staff/audit");
+  });
+
   it("resolves one staff login landing path by role and validates next routes", () => {
     assert.equal(
       resolveStaffLandingPath({ username: "technician@coffeefix.local", roles: ["technician"] }, null),
@@ -425,6 +454,18 @@ describe("App", () => {
     assert.equal(
       resolveStaffLandingPath({ username: "inventory@coffeefix.local", roles: ["inventory"] }, "https://example.test"),
       "/inventory",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "admin@coffeefix.local", roles: ["admin"] }, null),
+      "/admin",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "admin@coffeefix.local", roles: ["admin"] }, "/admin"),
+      "/admin",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "lead@coffeefix.local", roles: ["admin", "dispatcher"] }, "/dispatcher"),
+      "/dispatcher",
     );
   });
 
@@ -467,7 +508,8 @@ describe("App", () => {
     );
 
     assert.match(loginHtml, /Вход для сотрудников/);
-    assert.match(loginHtml, /dispatcher@coffeefix.local/);
+    assert.doesNotMatch(loginHtml, /dispatcher@coffeefix.local/);
+    assert.doesNotMatch(loginHtml, /dispatcher-local/);
     assert.match(loginHtml, /Пароль/);
     assert.match(guardedHtml, /Требуется вход сотрудника/);
     assert.match(guardedHtml, /href="\/staff\/login\?next=%2Fdispatcher"/);
@@ -494,6 +536,66 @@ describe("App", () => {
     assert.match(technicianWrongRole, /Для выездов нужна роль technician/);
     assert.match(inventoryGuard, /href="\/staff\/login\?next=%2Finventory"/);
     assert.match(inventoryWrongRole, /Для склада нужна роль inventory/);
+  });
+
+  it("renders admin route guard and staff management workspace", () => {
+    const adminGuard = renderToStaticMarkup(<ProtectedAdminPage hasSession={false} />);
+    const wrongRoleHtml = renderToStaticMarkup(
+      <ProtectedAdminPage
+        initialSession={{ accessToken: "dispatcher-token", username: "dispatcher@coffeefix.local", roles: ["dispatcher"] }}
+      />,
+    );
+    const workspaceHtml = renderToStaticMarkup(
+      <AdminPage
+        initialSession={{ accessToken: "admin-token", username: "admin@coffeefix.local", roles: ["admin"] }}
+        initialStaff={{
+          items: [
+            {
+              username: "admin@coffeefix.local",
+              display_name: "Admin",
+              roles: ["admin"],
+              active: true,
+              created_at: "2026-06-07 12:00:00",
+              updated_at: "2026-06-07 12:00:00",
+            },
+            {
+              username: "tech@coffeefix.local",
+              display_name: "Tech",
+              roles: ["technician"],
+              active: false,
+              created_at: "2026-06-07 12:00:00",
+              updated_at: "2026-06-07 12:10:00",
+            },
+          ],
+        }}
+        initialAudit={{
+          items: [
+            {
+              actor_username: "admin@coffeefix.local",
+              target_username: "tech@coffeefix.local",
+              action: "staff.deactivated",
+              metadata: {},
+              created_at: "2026-06-07 12:10:00",
+            },
+          ],
+        }}
+      />,
+    );
+
+    assert.match(adminGuard, /Требуется вход сотрудника/);
+    assert.match(adminGuard, /href="\/staff\/login\?next=%2Fadmin"/);
+    assert.match(wrongRoleHtml, /Для управления сотрудниками нужна роль admin/);
+    assert.match(workspaceHtml, /Администрирование/);
+    assert.match(workspaceHtml, /Учетные записи сотрудников/);
+    assert.match(workspaceHtml, /Новый сотрудник/);
+    assert.match(workspaceHtml, /Роли сотрудника/);
+    assert.match(workspaceHtml, /admin@coffeefix.local/);
+    assert.match(workspaceHtml, /tech@coffeefix.local/);
+    assert.match(workspaceHtml, /technician/);
+    assert.match(workspaceHtml, /Активировать/);
+    assert.match(workspaceHtml, /Сбросить пароль/);
+    assert.match(workspaceHtml, /Аудит действий/);
+    assert.match(workspaceHtml, /staff.deactivated/);
   });
 
   it("renders dispatcher list detail and action controls", () => {

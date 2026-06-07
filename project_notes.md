@@ -2,7 +2,7 @@
 
 ## Current Status
 
-The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, the Phase 03 public status and notification opt-in flow, a PostgreSQL persistence slice for Docker Compose, the Phase 04 dispatcher MVP, the Phase 05 staff access layer, the Phase 06 knowledge-base RAG slice, the Phase 07 AI agent workflow slice, and the Phase 08 technician and inventory slice. The API can create persisted service requests, expose public status snapshots, record clarification answers, create Telegram opt-in links, support protected internal dispatcher list/detail/actions, issue local-development staff tokens with role checks, ingest repair knowledge documents, chunk/embed them, retrieve source-backed chunks, generate dispatcher-reviewed AI suggestions, accept diagnostic-question suggestions as normal clarification questions, expose assigned technician visits, record technician diagnosis/results, manage a basic parts catalog, track stock counts, and record parts used on requests. Docker Compose API runs against PostgreSQL with pgvector, while injected tests keep sqlite in-memory persistence.
+The repository currently contains a Figma-exported React/Vite reference in `reference/figma`, a documentation harness for repository-guided development, the Phase 01 runtime foundation, the Phase 02 service request intake flow, the Phase 03 public status and notification opt-in flow, a PostgreSQL persistence slice for Docker Compose, the Phase 04 dispatcher MVP, the Phase 05 staff access layer, the Phase 06 knowledge-base RAG slice, the Phase 07 AI agent workflow slice, the Phase 08 technician and inventory slice, and the Phase 09 staff admin and user management slice. The API can create persisted service requests, expose public status snapshots, record clarification answers, create Telegram opt-in links, support protected internal dispatcher list/detail/actions, authenticate persisted staff accounts with development seed fallback, manage staff accounts through admin-only APIs, record staff-management audit events, ingest repair knowledge documents, chunk/embed them, retrieve source-backed chunks, generate dispatcher-reviewed AI suggestions, accept diagnostic-question suggestions as normal clarification questions, expose assigned technician visits, record technician diagnosis/results, manage a basic parts catalog, track stock counts, and record parts used on requests. Docker Compose API runs against PostgreSQL with pgvector, while injected tests keep sqlite in-memory persistence.
 
 ## Latest Changes
 
@@ -40,15 +40,17 @@ The repository currently contains a Figma-exported React/Vite reference in `refe
 - 2026-06-07: Created `docs/execution-plans/detailed/08-technician-and-inventory-implementation.md` and marked it ready for review before executing Phase 08.
 - 2026-06-07: Implemented Phase 08 technician and inventory with protected technician visit workflow, diagnosis/result capture, parts catalog, stock counts, parts-used stock decrement, technician status events, and technician/inventory web workspaces.
 - 2026-06-07: Inserted Phase 09 Staff Admin and User Management before deployment, moved deployment and operations to Phase 10, and created `docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md`.
+- 2026-06-07: Implemented Phase 09 staff admin and user management with persisted staff accounts, password hashes, admin-only account lifecycle API, audit events, persisted login before development seed fallback, and an `/admin` workspace.
+- 2026-06-07: Added a local-only persisted staff seed command for dispatcher, technician, and inventory development accounts.
 
 ## Active Focus
 
-Phase 09 plan review is the active focus: review the detailed Staff Admin and User Management implementation plan before replacing local-development-only staff users.
+Phase 10 deployment and operations is the active focus: prepare the Dokploy deployment, backups, observability, and n8n operational flow slice after staff account management.
 
 ## Next Steps
 
-1. Review the detailed Phase 09 implementation plan for persisted staff accounts and admin user management.
-2. After plan review, implement Phase 09 as a bounded staff administration slice.
+1. Create the detailed Phase 10 implementation plan before executing deployment and operations work.
+2. Review deployment safety assumptions around production staff accounts, database migrations, backups, and public exposure.
 3. Keep `python3 tools/repo-checks/check_docs.py`, API tests, worker tests, Telegram bot tests, and web checks passing after harness changes.
 
 ## Active Artifacts
@@ -75,9 +77,9 @@ Phase 09 plan review is the active focus: review the detailed Staff Admin and Us
 - Completed Phase 08 slice: `docs/execution-plans/phases/08-technician-and-inventory.md`
 - Detailed Phase 08 plan: `docs/execution-plans/detailed/08-technician-and-inventory-implementation.md`
 - Phase 08 review: `docs/review/phase-08-review.md`
-- Next phase slice: `docs/execution-plans/phases/09-staff-admin-and-user-management.md`
 - Detailed Phase 09 plan: `docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md`
-- Following phase slice: `docs/execution-plans/phases/10-deployment-and-operations.md`
+- Phase 09 review: `docs/review/phase-09-review.md`
+- Next phase slice: `docs/execution-plans/phases/10-deployment-and-operations.md`
 - Architecture map: `ARCHITECTURE.md`
 - Domain map: `docs/domain-maps/index.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
@@ -121,4 +123,8 @@ Phase 09 plan review is the active focus: review the detailed Staff Admin and Us
 - Phase 08 technician actions require the `technician` staff role and only expose requests assigned to the staff username stored in dispatcher assignment metadata.
 - Phase 08 inventory management requires the `inventory` staff role; parts-used actions decrement stock immediately and reject insufficient stock before service-request status changes.
 - Public status snapshots can show customer-safe technician timeline events but not technician checklist summaries, repair-result internal details, parts-used notes, stock counts, part IDs, or inventory metadata.
-- Phase 09 should add persisted staff accounts and admin user management before production deployment; local-development staff users must remain separated from production account management.
+- Phase 09 added persisted staff accounts and admin user management before production deployment; local-development staff users remain separated from production account management.
+- Phase 09 authenticates persisted staff accounts before falling back to local development seed users.
+- Local developers can persist the dispatcher, technician, and inventory seed users with `cd apps/api && uv run --extra dev python -m serviceops_api.staff_management.seed_local_staff`.
+- Phase 09 admin account lifecycle actions require the `admin` role, create staff audit records, and block deactivating the last active admin account.
+- Public status snapshots and public navigation still do not expose staff accounts, admin routes, password reset data, audit events, or internal workspaces.

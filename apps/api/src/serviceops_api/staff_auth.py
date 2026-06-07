@@ -4,8 +4,9 @@ import base64
 import hashlib
 import hmac
 import json
+import os
 import time
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Protocol
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -17,6 +18,8 @@ from serviceops_api.config import Settings
 StaffRole = Literal["dispatcher", "admin", "technician", "inventory"]
 
 security = HTTPBearer(auto_error=False)
+PASSWORD_ALGORITHM = "pbkdf2_sha256"
+PASSWORD_ITERATIONS = 260_000
 
 
 def _clean_required(value: str) -> str:
@@ -45,13 +48,54 @@ class StaffLoginResponse(BaseModel):
     staff: StaffUser
 
 
+class StaffAccountReader(Protocol):
+    def get_account_by_username(self, username: str) -> dict[str, object] | None:
+        """Return persisted account data including roles, active, and password_hash."""
+
+
+def hash_staff_password(password: str, salt: str | None = None) -> str:
+    resolved_salt = salt or base64.urlsafe_b64encode(os.urandom(16)).decode("ascii").rstrip("=")
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        resolved_salt.encode("ascii"),
+        PASSWORD_ITERATIONS,
+    )
+    encoded_digest = base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+    return f"{PASSWORD_ALGORITHM}${PASSWORD_ITERATIONS}${resolved_salt}${encoded_digest}"
+
+
+def verify_staff_password(password: str, encoded_hash: str) -> bool:
+    try:
+        algorithm, iterations, salt, expected_digest = encoded_hash.split("$", 3)
+        if algorithm != PASSWORD_ALGORITHM:
+            return False
+        digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("ascii"), int(iterations))
+        actual_digest = base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+    except (ValueError, TypeError):
+        return False
+    return hmac.compare_digest(actual_digest, expected_digest)
+
+
 class StaffAuthenticator:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, staff_account_reader: StaffAccountReader | None = None) -> None:
         self._secret = settings.staff_auth_secret.encode("utf-8")
         self._token_ttl_seconds = settings.staff_token_ttl_seconds
         self._users = self._build_dev_users(settings)
+        self._staff_account_reader = staff_account_reader
 
     def authenticate(self, username: str, password: str) -> StaffUser:
+        persisted = self._staff_account_reader.get_account_by_username(username) if self._staff_account_reader else None
+        if persisted is not None:
+            roles = [role for role in persisted.get("roles", []) if role in {"dispatcher", "admin", "technician", "inventory"}]
+            if (
+                not bool(persisted.get("active"))
+                or not roles
+                or not verify_staff_password(password, str(persisted.get("password_hash", "")))
+            ):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid staff credentials")
+            return StaffUser(username=str(persisted["username"]), roles=roles)
+
         stored = self._users.get(username)
         if stored is None or not hmac.compare_digest(stored["password"], password):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid staff credentials")
@@ -87,9 +131,23 @@ class StaffAuthenticator:
         roles = [role for role in payload.get("roles", []) if role in {"dispatcher", "admin", "technician", "inventory"}]
         if not username or not roles:
             raise self._invalid_token()
+        persisted = self._staff_account_reader.get_account_by_username(username) if self._staff_account_reader else None
+        if persisted is not None:
+            current_roles = [
+                role
+                for role in persisted.get("roles", [])
+                if role in {"dispatcher", "admin", "technician", "inventory"}
+            ]
+            if not bool(persisted.get("active")) or not current_roles:
+                raise self._invalid_token()
+            return StaffUser(username=str(persisted["username"]), roles=current_roles)
+        if username not in self._users:
+            raise self._invalid_token()
         return StaffUser(username=username, roles=roles)
 
     def _build_dev_users(self, settings: Settings) -> dict[str, dict[str, object]]:
+        if settings.environment.strip().lower() not in {"local", "development", "dev", "test"}:
+            return {}
         users: dict[str, dict[str, object]] = {
             settings.staff_dev_username: {
                 "password": settings.staff_dev_password,

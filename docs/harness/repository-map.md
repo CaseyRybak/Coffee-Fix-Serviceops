@@ -38,7 +38,7 @@
 - `docs/execution-plans/detailed/06-knowledge-base-rag-implementation.md`: completed detailed plan for knowledge-base RAG.
 - `docs/execution-plans/detailed/07-ai-agent-workflows-implementation.md`: completed detailed plan for AI-assisted dispatcher workflows.
 - `docs/execution-plans/detailed/08-technician-and-inventory-implementation.md`: completed detailed plan for technician mobile flow and basic parts tracking.
-- `docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md`: detailed plan ready for persisted staff accounts and admin user management.
+- `docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md`: completed detailed plan for persisted staff accounts and admin user management.
 - `docs/execution-plans/completed/`: completed phase plans.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
@@ -48,6 +48,7 @@
 - `docs/review/phase-06-review.md`: Phase 06 review artifact for knowledge-base RAG.
 - `docs/review/phase-07-review.md`: Phase 07 review artifact for AI agent workflows.
 - `docs/review/phase-08-review.md`: Phase 08 review artifact for technician workflow and inventory basics.
+- `docs/review/phase-09-review.md`: Phase 09 review artifact for staff admin and user management.
 
 ## Workflow Skills
 
@@ -56,13 +57,14 @@
 
 ## Code Areas
 
-- `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, Telegram opt-in contracts, dispatcher routes, technician routes, inventory routes, knowledge-base RAG routes, AI suggestion routes, sqlite test persistence, and PostgreSQL Compose persistence.
+- `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, Telegram opt-in contracts, dispatcher routes, technician routes, inventory routes, staff admin routes, knowledge-base RAG routes, AI suggestion routes, sqlite test persistence, and PostgreSQL Compose persistence.
 - `apps/api/src/serviceops_api/ai_agents`: AI suggestion models, prompt assembly, deterministic provider, sqlite/PostgreSQL repositories, dispatcher use cases, and protected routes.
 - `apps/api/src/serviceops_api/service_requests`: service request intake/status/dispatcher API, use cases, models, sqlite repository, PostgreSQL repository, and repository factory.
 - `apps/api/src/serviceops_api/technicians`: technician assigned-visit models, protected routes, and workflow use cases for diagnosis, repair result, and parts used.
 - `apps/api/src/serviceops_api/inventory`: parts catalog models, sqlite/PostgreSQL repositories, inventory use cases, protected inventory routes, and stock decrement behavior.
+- `apps/api/src/serviceops_api/staff_management`: persisted staff account models, sqlite/PostgreSQL repositories, admin account lifecycle use cases, local persisted staff seed command, audit records, and protected admin routes.
 - `apps/api/src/serviceops_api/knowledge_base`: knowledge document models, chunking, deterministic embeddings, sqlite/PostgreSQL repositories, ingestion and retrieval use cases, API routes, and seed repair documents.
-- `apps/web`: React/Vite public intake form, request-number success state, public status page, dispatcher workspace, dispatcher AI suggestion panel, technician workspace, and inventory workspace.
+- `apps/web`: React/Vite public intake form, request-number success state, public status page, dispatcher workspace, dispatcher AI suggestion panel, technician workspace, inventory workspace, and admin staff-management workspace.
 - `apps/worker`: Celery worker shell and knowledge-base embedding task boundary.
 - `apps/telegram-bot`: aiogram bot shell.
 - `packages/shared-kernel`: shared domain primitives.
