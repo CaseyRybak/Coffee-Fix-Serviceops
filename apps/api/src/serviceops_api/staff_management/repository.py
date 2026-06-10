@@ -41,6 +41,9 @@ class StaffAccountStore(Protocol):
     def list_audit_events(self) -> list[dict[str, object]]:
         """List staff audit events newest first."""
 
+    def record_audit_event(self, actor: str, target: str, action: str, metadata: dict[str, object]) -> None:
+        """Record an operational audit event."""
+
     def count_active_admins(self) -> int:
         """Count active admin users."""
 
@@ -173,6 +176,10 @@ class SqliteStaffAccountRepository:
             """
         ).fetchall()
         return [self._audit_row(row) for row in rows]
+
+    def record_audit_event(self, actor: str, target: str, action: str, metadata: dict[str, object]) -> None:
+        with self._connection:
+            self._insert_audit(actor, target, action, metadata)
 
     def count_active_admins(self) -> int:
         row = self._connection.execute(
@@ -343,6 +350,9 @@ class PostgresStaffAccountRepository:
             """
         ).fetchall()
         return [self._audit_row(row) for row in rows]
+
+    def record_audit_event(self, actor: str, target: str, action: str, metadata: dict[str, object]) -> None:
+        self._insert_audit(actor, target, action, metadata)
 
     def count_active_admins(self) -> int:
         row = self._connect().execute(

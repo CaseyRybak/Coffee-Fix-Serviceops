@@ -14,6 +14,7 @@ def valid_payload() -> dict[str, object]:
             "phone": "+7 999 111-22-33",
             "telegram": "@anna_fix",
             "client_type": "coffee_shop",
+            "telegram_chat_id": None,
         },
         "machine": {
             "brand": "Jura",
@@ -83,6 +84,7 @@ def test_create_service_request_persists_intake_data() -> None:
             "phone": "+7 999 111-22-33",
             "telegram": "@anna_fix",
             "client_type": "coffee_shop",
+            "telegram_chat_id": None,
         },
         "machine": {
             "brand": "Jura",

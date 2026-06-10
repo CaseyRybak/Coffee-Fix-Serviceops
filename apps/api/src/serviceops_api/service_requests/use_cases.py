@@ -72,9 +72,33 @@ class AiSuggestionReader(Protocol):
         """Return AI suggestions for dispatcher detail."""
 
 
+class NotificationEventPublisher(Protocol):
+    def publish_request_created(self, request_number: str) -> None:
+        """Publish a request-created notification event."""
+
+    def publish_status_changed(self, request_number: str, new_status: str) -> None:
+        """Publish a status-changed notification event."""
+
+    def publish_clarification_requested(self, request_number: str, question_id: int) -> None:
+        """Publish a clarification-requested notification event."""
+
+    def publish_customer_answered(self, request_number: str, question_id: int) -> None:
+        """Publish a customer-answered notification event."""
+
+
+class NotificationDeliveryReader(Protocol):
+    def list_for_request(self, request_number: str) -> list[dict[str, object]]:
+        """Return notification delivery attempts for dispatcher detail."""
+
+
 class CreateServiceRequest:
-    def __init__(self, repository: ServiceRequestStore) -> None:
+    def __init__(
+        self,
+        repository: ServiceRequestStore,
+        notification_publisher: NotificationEventPublisher | None = None,
+    ) -> None:
         self._repository = repository
+        self._notification_publisher = notification_publisher
 
     def execute(self, payload: CreateServiceRequestPayload) -> CreateServiceRequestResponse:
         request_number = self._generate_request_number()
@@ -89,6 +113,8 @@ class CreateServiceRequest:
             attachment_metadata=payload.attachment_metadata,
         )
         self._repository.save(record)
+        if self._notification_publisher is not None:
+            self._notification_publisher.publish_request_created(request_number)
         return CreateServiceRequestResponse(
             request_number=request_number,
             status="new",
@@ -113,11 +139,18 @@ class GetPublicStatus:
 
 
 class SubmitCustomerAnswer:
-    def __init__(self, repository: ServiceRequestStore) -> None:
+    def __init__(
+        self,
+        repository: ServiceRequestStore,
+        notification_publisher: NotificationEventPublisher | None = None,
+    ) -> None:
         self._repository = repository
+        self._notification_publisher = notification_publisher
 
     def execute(self, request_number: str, payload: CustomerAnswerPayload) -> CustomerAnswerResponse:
         status = self._repository.record_customer_answer(request_number, payload.question_id, payload.answer)
+        if self._notification_publisher is not None:
+            self._notification_publisher.publish_customer_answered(request_number, payload.question_id)
         return CustomerAnswerResponse(
             request_number=request_number,
             status=status,  # type: ignore[arg-type]
@@ -126,13 +159,14 @@ class SubmitCustomerAnswer:
 
 
 class CreateTelegramOptIn:
-    def __init__(self, repository: ServiceRequestStore) -> None:
+    def __init__(self, repository: ServiceRequestStore, bot_username: str = "coffeefix_service_bot") -> None:
         self._repository = repository
+        self._bot_username = bot_username.strip().lstrip("@") or "coffeefix_service_bot"
 
     def execute(self, request_number: str, payload: TelegramOptInPayload) -> TelegramOptInResponse:
-        return TelegramOptInResponse.model_validate(
-            self._repository.create_telegram_opt_in(request_number, payload.telegram)
-        )
+        opt_in = self._repository.create_telegram_opt_in(request_number, payload.telegram)
+        opt_in["link"] = f"https://t.me/{self._bot_username}?start={opt_in['token']}"
+        return TelegramOptInResponse.model_validate(opt_in)
 
 
 class ListDispatcherRequests:
@@ -144,20 +178,36 @@ class ListDispatcherRequests:
 
 
 class GetDispatcherRequest:
-    def __init__(self, repository: ServiceRequestStore, ai_suggestion_reader: AiSuggestionReader | None = None) -> None:
+    def __init__(
+        self,
+        repository: ServiceRequestStore,
+        ai_suggestion_reader: AiSuggestionReader | None = None,
+        notification_delivery_reader: NotificationDeliveryReader | None = None,
+    ) -> None:
         self._repository = repository
         self._ai_suggestion_reader = ai_suggestion_reader
+        self._notification_delivery_reader = notification_delivery_reader
 
     def execute(self, request_number: str) -> DispatcherRequestDetail:
         detail = self._repository.get_dispatcher_request(request_number)
         if self._ai_suggestion_reader is not None:
             detail = {**detail, "ai_suggestions": self._ai_suggestion_reader.list_suggestions(request_number)}
+        if self._notification_delivery_reader is not None:
+            detail = {
+                **detail,
+                "notification_deliveries": self._notification_delivery_reader.list_for_request(request_number),
+            }
         return DispatcherRequestDetail.model_validate(detail)
 
 
 class UpdateDispatcherStatus:
-    def __init__(self, repository: ServiceRequestStore) -> None:
+    def __init__(
+        self,
+        repository: ServiceRequestStore,
+        notification_publisher: NotificationEventPublisher | None = None,
+    ) -> None:
         self._repository = repository
+        self._notification_publisher = notification_publisher
 
     def execute(self, request_number: str, payload: DispatcherStatusUpdatePayload) -> DispatcherActionResponse:
         status = self._repository.update_status(
@@ -167,6 +217,8 @@ class UpdateDispatcherStatus:
             description=payload.description,
             actor="dispatcher",
         )
+        if self._notification_publisher is not None:
+            self._notification_publisher.publish_status_changed(request_number, status)
         return DispatcherActionResponse(
             request_number=request_number,
             status=status,  # type: ignore[arg-type]
@@ -175,11 +227,18 @@ class UpdateDispatcherStatus:
 
 
 class AskDispatcherClarification:
-    def __init__(self, repository: ServiceRequestStore) -> None:
+    def __init__(
+        self,
+        repository: ServiceRequestStore,
+        notification_publisher: NotificationEventPublisher | None = None,
+    ) -> None:
         self._repository = repository
+        self._notification_publisher = notification_publisher
 
     def execute(self, request_number: str, payload: DispatcherClarificationPayload) -> DispatcherActionResponse:
-        self._repository.ask_clarification(request_number, payload.question)
+        question_id = self._repository.ask_clarification(request_number, payload.question)
+        if self._notification_publisher is not None:
+            self._notification_publisher.publish_clarification_requested(request_number, question_id)
         return DispatcherActionResponse(
             request_number=request_number,
             status="needs_clarification",

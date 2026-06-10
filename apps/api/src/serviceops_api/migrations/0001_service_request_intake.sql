@@ -96,6 +96,8 @@ CREATE TABLE IF NOT EXISTS telegram_opt_ins (
 
 CREATE INDEX IF NOT EXISTS idx_telegram_opt_ins_service_request_id ON telegram_opt_ins (service_request_id);
 CREATE INDEX IF NOT EXISTS idx_telegram_opt_ins_token ON telegram_opt_ins (token);
+ALTER TABLE telegram_opt_ins ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
+ALTER TABLE telegram_opt_ins ADD COLUMN IF NOT EXISTS linked_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS internal_notes (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

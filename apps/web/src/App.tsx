@@ -210,6 +210,19 @@ interface DispatcherRequestDetail {
     created_at: string;
   }>;
   ai_suggestions?: DispatcherAiSuggestion[];
+  notification_deliveries?: DispatcherNotificationDelivery[];
+}
+
+interface DispatcherNotificationDelivery {
+  event_id: string;
+  event_type: string;
+  status: string;
+  channel: string | null;
+  provider_message_id: string | null;
+  error: string | null;
+  attempt_count: number;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 type AiSuggestionKind =
@@ -1001,6 +1014,31 @@ function HeroSection() {
 }
 
 export function SuccessState({ requestNumber, onCreateNew }: { requestNumber: string; onCreateNew?: () => void }) {
+  const [telegramLink, setTelegramLink] = useState<string | null>(null);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramMessage, setTelegramMessage] = useState<string | null>(null);
+
+  async function connectTelegram() {
+    setTelegramLoading(true);
+    setTelegramMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${telegramOptInPathFromRequestNumber(requestNumber)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildTelegramOptInPayload("")),
+      });
+      if (!response.ok) throw new Error(`Telegram opt-in failed with ${response.status}`);
+      const body = (await response.json()) as { link: string };
+      setTelegramLink(body.link);
+      window.open(body.link, "_blank", "noopener,noreferrer");
+      setTelegramMessage("Откройте Telegram и нажмите Start у бота, чтобы завершить подключение.");
+    } catch {
+      setTelegramMessage("Не удалось подготовить Telegram-подключение. Откройте страницу статуса и попробуйте еще раз.");
+    } finally {
+      setTelegramLoading(false);
+    }
+  }
+
   return (
     <section className="request-card success-card" aria-live="polite">
       <div className="success-title">
@@ -1013,15 +1051,21 @@ export function SuccessState({ requestNumber, onCreateNew }: { requestNumber: st
           <ExternalLink aria-hidden="true" />
           Открыть страницу статуса
         </a>
-        <a className="ghost-action" href={telegramOptInPathFromRequestNumber(requestNumber)}>
+        <button className="ghost-action" type="button" onClick={connectTelegram} disabled={telegramLoading}>
           <MessageCircle aria-hidden="true" />
-          Подключить Telegram-уведомления
-        </a>
+          {telegramLoading ? "Готовим Telegram" : "Подключить Telegram-уведомления"}
+        </button>
         <button className="ghost-action" type="button" onClick={onCreateNew}>
           <ClipboardList aria-hidden="true" />
           Создать новую заявку
         </button>
       </div>
+      {telegramMessage ? <p className="success-note">{telegramMessage}</p> : null}
+      {telegramLink ? (
+        <a className="status-link" href={telegramLink} target="_blank" rel="noreferrer">
+          Открыть Telegram-бота
+        </a>
+      ) : null}
       <div className="next-steps">
         <p>Что дальше?</p>
         {nextSteps.map((step, index) => (
@@ -1041,6 +1085,7 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
   const [changingRequest, setChangingRequest] = useState(!initialStatus);
   const [answer, setAnswer] = useState("");
   const [telegram, setTelegram] = useState(initialStatus?.customer.telegram ?? "");
+  const [telegramLink, setTelegramLink] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -1110,7 +1155,9 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
       });
       if (!response.ok) throw new Error(`Telegram opt-in failed with ${response.status}`);
       const body = (await response.json()) as { link: string };
-      setMessage(`Ссылка для подключения Telegram: ${body.link}`);
+      setTelegramLink(body.link);
+      window.open(body.link, "_blank", "noopener,noreferrer");
+      setMessage("Откройте Telegram и нажмите Start у бота, чтобы завершить подключение.");
     } catch {
       setMessage("Не удалось подготовить Telegram-подключение. Попробуйте позже.");
     }
@@ -1247,6 +1294,11 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
                     Подключить Telegram
                   </button>
                 </div>
+                {telegramLink ? (
+                  <a className="status-link" href={telegramLink} target="_blank" rel="noreferrer">
+                    Открыть Telegram-бота
+                  </a>
+                ) : null}
               </section>
             </div>
           ) : null}
@@ -1607,6 +1659,32 @@ export function DispatcherPage({
                     </div>
                   ) : (
                     <p>Подсказок пока нет. Сгенерируйте их после проверки описания заявки.</p>
+                  )}
+                </section>
+
+                <section className="dispatcher-card notification-delivery-panel">
+                  <div className="notification-delivery-heading">
+                    <h3>Доставка уведомлений</h3>
+                    <span>{detail.notification_deliveries?.length ?? 0}</span>
+                  </div>
+                  {detail.notification_deliveries?.length ? (
+                    <div className="notification-delivery-list">
+                      {detail.notification_deliveries.map((delivery) => (
+                        <article className="notification-delivery-item" key={delivery.event_id}>
+                          <div>
+                            <strong>{delivery.event_type}</strong>
+                            <span>{delivery.status}</span>
+                          </div>
+                          <p>
+                            {delivery.channel ?? "канал не указан"} · попытка {delivery.attempt_count}
+                            {delivery.provider_message_id ? ` · ${delivery.provider_message_id}` : ""}
+                          </p>
+                          {delivery.error ? <small>{delivery.error}</small> : null}
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>Событий доставки пока нет.</p>
                   )}
                 </section>
 

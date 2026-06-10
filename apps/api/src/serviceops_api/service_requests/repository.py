@@ -106,6 +106,8 @@ class ServiceRequestRepository:
                 service_request_id INTEGER NOT NULL REFERENCES service_requests(id),
                 telegram TEXT,
                 token TEXT NOT NULL UNIQUE,
+                telegram_chat_id TEXT,
+                linked_at TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -155,6 +157,13 @@ class ServiceRequestRepository:
         ):
             if column_name not in existing_columns:
                 self._connection.execute(f"ALTER TABLE service_requests ADD COLUMN {column_name} TEXT")
+        telegram_columns = {
+            str(row["name"])
+            for row in self._connection.execute("PRAGMA table_info(telegram_opt_ins)").fetchall()
+        }
+        for column_name in ("telegram_chat_id", "linked_at"):
+            if column_name not in telegram_columns:
+                self._connection.execute(f"ALTER TABLE telegram_opt_ins ADD COLUMN {column_name} TEXT")
 
     def next_sequence(self) -> int:
         row = self._connection.execute("SELECT COUNT(*) AS count FROM service_requests").fetchone()
@@ -290,6 +299,7 @@ class ServiceRequestRepository:
                 "phone": request["phone"],
                 "telegram": request["telegram"],
                 "client_type": request["client_type"],
+                "telegram_chat_id": self._latest_telegram_chat_id(request_number),
             },
             "machine": {
                 "brand": request["brand"],
@@ -446,6 +456,46 @@ class ServiceRequestRepository:
             "telegram": telegram,
             "token": token,
             "link": f"https://t.me/coffeefix_service_bot?start={token}",
+        }
+
+    def link_telegram_opt_in(self, token: str, chat_id: str, username: str | None) -> dict[str, Any]:
+        row = self._connection.execute(
+            """
+            SELECT
+                toi.id,
+                sr.request_number,
+                sr.status,
+                c.name AS customer_name,
+                m.brand,
+                m.model,
+                pat.token AS public_token
+            FROM telegram_opt_ins toi
+            JOIN service_requests sr ON sr.id = toi.service_request_id
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            JOIN public_access_tokens pat ON pat.service_request_id = sr.id
+            WHERE toi.token = ?
+            """,
+            (token,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(token)
+        with self._connection:
+            self._connection.execute(
+                """
+                UPDATE telegram_opt_ins
+                SET telegram_chat_id = ?, telegram = COALESCE(?, telegram), linked_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (chat_id, f"@{username}" if username else None, row["id"]),
+            )
+        model = row["model"]
+        return {
+            "request_number": row["request_number"],
+            "status": row["status"],
+            "customer_name": row["customer_name"],
+            "machine_label": f"{row['brand']}{f' {model}' if model else ''}",
+            "public_status_url": f"/status/{row['public_token']}",
         }
 
     def list_dispatcher_requests(self) -> list[dict[str, Any]]:
@@ -976,6 +1026,20 @@ class ServiceRequestRepository:
             return "***"
         return f"{phone[:-9]}***-**-{phone[-2:]}"
 
+    def _latest_telegram_chat_id(self, request_number: str) -> str | None:
+        row = self._connection.execute(
+            """
+            SELECT toi.telegram_chat_id
+            FROM telegram_opt_ins toi
+            JOIN service_requests sr ON sr.id = toi.service_request_id
+            WHERE sr.request_number = ? AND toi.telegram_chat_id IS NOT NULL
+            ORDER BY toi.id DESC
+            LIMIT 1
+            """,
+            (request_number,),
+        ).fetchone()
+        return None if row is None else str(row["telegram_chat_id"])
+
 
 class PostgresServiceRequestRepository:
     def __init__(self, database_url: str, initialize: bool = True) -> None:
@@ -1136,6 +1200,7 @@ class PostgresServiceRequestRepository:
                 "phone": request["phone"],
                 "telegram": request["telegram"],
                 "client_type": request["client_type"],
+                "telegram_chat_id": self._latest_telegram_chat_id(request_number),
             },
             "machine": {
                 "brand": request["brand"],
@@ -1295,6 +1360,46 @@ class PostgresServiceRequestRepository:
             "telegram": telegram,
             "token": token,
             "link": f"https://t.me/coffeefix_service_bot?start={token}",
+        }
+
+    def link_telegram_opt_in(self, token: str, chat_id: str, username: str | None) -> dict[str, Any]:
+        row = self._connect().execute(
+            """
+            SELECT
+                toi.id,
+                sr.request_number,
+                sr.status,
+                c.name AS customer_name,
+                m.brand,
+                m.model,
+                pat.token AS public_token
+            FROM telegram_opt_ins toi
+            JOIN service_requests sr ON sr.id = toi.service_request_id
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            JOIN public_access_tokens pat ON pat.service_request_id = sr.id
+            WHERE toi.token = %s
+            """,
+            (token,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(token)
+        self._connect().execute(
+            """
+            UPDATE telegram_opt_ins
+            SET telegram_chat_id = %s, telegram = COALESCE(%s, telegram), linked_at = now()
+            WHERE id = %s
+            """,
+            (chat_id, f"@{username}" if username else None, row["id"]),
+        )
+        self._connect().commit()
+        model = row["model"]
+        return {
+            "request_number": row["request_number"],
+            "status": row["status"],
+            "customer_name": row["customer_name"],
+            "machine_label": f"{row['brand']}{f' {model}' if model else ''}",
+            "public_status_url": f"/status/{row['public_token']}",
         }
 
     def list_dispatcher_requests(self) -> list[dict[str, Any]]:
@@ -1835,6 +1940,20 @@ class PostgresServiceRequestRepository:
         if len(phone) < 9:
             return "***"
         return f"{phone[:-9]}***-**-{phone[-2:]}"
+
+    def _latest_telegram_chat_id(self, request_number: str) -> str | None:
+        row = self._connect().execute(
+            """
+            SELECT toi.telegram_chat_id
+            FROM telegram_opt_ins toi
+            JOIN service_requests sr ON sr.id = toi.service_request_id
+            WHERE sr.request_number = %s AND toi.telegram_chat_id IS NOT NULL
+            ORDER BY toi.id DESC
+            LIMIT 1
+            """,
+            (request_number,),
+        ).fetchone()
+        return None if row is None else str(row["telegram_chat_id"])
 
     def _normalize_database_url(self, database_url: str) -> str:
         return database_url.replace("postgresql+psycopg://", "postgresql://", 1)

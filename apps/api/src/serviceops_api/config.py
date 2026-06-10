@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     ai_sqlite_path: str = ".local/serviceops-ai.sqlite3"
     ai_provider: str = "deterministic"
     ai_suggestion_limit: int = 5
+    n8n_webhook_shared_secret: str = ""
+    n8n_callback_secret: str = ""
+    n8n_webhook_timeout_seconds: float = 5.0
+    n8n_request_created_webhook_url: str = ""
+    n8n_status_changed_webhook_url: str = ""
+    n8n_clarification_webhook_url: str = ""
+    n8n_customer_answered_webhook_url: str = ""
+    telegram_bot_api_secret: str = ""
+    telegram_bot_username: str = "coffeefix_service_bot"
 
     @property
     def cors_origins(self) -> list[str]:

@@ -1516,6 +1516,77 @@ select:focus {
   color: #5a3825;
 }
 
+.notification-delivery-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.notification-delivery-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.notification-delivery-heading h3 {
+  margin: 0;
+}
+
+.notification-delivery-heading span {
+  background: #f2ede6;
+  border-radius: 999px;
+  color: #6d5844;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 4px 9px;
+}
+
+.notification-delivery-list {
+  display: grid;
+  gap: 8px;
+}
+
+.notification-delivery-item {
+  background: #fffdf8;
+  border: 1px solid #e5d8ca;
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  padding: 11px 12px;
+}
+
+.notification-delivery-item div {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.notification-delivery-item strong {
+  color: #2f241c;
+  font-size: 0.9rem;
+}
+
+.notification-delivery-item span {
+  background: #eef3e8;
+  border-radius: 999px;
+  color: #3d5f35;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 8px;
+}
+
+.notification-delivery-item p,
+.notification-delivery-item small {
+  color: #717182;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.notification-delivery-item small {
+  color: #8c3b2f;
+}
+
 .dispatcher-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

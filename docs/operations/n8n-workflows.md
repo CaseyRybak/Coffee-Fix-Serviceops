@@ -4,109 +4,178 @@ n8n automates delivery and operational routing around backend events. It does no
 
 ## Shared Webhook Rules
 
-- Each webhook receives a shared secret header matching `SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET`.
-- Webhook inputs should include `event_id`, `event_type`, `occurred_at`, `request_number`, and a public-safe payload.
-- n8n retries delivery tasks where the downstream channel supports retry.
-- Backend callback is used only for delivery outcome records in a future slice; it must not mutate repair status.
+- ServiceOps sends approved notification events to n8n production webhook paths.
+- Each inbound n8n webhook validates `X-ServiceOps-Webhook-Secret` against `SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET`.
+- Each backend callback sends `X-ServiceOps-Callback-Secret` matching `SERVICEOPS_N8N_CALLBACK_SECRET`.
+- n8n callbacks write delivery outcomes only; they must not mutate service-request lifecycle state.
+- Backend event IDs are idempotency keys shaped as `<request_number>:<event_type>:<sequence>`.
+- Payloads are public-safe and must not include internal notes, AI internals, staff-only data, audit data, technician phone numbers, inventory metadata, or shared secrets.
 
-## New Request Dispatcher Alert
+## Required Environment
 
-Trigger: ServiceOps sends a `service_request.created` webhook after request intake.
+Backend API:
 
-Input fields:
+```bash
+SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET=<long random value>
+SERVICEOPS_N8N_CALLBACK_SECRET=<different long random value>
+SERVICEOPS_N8N_REQUEST_CREATED_WEBHOOK_URL=https://<n8n-host>/webhook/serviceops/request-created
+SERVICEOPS_N8N_STATUS_CHANGED_WEBHOOK_URL=https://<n8n-host>/webhook/serviceops/status-changed
+SERVICEOPS_N8N_CLARIFICATION_WEBHOOK_URL=https://<n8n-host>/webhook/serviceops/clarification-requested
+SERVICEOPS_N8N_CUSTOMER_ANSWERED_WEBHOOK_URL=https://<n8n-host>/webhook/serviceops/customer-answered
+SERVICEOPS_TELEGRAM_BOT_USERNAME=<bot username without @>
+SERVICEOPS_TELEGRAM_BOT_API_SECRET=<secret used by the bot when linking opt-in tokens>
+```
+
+n8n runtime:
+
+```bash
+SERVICEOPS_API_BASE_URL=https://<api-host>
+SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET=<same inbound webhook value>
+SERVICEOPS_N8N_CALLBACK_SECRET=<same callback value>
+SERVICEOPS_TELEGRAM_BOT_TOKEN=<bot token>
+SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID=<dispatcher operations chat id>
+```
+
+Telegram opt-in flow:
+
+1. The public status page calls `POST /service-requests/{request_number}/telegram-opt-in`.
+2. The API returns `https://t.me/<SERVICEOPS_TELEGRAM_BOT_USERNAME>?start=<token>`.
+3. The Telegram bot handles `/start <token>`, calls `POST /notifications/telegram/opt-ins/{token}/link`, and stores `telegram_chat_id`.
+4. Customer Telegram notifications use `payload.telegram_chat_id`. `payload.telegram_handle` is retained only as display/contact metadata.
+
+## Live Workflow Records
+
+Created through the n8n MCP API during Phase 12:
+
+- `ServiceOps - Request Created Dispatcher Alert`: `fbEwkH56MkvmDnsD`
+- `ServiceOps - Status Changed Customer Notification`: `0njpM50BqmqJeZE2`
+- `ServiceOps - Clarification Customer Notification`: `bJWa9A1ALnypyE2V`
+- `ServiceOps - Customer Answered Dispatcher Alert`: `PVYG8clWqn9opv1l`
+
+Repository exports are stored in `docs/operations/n8n-workflows/`.
+
+## Workflow: Request Created Dispatcher Alert
+
+Trigger: `POST /webhook/serviceops/request-created`
+
+Backend event: `service_request.created`
+
+Input payload:
 
 - `event_id`
+- `event_type`
 - `request_number`
-- `customer_name`
-- `customer_phone_masked`
-- `machine_brand`
-- `machine_model`
-- `urgency`
-- `status_url`
+- `payload.request_number`
+- `payload.customer_name`
+- `payload.customer_phone_masked`
+- `payload.machine_brand`
+- `payload.machine_model`
+- `payload.urgency`
+- `payload.public_status_url`
 
 Steps:
 
 1. Validate shared secret.
-2. Format a dispatcher alert message.
-3. Send to the dispatcher operations channel.
-4. Record n8n execution status.
+2. Format a dispatcher-safe Telegram message.
+3. Send to `SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID`.
+4. Call `POST /notifications/n8n/delivery-results` with `sent` or `failed`.
 
-Output: dispatcher receives a new-request alert with a link to the dispatcher workspace.
+## Workflow: Status Changed Customer Notification
 
-Retry behavior: retry channel delivery up to the n8n workflow retry limit, then surface the failed execution in n8n.
+Trigger: `POST /webhook/serviceops/status-changed`
 
-Backend callback: none in Phase 10.
+Backend event: `service_request.status_changed`
 
-## Status Changed Customer Notification
-
-Trigger: ServiceOps sends a `service_request.status_changed` webhook after a dispatcher or technician status event.
-
-Input fields:
+Input payload:
 
 - `event_id`
+- `event_type`
 - `request_number`
-- `public_token`
-- `customer_name`
-- `telegram_handle`
-- `new_status`
-- `public_status_url`
+- `payload.request_number`
+- `payload.customer_name`
+- `payload.telegram_handle`
+- `payload.telegram_chat_id`
+- `payload.new_status`
+- `payload.public_status_url`
 
 Steps:
 
 1. Validate shared secret.
-2. Choose customer-safe message text based on `new_status`.
-3. Send Telegram notification when the customer opted in.
-4. Fall back to the configured manual follow-up channel when Telegram is unavailable.
-5. Record n8n execution status.
+2. Format a customer-safe status update.
+3. Send Telegram message to the opted-in customer chat ID.
+4. Call backend delivery-result callback.
 
-Output: customer receives a public-safe status notification with the status link.
+## Workflow: Clarification Customer Notification
 
-Retry behavior: retry Telegram delivery for transient channel failures; do not retry invalid opt-in data without operator review.
+Trigger: `POST /webhook/serviceops/clarification-requested`
 
-Backend callback: future delivery-result callback only.
+Backend event: `service_request.clarification_requested`
 
-## Awaiting Clarification Reminder
+Input payload:
 
-Trigger: scheduled n8n workflow runs every business morning.
-
-Input fields:
-
-- API base URL
-- staff service token or future operations token
-- maximum age for unanswered clarification questions
-
-Steps:
-
-1. Query a future ServiceOps operations endpoint for requests awaiting clarification.
-2. Filter requests older than the configured reminder age.
-3. Send customer reminder through the opted-in channel.
-4. Send dispatcher summary for requests without customer contact.
-
-Output: customers receive reminders; dispatchers receive an exception list.
-
-Retry behavior: retry individual message delivery; do not re-run the full batch automatically after partial success without idempotency keys.
-
-Backend callback: future delivery-result callback only.
-
-## Daily Operations Summary
-
-Trigger: scheduled n8n workflow runs once per business day.
-
-Input fields:
-
-- API base URL
-- staff service token or future operations token
-- reporting date
+- `event_id`
+- `event_type`
+- `request_number`
+- `payload.request_number`
+- `payload.telegram_handle`
+- `payload.telegram_chat_id`
+- `payload.question_id`
+- `payload.question`
+- `payload.public_status_url`
 
 Steps:
 
-1. Query future reporting endpoints for open requests, awaiting customer replies, assigned technician visits, and low-stock parts.
-2. Format a daily summary.
-3. Send to the operations channel.
-4. Keep the execution result in n8n history.
+1. Validate shared secret.
+2. Format a customer-safe clarification prompt.
+3. Send Telegram message to the opted-in customer chat ID.
+4. Call backend delivery-result callback.
 
-Output: operations team receives one daily summary.
+## Workflow: Customer Answered Dispatcher Alert
 
-Retry behavior: retry operations-channel delivery once; failed summaries remain visible in n8n executions.
+Trigger: `POST /webhook/serviceops/customer-answered`
 
-Backend callback: none.
+Backend event: `service_request.customer_answered`
+
+Input payload:
+
+- `event_id`
+- `event_type`
+- `request_number`
+- `payload.request_number`
+- `payload.question_id`
+- `payload.status`
+- `payload.public_status_url`
+
+Steps:
+
+1. Validate shared secret.
+2. Format a dispatcher alert that the customer answered.
+3. Send to `SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID`.
+4. Call backend delivery-result callback.
+
+## Backend Callback
+
+Path: `POST /notifications/n8n/delivery-results`
+
+Headers:
+
+- `X-ServiceOps-Callback-Secret: <SERVICEOPS_N8N_CALLBACK_SECRET>`
+
+Body:
+
+```json
+{
+  "event_id": "CFX-20260610-000001:service_request.created:1",
+  "status": "sent",
+  "channel": "telegram",
+  "provider_message_id": "123456",
+  "error": "",
+  "attempt_count": 1
+}
+```
+
+Allowed statuses: `queued`, `sent`, `failed`, `retried`.
+
+## Import Or Restore
+
+The live n8n instance already contains the Phase 12 workflows listed above. To restore them in another n8n instance, import the JSON exports from `docs/operations/n8n-workflows/`, configure the environment variables, activate the workflows, then set backend webhook URL variables to the production paths.

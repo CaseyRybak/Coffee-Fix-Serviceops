@@ -8,7 +8,7 @@
 - The repository is available to Dokploy.
 - Production `.env` values are set from `.env.example` with real secrets.
 - A persistent backup directory exists on the host and is covered by host-level retention.
-- A production-safe first-admin bootstrap procedure exists before public launch. The current local seed command is intentionally blocked in production.
+- A production-safe first-admin bootstrap command is run before public launch. The current local seed command is intentionally blocked in production.
 
 ## Services
 
@@ -33,6 +33,14 @@ POSTGRES_PASSWORD=<strong password>
 SERVICEOPS_DATABASE_URL=postgresql+psycopg://serviceops:<strong password>@postgres:5432/serviceops
 SERVICEOPS_STAFF_AUTH_SECRET=<long random value>
 SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET=<long random value>
+SERVICEOPS_N8N_CALLBACK_SECRET=<different long random value>
+SERVICEOPS_N8N_REQUEST_CREATED_WEBHOOK_URL=https://n8n.serviceops.example.com/webhook/serviceops/request-created
+SERVICEOPS_N8N_STATUS_CHANGED_WEBHOOK_URL=https://n8n.serviceops.example.com/webhook/serviceops/status-changed
+SERVICEOPS_N8N_CLARIFICATION_WEBHOOK_URL=https://n8n.serviceops.example.com/webhook/serviceops/clarification-requested
+SERVICEOPS_N8N_CUSTOMER_ANSWERED_WEBHOOK_URL=https://n8n.serviceops.example.com/webhook/serviceops/customer-answered
+SERVICEOPS_API_BASE_URL=https://api.serviceops.example.com
+SERVICEOPS_TELEGRAM_BOT_TOKEN=<bot token>
+SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID=<dispatcher operations chat id>
 N8N_HOST=n8n.serviceops.example.com
 N8N_PROTOCOL=https
 N8N_WEBHOOK_URL=https://n8n.serviceops.example.com/
@@ -63,7 +71,35 @@ Run migrations after PostgreSQL is healthy and before public traffic:
 docker compose -f docker-compose.production.yml run --rm api python -m serviceops_api.operations.migrate
 ```
 
-The command initializes the service request, knowledge base, AI suggestion, inventory, and staff-management PostgreSQL schemas.
+The command initializes the service request, knowledge base, AI suggestion, inventory, staff-management, and notification-delivery PostgreSQL schemas.
+
+## First Admin Bootstrap
+
+Create the first production admin after migrations and before public routing. Set these values from a secret store or secure shell session. Do not commit them to repository files, paste them into shared chat, or leave them in shell history.
+
+```bash
+export SERVICEOPS_BOOTSTRAP_ADMIN_USERNAME="admin@example.com"
+export SERVICEOPS_BOOTSTRAP_ADMIN_DISPLAY_NAME="ServiceOps Admin"
+export SERVICEOPS_BOOTSTRAP_ADMIN_PASSWORD="<strong one-time password>"
+```
+
+Run the one-time bootstrap command:
+
+```bash
+docker compose -f docker-compose.production.yml run --rm \
+  -e SERVICEOPS_BOOTSTRAP_ADMIN_USERNAME="$SERVICEOPS_BOOTSTRAP_ADMIN_USERNAME" \
+  -e SERVICEOPS_BOOTSTRAP_ADMIN_DISPLAY_NAME="$SERVICEOPS_BOOTSTRAP_ADMIN_DISPLAY_NAME" \
+  -e SERVICEOPS_BOOTSTRAP_ADMIN_PASSWORD="$SERVICEOPS_BOOTSTRAP_ADMIN_PASSWORD" \
+  api python -m serviceops_api.operations.bootstrap_admin
+```
+
+Expected output contains only non-secret fields:
+
+```json
+{"roles":["admin"],"status":"created","username":"admin@example.com"}
+```
+
+The command refuses to run when an active admin already exists. After the first admin exists, use the admin workspace to create dispatcher, technician, and inventory users. Rotate the bootstrap password through the admin workspace if the value was visible to more than the intended operator.
 
 ## Startup Order
 
@@ -91,14 +127,21 @@ The Telegram bot is allowed to log that it is disabled when `SERVICEOPS_TELEGRAM
 
 Production staff accounts are persisted and managed through the admin API/workspace after an admin exists.
 
-Current limitation: the repository does not yet provide a production-safe first-admin bootstrap command. The local seed command is intentionally limited to `local`, `development`, `dev`, and `test` environments and must not be used as a production account bootstrap.
+The local seed command is intentionally limited to `local`, `development`, `dev`, and `test` environments and must not be used as a production account bootstrap. Do not expose the deployment publicly while relying on local-development seed users.
 
-Before public launch, add and verify one of these bootstrap paths:
+## First Launch Evidence
 
-1. A one-time production admin bootstrap command that creates the first persisted admin from environment-provided credentials and refuses to run when an active admin already exists.
-2. A controlled database migration/runbook step that inserts the first admin with a properly hashed password and records the operational audit trail.
+Complete `docs/operations/launch-smoke-evidence.md` during the first real Dokploy/VPS launch. Keep the completed evidence record in an operations-controlled location if it contains real hostnames, staff account names, or sensitive operational notes.
 
-After the first admin exists, use the admin workspace to create dispatcher, technician, and inventory users. Do not expose the deployment publicly while relying on local-development seed users.
+Minimum go/no-go evidence before enabling DNS or public traffic:
+
+1. Migrations succeeded.
+2. First admin bootstrap succeeded or an active production admin already exists from a previous approved launch.
+3. API health and web root checks passed.
+4. Request intake and public status smoke checks passed.
+5. Persisted staff login and dispatcher route smoke checks passed.
+6. Worker, Telegram bot, and n8n logs were reviewed.
+7. Rollback target and latest verified backup were identified.
 
 ## Rollback
 

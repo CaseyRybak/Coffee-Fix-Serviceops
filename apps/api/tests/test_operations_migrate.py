@@ -28,6 +28,7 @@ def test_run_migrations_initializes_all_postgres_repositories(monkeypatch) -> No
     monkeypatch.setattr(migrate, "create_ai_suggestion_repository", record_factory("ai_agents"))
     monkeypatch.setattr(migrate, "create_inventory_repository", record_factory("inventory"))
     monkeypatch.setattr(migrate, "create_staff_account_repository", record_factory("staff_management"))
+    monkeypatch.setattr(migrate, "create_notification_repository", record_factory("notifications"))
 
     result = migrate.run_migrations(
         Settings(database_url="postgresql+psycopg://serviceops:serviceops@postgres:5432/serviceops")
@@ -40,4 +41,5 @@ def test_run_migrations_initializes_all_postgres_repositories(monkeypatch) -> No
         ("ai_agents", True),
         ("inventory", True),
         ("staff_management", True),
+        ("notifications", True),
     ]

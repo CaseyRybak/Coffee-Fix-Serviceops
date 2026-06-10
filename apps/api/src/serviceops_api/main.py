@@ -32,6 +32,14 @@ from serviceops_api.knowledge_base.repository import (
     create_knowledge_base_repository,
 )
 from serviceops_api.knowledge_base.use_cases import IngestKnowledgeDocument, RetrieveKnowledge
+from serviceops_api.notifications.api import create_notifications_router
+from serviceops_api.notifications.n8n import DisabledN8nClient, N8nDeliveryClient, N8nWebhookClient
+from serviceops_api.notifications.repository import (
+    PostgresNotificationRepository,
+    SqliteNotificationRepository,
+    create_notification_repository,
+)
+from serviceops_api.notifications.use_cases import LinkTelegramOptIn, NotificationPublisher, RecordN8nDeliveryResult
 from serviceops_api.service_requests.api import (
     create_dispatcher_router,
     create_public_status_router,
@@ -86,6 +94,10 @@ def create_app(
     ai_suggestion_repository: SqliteAiSuggestionRepository | PostgresAiSuggestionRepository | None = None,
     inventory_repository: SqliteInventoryRepository | PostgresInventoryRepository | None = None,
     staff_account_repository: SqliteStaffAccountRepository | PostgresStaffAccountRepository | None = None,
+    notification_repository: SqliteNotificationRepository | PostgresNotificationRepository | None = None,
+    n8n_client: N8nDeliveryClient | None = None,
+    n8n_callback_secret: str | None = None,
+    telegram_bot_api_secret: str | None = None,
     staff_authenticator: StaffAuthenticator | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Coffee Fix ServiceOps API")
@@ -103,6 +115,8 @@ def create_app(
         or ai_suggestion_repository is not None
         or inventory_repository is not None
         or staff_account_repository is not None
+        or notification_repository is not None
+        or n8n_client is not None
     )
     repository = service_request_repository or create_service_request_repository(settings)
     knowledge_repository = knowledge_base_repository or (
@@ -125,6 +139,17 @@ def create_app(
         if has_injected_repository
         else create_staff_account_repository(settings)
     )
+    notification_store = notification_repository or (
+        SqliteNotificationRepository.in_memory()
+        if has_injected_repository
+        else create_notification_repository(settings)
+    )
+    delivery_client = n8n_client or (
+        DisabledN8nClient()
+        if has_injected_repository
+        else N8nWebhookClient(settings)
+    )
+    notification_publisher = NotificationPublisher(notification_store, delivery_client, repository)
     embedding_provider = DeterministicEmbeddingProvider(settings.knowledge_embedding_dimensions)
     retrieve_knowledge = RetrieveKnowledge(knowledge_repository, embedding_provider)
     suggestion_provider = DeterministicAiSuggestionProvider()
@@ -145,10 +170,10 @@ def create_app(
     )
     app.include_router(
         create_service_requests_router(
-            CreateServiceRequest(repository),
+            CreateServiceRequest(repository, notification_publisher),
             get_public_status,
-            SubmitCustomerAnswer(repository),
-            CreateTelegramOptIn(repository),
+            SubmitCustomerAnswer(repository, notification_publisher),
+            CreateTelegramOptIn(repository, settings.telegram_bot_username),
         )
     )
     app.include_router(create_public_status_router(get_public_status))
@@ -161,12 +186,20 @@ def create_app(
     app.include_router(
         create_dispatcher_router(
             ListDispatcherRequests(repository),
-            GetDispatcherRequest(repository, ai_repository),
-            UpdateDispatcherStatus(repository),
-            AskDispatcherClarification(repository),
+            GetDispatcherRequest(repository, ai_repository, notification_store),
+            UpdateDispatcherStatus(repository, notification_publisher),
+            AskDispatcherClarification(repository, notification_publisher),
             AssignDispatcherTechnician(repository),
             SaveDispatcherInternalNote(repository),
             staff_dependency=require_staff_role("dispatcher", authenticator),
+        )
+    )
+    app.include_router(
+        create_notifications_router(
+            RecordN8nDeliveryResult(notification_store),
+            n8n_callback_secret if n8n_callback_secret is not None else settings.n8n_callback_secret,
+            LinkTelegramOptIn(repository),
+            telegram_bot_api_secret if telegram_bot_api_secret is not None else settings.telegram_bot_api_secret,
         )
     )
     app.include_router(

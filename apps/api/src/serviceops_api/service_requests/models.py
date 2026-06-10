@@ -216,6 +216,18 @@ class DispatcherAiSuggestion(BaseModel):
     acted_at: str | None = None
 
 
+class DispatcherNotificationDelivery(BaseModel):
+    event_id: str
+    event_type: str
+    status: str
+    channel: str | None = None
+    provider_message_id: str | None = None
+    error: str | None = None
+    attempt_count: int
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
 class DispatcherRequestDetail(BaseModel):
     request_number: str
     status: RequestStatus
@@ -230,6 +242,7 @@ class DispatcherRequestDetail(BaseModel):
     assignment: DispatcherAssignmentSnapshot
     internal_notes: list[DispatcherInternalNote]
     ai_suggestions: list[DispatcherAiSuggestion] = Field(default_factory=list)
+    notification_deliveries: list[DispatcherNotificationDelivery] = Field(default_factory=list)
 
 
 class DispatcherStatusUpdatePayload(BaseModel):

@@ -40,11 +40,18 @@ REQUIRED_FILES = [
     "docs/execution-plans/detailed/08-technician-and-inventory-implementation.md",
     "docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md",
     "docs/execution-plans/detailed/10-deployment-and-operations-implementation.md",
+    "docs/execution-plans/detailed/11-production-launch-readiness-implementation.md",
+    "docs/execution-plans/detailed/12-notification-automation-implementation.md",
     "docker-compose.production.yml",
     "docs/operations/deployment-runbook.md",
     "docs/operations/backup-restore.md",
+    "docs/operations/launch-smoke-evidence.md",
     "docs/operations/smoke-tests.md",
     "docs/operations/n8n-workflows.md",
+    "docs/operations/n8n-workflows/request-created-dispatcher-alert.json",
+    "docs/operations/n8n-workflows/status-changed-customer-notification.json",
+    "docs/operations/n8n-workflows/clarification-customer-notification.json",
+    "docs/operations/n8n-workflows/customer-answered-dispatcher-alert.json",
     "tools/operations/postgres_backup.sh",
     "tools/operations/postgres_restore.sh",
     "tools/operations/smoke_test.sh",
@@ -60,6 +67,7 @@ REQUIRED_FILES = [
     "docs/review/phase-08-review.md",
     "docs/review/phase-09-review.md",
     "docs/review/phase-10-review.md",
+    "docs/review/phase-11-review.md",
     "docs/review/documentation-audit-2026-06-07.md",
     ".env.example",
     "docker-compose.yml",
@@ -83,6 +91,7 @@ REQUIRED_FILES = [
     "apps/api/src/serviceops_api/staff_management/repository.py",
     "apps/api/src/serviceops_api/staff_management/seed_local_staff.py",
     "apps/api/src/serviceops_api/staff_management/use_cases.py",
+    "apps/api/src/serviceops_api/operations/bootstrap_admin.py",
     "apps/api/src/serviceops_api/technicians/api.py",
     "apps/api/src/serviceops_api/technicians/models.py",
     "apps/api/src/serviceops_api/technicians/use_cases.py",
@@ -93,6 +102,11 @@ REQUIRED_FILES = [
     "apps/api/src/serviceops_api/knowledge_base/repository.py",
     "apps/api/src/serviceops_api/knowledge_base/seed_documents.py",
     "apps/api/src/serviceops_api/knowledge_base/use_cases.py",
+    "apps/api/src/serviceops_api/notifications/api.py",
+    "apps/api/src/serviceops_api/notifications/models.py",
+    "apps/api/src/serviceops_api/notifications/n8n.py",
+    "apps/api/src/serviceops_api/notifications/repository.py",
+    "apps/api/src/serviceops_api/notifications/use_cases.py",
     "apps/api/src/serviceops_api/service_requests/api.py",
     "apps/api/src/serviceops_api/service_requests/models.py",
     "apps/api/src/serviceops_api/service_requests/repository.py",
@@ -102,6 +116,7 @@ REQUIRED_FILES = [
     "apps/api/src/serviceops_api/migrations/0003_ai_suggestions.sql",
     "apps/api/src/serviceops_api/migrations/0004_technician_inventory.sql",
     "apps/api/src/serviceops_api/migrations/0005_staff_management.sql",
+    "apps/api/src/serviceops_api/migrations/0006_notification_delivery.sql",
     "apps/api/tests/test_health.py",
     "apps/api/tests/test_ai_agent_prompting.py",
     "apps/api/tests/test_ai_agent_suggestions.py",
@@ -112,6 +127,8 @@ REQUIRED_FILES = [
     "apps/api/tests/test_technician_workflow.py",
     "apps/api/tests/test_repository_selection.py",
     "apps/api/tests/test_staff_management.py",
+    "apps/api/tests/test_operations_bootstrap_admin.py",
+    "apps/api/tests/test_notification_automation.py",
     "apps/api/tests/test_dispatcher_requests.py",
     "apps/api/tests/test_service_request_intake.py",
     "apps/api/tests/test_service_request_status.py",
@@ -131,7 +148,9 @@ REQUIRED_FILES = [
     "apps/telegram-bot/pyproject.toml",
     "apps/telegram-bot/uv.lock",
     "apps/telegram-bot/src/serviceops_telegram_bot/main.py",
+    "apps/telegram-bot/src/serviceops_telegram_bot/serviceops_client.py",
     "apps/telegram-bot/tests/test_config.py",
+    "apps/telegram-bot/tests/test_opt_in_flow.py",
 ]
 
 REQUIRED_DIRS = [
@@ -175,6 +194,12 @@ PHASE_SLICE_MAPS = [
     "08-technician-and-inventory.md",
     "09-staff-admin-and-user-management.md",
     "10-deployment-and-operations.md",
+    "11-production-launch-readiness.md",
+    "12-notification-automation.md",
+    "13-live-ai-provider-and-knowledge-base-content.md",
+    "14-operational-hardening.md",
+    "15-scheduling-depth.md",
+    "16-inventory-reservations.md",
 ]
 
 SKILL_DRAFTS = [
@@ -322,12 +347,16 @@ def main() -> None:
     require_text("docker-compose.production.yml", "n8n:")
     require_text("docker-compose.production.yml", "pgvector/pgvector:pg16")
     require_text("docker-compose.production.yml", "SERVICEOPS_STAFF_AUTH_SECRET")
+    require_text(".env.example", "SERVICEOPS_BOOTSTRAP_ADMIN_USERNAME")
+    require_text(".env.example", "SERVICEOPS_SMOKE_STAFF_USERNAME")
     require_text(".env.example", "SERVICEOPS_PUBLIC_API_BASE_URL")
     require_text(".env.example", "N8N_WEBHOOK_URL")
     require_text(".env.example", "SERVICEOPS_BACKUP_DIR")
     require_text("project_notes.md", "current operating dashboard")
     require_text("docs/harness/project-history.md", "Deferred Work Ledger")
     require_text("docs/harness/repository-map.md", "compact current operating dashboard")
+    require_text("docs/operations/deployment-runbook.md", "serviceops_api.operations.bootstrap_admin")
+    require_text("docs/operations/launch-smoke-evidence.md", "Go/No-Go")
 
     scan_for_markers()
     validate_local_links()

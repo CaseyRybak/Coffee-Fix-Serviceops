@@ -14,6 +14,11 @@ from serviceops_api.inventory.repository import (
     SqliteInventoryRepository,
     create_inventory_repository,
 )
+from serviceops_api.notifications.repository import (
+    PostgresNotificationRepository,
+    SqliteNotificationRepository,
+    create_notification_repository,
+)
 from psycopg.rows import dict_row
 
 from serviceops_api.service_requests.repository import (
@@ -157,6 +162,33 @@ def test_staff_account_repository_factory_rejects_unknown_database_url() -> None
 
     try:
         create_staff_account_repository(settings, initialize=False)
+    except ValueError as exc:
+        assert "Unsupported SERVICEOPS_DATABASE_URL" in str(exc)
+    else:
+        raise AssertionError("expected unsupported database URL to fail")
+
+
+def test_notification_repository_factory_uses_postgres_for_postgresql_url() -> None:
+    settings = Settings(database_url="postgresql+psycopg://serviceops:serviceops@postgres:5432/serviceops")
+
+    repository = create_notification_repository(settings, initialize=False)
+
+    assert isinstance(repository, PostgresNotificationRepository)
+
+
+def test_notification_repository_factory_uses_sqlite_for_sqlite_url() -> None:
+    settings = Settings(database_url="sqlite:///:memory:")
+
+    repository = create_notification_repository(settings)
+
+    assert isinstance(repository, SqliteNotificationRepository)
+
+
+def test_notification_repository_factory_rejects_unknown_database_url() -> None:
+    settings = Settings(database_url="mysql://serviceops:serviceops@localhost/serviceops")
+
+    try:
+        create_notification_repository(settings, initialize=False)
     except ValueError as exc:
         assert "Unsupported SERVICEOPS_DATABASE_URL" in str(exc)
     else:

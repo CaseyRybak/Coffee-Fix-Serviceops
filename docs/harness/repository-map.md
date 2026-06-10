@@ -42,6 +42,7 @@
 - `docs/execution-plans/detailed/08-technician-and-inventory-implementation.md`: completed detailed plan for technician mobile flow and basic parts tracking.
 - `docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md`: completed detailed plan for persisted staff accounts and admin user management.
 - `docs/execution-plans/detailed/10-deployment-and-operations-implementation.md`: completed detailed plan for Dokploy deployment, backups, observability, n8n workflows, and smoke tests.
+- `docs/execution-plans/detailed/11-production-launch-readiness-implementation.md`: completed detailed plan for first-admin bootstrap and launch smoke evidence.
 - `docs/execution-plans/completed/`: completed phase plans.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
@@ -53,6 +54,7 @@
 - `docs/review/phase-08-review.md`: Phase 08 review artifact for technician workflow and inventory basics.
 - `docs/review/phase-09-review.md`: Phase 09 review artifact for staff admin and user management.
 - `docs/review/phase-10-review.md`: Phase 10 review artifact for deployment and operations.
+- `docs/review/phase-11-review.md`: Phase 11 review artifact for production launch readiness.
 - `docs/review/documentation-audit-2026-06-07.md`: documentation consistency and quality audit after Phase 10.
 
 ## Workflow Skills
@@ -64,6 +66,7 @@
 
 - `docs/operations/deployment-runbook.md`: concrete Dokploy/VPS deployment runbook.
 - `docs/operations/backup-restore.md`: PostgreSQL backup, restore, checksum, retention, and restore-drill procedure.
+- `docs/operations/launch-smoke-evidence.md`: first-launch evidence template for production smoke checks and go/no-go decisions.
 - `docs/operations/smoke-tests.md`: manual and scripted deployment smoke-test checklist.
 - `docs/operations/n8n-workflows.md`: n8n workflow design records for request and status notifications.
 - `tools/operations/`: operational shell scripts and regression checks for backup, restore, and smoke checks.
@@ -76,6 +79,7 @@
 - `apps/api/src/serviceops_api/technicians`: technician assigned-visit models, protected routes, and workflow use cases for diagnosis, repair result, and parts used.
 - `apps/api/src/serviceops_api/inventory`: parts catalog models, sqlite/PostgreSQL repositories, inventory use cases, protected inventory routes, and stock decrement behavior.
 - `apps/api/src/serviceops_api/staff_management`: persisted staff account models, sqlite/PostgreSQL repositories, admin account lifecycle use cases, local persisted staff seed command, audit records, and protected admin routes.
+- `apps/api/src/serviceops_api/operations`: migration and first-admin bootstrap commands for production operations.
 - `apps/api/src/serviceops_api/knowledge_base`: knowledge document models, chunking, deterministic embeddings, sqlite/PostgreSQL repositories, ingestion and retrieval use cases, API routes, and seed repair documents.
 - `apps/web`: React/Vite public intake form, request-number success state, public status page, dispatcher workspace, dispatcher AI suggestion panel, technician workspace, inventory workspace, and admin staff-management workspace.
 - `apps/worker`: Celery worker shell and knowledge-base embedding task boundary.

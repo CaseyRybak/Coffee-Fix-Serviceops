@@ -13,11 +13,13 @@ For a real environment, run the same command with the production env file or Dok
 ```bash
 SERVICEOPS_PUBLIC_API_BASE_URL=https://api.example.com \
 SERVICEOPS_PUBLIC_WEB_BASE_URL=https://app.example.com \
+SERVICEOPS_SMOKE_STAFF_USERNAME=dispatcher@example.com \
+SERVICEOPS_SMOKE_STAFF_PASSWORD='<password>' \
 N8N_TEST_WEBHOOK_URL=https://n8n.example.com/webhook/serviceops-smoke \
 tools/operations/smoke_test.sh
 ```
 
-`N8N_TEST_WEBHOOK_URL` is optional. When omitted, the script prints manual n8n follow-up checks.
+`SERVICEOPS_SMOKE_STAFF_USERNAME` and `SERVICEOPS_SMOKE_STAFF_PASSWORD` are optional but must be set together. When set, the script verifies persisted staff login and the dispatcher request list route. `N8N_TEST_WEBHOOK_URL` is optional. When omitted, the script prints manual n8n follow-up checks.
 
 ## Manual API Health
 
@@ -73,6 +75,8 @@ curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/dispatcher/service-requests" \
 
 Expected: dispatcher list response for a persisted dispatcher account.
 
+The scripted smoke check uses `SERVICEOPS_SMOKE_STAFF_USERNAME` and `SERVICEOPS_SMOKE_STAFF_PASSWORD` instead of placing credentials in the command body. Do not record staff passwords in smoke evidence.
+
 ## Worker
 
 ```bash
@@ -112,3 +116,7 @@ tools/operations/postgres_backup.sh
 ```
 
 Expected: a `.dump` file and `.sha256` file are created in `SERVICEOPS_BACKUP_DIR`.
+
+## Evidence Capture
+
+For first launch, record smoke results in `docs/operations/launch-smoke-evidence.md` or an operations-controlled copy of that template. Completed evidence should include command output, request number, service checks, rollback readiness, and final go/no-go decision without reusable passwords or webhook secrets.

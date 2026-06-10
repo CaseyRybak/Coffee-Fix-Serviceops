@@ -140,6 +140,19 @@ describe("App", () => {
         acted_at: "2026-06-05 10:27:00",
       },
     ],
+    notification_deliveries: [
+      {
+        event_id: "CFX-20260605-000001:service_request.created:1",
+        event_type: "service_request.created",
+        status: "sent",
+        channel: "telegram",
+        provider_message_id: "tg-123",
+        error: null,
+        attempt_count: 1,
+        created_at: "2026-06-05 10:01:00",
+        updated_at: "2026-06-05 10:01:02",
+      },
+    ],
   };
 
   it("renders the Figma reference public service page", () => {
@@ -200,7 +213,8 @@ describe("App", () => {
     assert.match(html, /Подключить Telegram-уведомления/);
     assert.match(html, /Создать новую заявку/);
     assert.match(html, /href="\/status\/CFX-20260605-000001"/);
-    assert.match(html, /href="\/service-requests\/CFX-20260605-000001\/telegram-opt-in"/);
+    assert.match(html, /<button class="ghost-action" type="button">/);
+    assert.doesNotMatch(html, /href="\/service-requests\/CFX-20260605-000001\/telegram-opt-in"/);
   });
 
   it("keeps main request actions routable to the home form", () => {
@@ -806,6 +820,35 @@ describe("App", () => {
     assert.doesNotMatch(html, /class="header-cta"/);
     assert.doesNotMatch(html, /Оставить заявку/);
     assert.doesNotMatch(html, /Вызвать мастера/);
+  });
+
+  it("renders dispatcher notification delivery status for staff", () => {
+    const html = renderToStaticMarkup(
+      <DispatcherPage
+        initialList={{
+          items: [
+            {
+              request_number: "CFX-20260605-000001",
+              status: "visit_scheduled",
+              customer_name: "Anna Petrova",
+              customer_phone: "+7 999 111-22-33",
+              machine_label: "Jura E8",
+              urgency: "today",
+              address: "Tverskaya district",
+              created_at: "2026-06-05 10:00:00",
+              latest_event_title: "Визит запланирован",
+            },
+          ],
+        }}
+        initialDetail={dispatcherDetail}
+      />,
+    );
+
+    assert.match(html, /Доставка уведомлений/);
+    assert.match(html, /service_request\.created/);
+    assert.match(html, /sent/);
+    assert.match(html, /telegram/);
+    assert.match(html, /попытка 1/);
   });
 
   it("renders the public status page with timeline, clarification answer, and Telegram opt-in", () => {

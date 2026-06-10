@@ -8,7 +8,7 @@ Before executing any phase, create a detailed implementation plan for that speci
 
 ## Active Phase
 
-- Backlog grooming / next user-approved slice selection. Create a detailed implementation plan before executing the next slice.
+- Phase 13: `phases/13-live-ai-provider-and-knowledge-base-content.md`. Create a detailed implementation plan before executing the phase.
 
 The active phase points to the next phase that needs a detailed implementation plan before execution. `phases/` contains all phase slice maps, not only active work.
 
@@ -16,7 +16,7 @@ The active phase points to the next phase that needs a detailed implementation p
 
 Detailed implementation plans are created just in time in `detailed/`.
 
-Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`, `detailed/04-dispatcher-mvp-implementation.md`, `detailed/05-staff-access-and-roles-implementation.md`, `detailed/06-knowledge-base-rag-implementation.md`, `detailed/07-ai-agent-workflows-implementation.md`, `detailed/08-technician-and-inventory-implementation.md`, `detailed/09-staff-admin-and-user-management-implementation.md`, `detailed/10-deployment-and-operations-implementation.md`.
+Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`, `detailed/04-dispatcher-mvp-implementation.md`, `detailed/05-staff-access-and-roles-implementation.md`, `detailed/06-knowledge-base-rag-implementation.md`, `detailed/07-ai-agent-workflows-implementation.md`, `detailed/08-technician-and-inventory-implementation.md`, `detailed/09-staff-admin-and-user-management-implementation.md`, `detailed/10-deployment-and-operations-implementation.md`, `detailed/11-production-launch-readiness-implementation.md`, `detailed/12-notification-automation-implementation.md`.
 
 ## Phase Sequence
 
@@ -31,6 +31,12 @@ Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `d
 9. `phases/08-technician-and-inventory.md`: technician mobile flow and basic parts tracking.
 10. `phases/09-staff-admin-and-user-management.md`: persisted staff accounts, admin workspace, role assignment, and account lifecycle.
 11. `phases/10-deployment-and-operations.md`: Dokploy deployment, backups, observability, n8n flows.
+12. `phases/11-production-launch-readiness.md`: first-admin bootstrap, real-environment smoke checks, launch checklist, and go/no-go evidence.
+13. `phases/12-notification-automation.md`: backend-to-n8n webhook emission, delivery-result persistence, and staff delivery visibility.
+14. `phases/13-live-ai-provider-and-knowledge-base-content.md`: live AI and embedding providers, production KB content, and RAG evaluation.
+15. `phases/14-operational-hardening.md`: production observability, audit expansion, backup dry-runs, and incident procedures.
+16. `phases/15-scheduling-depth.md`: appointment windows, rescheduling, technician availability, and schedule views.
+17. `phases/16-inventory-reservations.md`: part reservations, stock movement history, compatibility hints, and low-stock visibility.
 
 ## Review
 
