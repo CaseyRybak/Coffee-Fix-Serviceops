@@ -793,6 +793,31 @@ function urgencyLabel(urgency: Urgency): string {
   return labels[urgency];
 }
 
+export function formatCompactDateTime(value: string | null | undefined): string {
+  if (!value) return "не указано";
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+export function formatCompactDate(value: string | null | undefined): string {
+  if (!value) return "не указано";
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  }).format(date);
+}
+
 function aiSuggestionKindLabel(kind: AiSuggestionKind): string {
   const labels: Record<AiSuggestionKind, string> = {
     intake_classification: "Классификация",
@@ -1241,7 +1266,7 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
                         <small>{statusLabel(event.status)}</small>
                         <h3>{event.title}</h3>
                         <p>{event.description}</p>
-                        <em>{event.created_at}</em>
+                        <time dateTime={event.created_at}>{formatCompactDateTime(event.created_at)}</time>
                       </div>
                     </article>
                   ))}
@@ -1569,12 +1594,16 @@ export function DispatcherPage({
                     onClick={() => setSelected(item.request_number)}
                   >
                     <span>{statusLabel(item.status)}</span>
-                    <strong>{item.request_number}</strong>
+                    <div className="dispatcher-list-titleline">
+                      <strong>{item.request_number}</strong>
+                      <time dateTime={item.created_at}>{formatCompactDateTime(item.created_at)}</time>
+                    </div>
                     <em>{item.customer_name}</em>
-                    <small>
-                      {item.machine_label} · {urgencyLabel(item.urgency)}
-                    </small>
-                    <small>{item.latest_event_title}</small>
+                    <small>{item.machine_label}</small>
+                    <div className="dispatcher-list-footline">
+                      <small>{item.latest_event_title}</small>
+                      <b>{urgencyLabel(item.urgency)}</b>
+                    </div>
                   </button>
                 ))
               ) : (
@@ -1617,12 +1646,14 @@ export function DispatcherPage({
                       <dd>{detail.address}</dd>
                     </div>
                     <div>
-                      <dt>Срочность</dt>
-                      <dd>{urgencyLabel(detail.urgency)}</dd>
+                      <dt>Telegram</dt>
+                      <dd>{detail.customer.telegram ?? "не указан"}</dd>
                     </div>
                     <div>
                       <dt>Создана</dt>
-                      <dd>{detail.created_at}</dd>
+                      <dd>
+                        <time dateTime={detail.created_at}>{formatCompactDateTime(detail.created_at)}</time>
+                      </dd>
                     </div>
                   </dl>
                 </div>
@@ -1717,7 +1748,7 @@ export function DispatcherPage({
                             <small>{statusLabel(event.status)}</small>
                             <h3>{event.title}</h3>
                             <p>{event.description}</p>
-                            <em>{event.created_at}</em>
+                            <time dateTime={event.created_at}>{formatCompactDateTime(event.created_at)}</time>
                           </div>
                         </article>
                       ))}
@@ -1728,7 +1759,8 @@ export function DispatcherPage({
                         <div className="technical-log-section">
                           {hiddenTimeline.map((event) => (
                             <p key={`${event.title}-${event.created_at}-hidden`}>
-                              {event.created_at} · {event.title}
+                              <time dateTime={event.created_at}>{formatCompactDateTime(event.created_at)}</time>
+                              <span>{event.title}</span>
                             </p>
                           ))}
                         </div>
@@ -1742,8 +1774,13 @@ export function DispatcherPage({
                           {detail.notification_deliveries?.length ? (
                             detail.notification_deliveries.map((delivery) => (
                               <p key={delivery.event_id}>
-                                {delivery.event_type} · {delivery.status} · {delivery.channel ?? "канал не указан"} · попытка {delivery.attempt_count}
-                                {delivery.error ? ` · ${delivery.error}` : ""}
+                                <time dateTime={delivery.updated_at ?? delivery.created_at ?? undefined}>
+                                  {formatCompactDateTime(delivery.updated_at ?? delivery.created_at)}
+                                </time>
+                                <span>
+                                  {delivery.event_type} · {delivery.status} · {delivery.channel ?? "канал не указан"} · попытка {delivery.attempt_count}
+                                  {delivery.error ? ` · ${delivery.error}` : ""}
+                                </span>
                               </p>
                             ))
                           ) : (
@@ -1837,7 +1874,7 @@ export function DispatcherPage({
                           <article key={`${note.created_at}-${note.note}`}>
                             <p>{note.note}</p>
                             <small>
-                              {note.actor} · {note.created_at}
+                              {note.actor} · <time dateTime={note.created_at}>{formatCompactDateTime(note.created_at)}</time>
                             </small>
                           </article>
                         ))
@@ -2163,7 +2200,10 @@ export function AdminPage({
                         <div>
                           <strong>{account.display_name}</strong>
                           <span>{account.username}</span>
-                          <small>{account.active ? "Активен" : "Отключен"} · обновлен {account.updated_at}</small>
+                          <small>
+                            {account.active ? "Активен" : "Отключен"} · обновлен{" "}
+                            <time dateTime={account.updated_at}>{formatCompactDateTime(account.updated_at)}</time>
+                          </small>
                         </div>
                         <div className="role-chip-row" aria-label={`Роли ${account.username}`}>
                           {staffRoleOptions.map((role) => (
@@ -2271,7 +2311,7 @@ export function AdminPage({
                       <strong>{event.action}</strong>
                       <span>{event.target_username}</span>
                       <small>
-                        {event.actor_username} · {event.created_at}
+                        {event.actor_username} · <time dateTime={event.created_at}>{formatCompactDateTime(event.created_at)}</time>
                       </small>
                     </article>
                   ))
@@ -2784,6 +2824,11 @@ export function InventoryPage({
                         {[part.brand, part.model].filter(Boolean).join(" ") || "Без привязки к модели"}
                       </small>
                       <em>Остаток: {part.quantity_on_hand} {part.unit}</em>
+                      {part.stock_updated_at ? (
+                        <small>
+                          обновлен <time dateTime={part.stock_updated_at}>{formatCompactDateTime(part.stock_updated_at)}</time>
+                        </small>
+                      ) : null}
                     </article>
                   ))
                 ) : (

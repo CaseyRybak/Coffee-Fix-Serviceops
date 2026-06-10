@@ -1126,7 +1126,7 @@ select:focus {
   line-height: 1.55;
 }
 
-.timeline-item em {
+.timeline-item time {
   color: #717182;
   font-size: 0.78rem;
   font-style: normal;
@@ -1317,9 +1317,9 @@ select:focus {
 
 .dispatcher-list-item {
   display: grid;
-  gap: 5px;
+  gap: 6px;
   width: 100%;
-  padding: 16px;
+  padding: 14px 16px;
   color: #1f1a17;
   background: #ffffff;
   border: 1px solid #e2d8cd;
@@ -1344,6 +1344,7 @@ select:focus {
 
 .dispatcher-list-item strong {
   font-size: 1rem;
+  line-height: 1.2;
 }
 
 .dispatcher-list-item em,
@@ -1388,8 +1389,9 @@ select:focus {
 
 .dispatcher-summary-card {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(340px, 1.1fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
+  gap: 22px;
+  align-items: start;
 }
 
 .dispatcher-summary-card h2 {
@@ -1414,6 +1416,19 @@ select:focus {
 .dispatcher-summary-card dd {
   margin: 4px 0 0;
   font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.dispatcher-summary-card time,
+.timeline-item time,
+.technical-log-section time,
+.internal-note-list time,
+.admin-staff-table time,
+.admin-audit-list time,
+.inventory-table time {
+  color: #6d5844;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .dispatcher-focus-row {
@@ -1458,6 +1473,41 @@ select:focus {
   font-size: 0.75rem;
   font-weight: 800;
   padding: 4px 9px;
+}
+
+.dispatcher-list-titleline,
+.dispatcher-list-footline {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.dispatcher-list-titleline strong {
+  min-width: 0;
+}
+
+.dispatcher-list-footline small {
+  min-width: 0;
+}
+
+.dispatcher-list-titleline time {
+  color: #8b7a6b;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.dispatcher-list-footline b {
+  background: #eef3e8;
+  border: 1px solid #d9e6d1;
+  border-radius: 999px;
+  color: #3d5f35;
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  padding: 3px 7px;
 }
 
 .ai-suggestions-panel {
@@ -1807,7 +1857,24 @@ select:focus {
 }
 
 .compact-timeline {
-  gap: 12px;
+  gap: 10px;
+}
+
+.compact-timeline .timeline-item {
+  gap: 10px;
+}
+
+.compact-timeline .timeline-item p {
+  margin-bottom: 6px;
+}
+
+.compact-timeline .timeline-item time {
+  background: #f7f1ea;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 4px 8px;
 }
 
 .dispatcher-extra-events,
@@ -1817,7 +1884,7 @@ select:focus {
 
 .technical-log-section {
   display: grid;
-  gap: 6px;
+  gap: 7px;
   margin-top: 10px;
 }
 
@@ -1827,9 +1894,27 @@ select:focus {
 }
 
 .technical-log-section p {
+  align-items: start;
   color: #717182;
+  display: grid;
   font-size: 0.8rem;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
   margin: 0;
+}
+
+.technical-log-section time {
+  background: #f7f1ea;
+  border-radius: 999px;
+  color: #6d5844;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 7px;
+}
+
+.technical-log-section span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .dispatcher-form {
