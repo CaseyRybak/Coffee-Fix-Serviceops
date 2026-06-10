@@ -1,5 +1,9 @@
 # Phase 12 Review: Notification Automation
 
+## Current Status Note
+
+Phase 12 has since been followed by Phase 13. The recommendation below is retained as the Phase 12 handoff record; current active focus is tracked in `project_notes.md`.
+
 ## Reviewer Role
 
 Implementation self-review artifact pending independent reviewer pass.
@@ -64,8 +68,8 @@ Repository exports:
 
 ## Documentation Updates Needed
 
-- None for Phase 12 completion. Phase 13 should start with a new detailed implementation plan.
+- None for Phase 12 completion. At Phase 12 handoff, the next required step was a new detailed Phase 13 implementation plan; Phase 13 has since been implemented and reviewed.
 
 ## Final Recommendation
 
-Proceed to Phase 13 after an independent reviewer confirms notification privacy, webhook security, retry behavior, delivery-state consistency, and n8n workflow configuration.
+At the time of Phase 12 handoff, the slice was ready to proceed to Phase 13 after notification privacy, webhook security, retry behavior, delivery-state consistency, and n8n workflow configuration review. Current phase status is superseded by `project_notes.md` and `docs/execution-plans/index.md`.

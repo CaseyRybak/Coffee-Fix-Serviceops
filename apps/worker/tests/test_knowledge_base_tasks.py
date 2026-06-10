@@ -1,6 +1,10 @@
+import json
+
 from serviceops_worker.celery_app import create_celery_app
 from serviceops_worker.knowledge_base_tasks import (
     DeterministicEmbeddingProvider,
+    OpenAiCompatibleEmbeddingProvider,
+    _default_embedding_provider,
     embed_document_chunks,
     embed_knowledge_document,
 )
@@ -37,6 +41,60 @@ def test_embed_document_chunks_uses_provider_without_network_calls() -> None:
     assert result == {"document_id": 42, "embedded_chunks": 2}
     assert sorted(repository.saved) == [7, 8]
     assert all(len(embedding) == 12 for embedding in repository.saved.values())
+
+
+def test_default_embedding_provider_is_deterministic(monkeypatch) -> None:
+    monkeypatch.delenv("SERVICEOPS_EMBEDDING_PROVIDER", raising=False)
+    monkeypatch.setenv("SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS", "12")
+
+    provider = _default_embedding_provider()
+
+    assert isinstance(provider, DeterministicEmbeddingProvider)
+
+
+def test_default_embedding_provider_supports_live_openai_compatible(monkeypatch) -> None:
+    monkeypatch.setenv("SERVICEOPS_EMBEDDING_PROVIDER", "openai-compatible")
+    monkeypatch.setenv("SERVICEOPS_EMBEDDING_MODEL", "text-embedding-3-small")
+    monkeypatch.setenv("SERVICEOPS_EMBEDDING_API_KEY", "test-key")
+
+    provider = _default_embedding_provider()
+
+    assert isinstance(provider, OpenAiCompatibleEmbeddingProvider)
+
+
+def test_default_embedding_provider_requires_live_key(monkeypatch) -> None:
+    monkeypatch.setenv("SERVICEOPS_EMBEDDING_PROVIDER", "openai-compatible")
+    monkeypatch.setenv("SERVICEOPS_EMBEDDING_MODEL", "text-embedding-3-small")
+    monkeypatch.delenv("SERVICEOPS_EMBEDDING_API_KEY", raising=False)
+
+    try:
+        _default_embedding_provider()
+    except ValueError as exc:
+        assert "SERVICEOPS_EMBEDDING_API_KEY is required" in str(exc)
+    else:
+        raise AssertionError("expected missing embedding key failure")
+
+
+def test_live_embedding_provider_masks_malformed_transport_json() -> None:
+    def fake_post_json(url: str, body: dict[str, object], headers: dict[str, str], timeout: float) -> dict[str, object]:
+        raise json.JSONDecodeError("provider leaked body with secret-key", doc="secret-key", pos=0)
+
+    provider = OpenAiCompatibleEmbeddingProvider(
+        api_base_url="https://provider.example/v1",
+        api_key="secret-key",
+        model="text-embedding-3-small",
+        timeout_seconds=5,
+        max_retries=0,
+        post_json=fake_post_json,
+    )
+
+    try:
+        provider.embed_texts(["first"])
+    except RuntimeError as exc:
+        assert str(exc) == "Embedding provider request failed"
+        assert "secret-key" not in str(exc)
+    else:
+        raise AssertionError("expected malformed provider response failure")
 
 
 def test_embed_knowledge_document_task_uses_configured_repository(monkeypatch) -> None:

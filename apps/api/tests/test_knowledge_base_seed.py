@@ -3,7 +3,10 @@ import asyncio
 import httpx
 
 from serviceops_api.knowledge_base.repository import SqliteKnowledgeBaseRepository
+from serviceops_api.knowledge_base.evaluation import RAG_EVALUATION_CASES, run_rag_evaluation
 from serviceops_api.knowledge_base.seed_documents import REPAIR_KNOWLEDGE_SEED_DOCUMENTS
+from serviceops_api.knowledge_base.use_cases import IngestKnowledgeDocument, RetrieveKnowledge
+from serviceops_api.knowledge_base.embeddings import DeterministicEmbeddingProvider
 from serviceops_api.main import create_app
 from serviceops_api.service_requests.repository import ServiceRequestRepository
 
@@ -17,6 +20,23 @@ def test_e61_overheating_seed_document_captures_repair_knowledge() -> None:
     assert "scale" in seed.body
     assert "boiler pressure" in seed.body
     assert "pressurestat" in seed.body
+
+
+def test_repair_seed_documents_are_curated_and_source_backed() -> None:
+    source_uris = [document.source_uri for document in REPAIR_KNOWLEDGE_SEED_DOCUMENTS]
+
+    assert len(REPAIR_KNOWLEDGE_SEED_DOCUMENTS) >= 8
+    assert len(source_uris) == len(set(source_uris))
+    for document in REPAIR_KNOWLEDGE_SEED_DOCUMENTS:
+        assert document.source_uri
+        assert document.source_uri.startswith("seed://repair/")
+        assert len(document.body) > 250
+        assert document.metadata
+        assert any(key in document.metadata for key in {"topic", "symptom", "machine_family", "brand", "maintenance"})
+        serialized = document.model_dump_json()
+        assert "+7" not in serialized
+        assert "dispatcher@" not in serialized
+        assert "sk-" not in serialized
 
 
 def test_seed_document_can_be_retrieved_by_repair_question() -> None:
@@ -39,3 +59,17 @@ def test_seed_document_can_be_retrieved_by_repair_question() -> None:
     result = response.json()["results"][0]
     assert result["document_title"] == REPAIR_KNOWLEDGE_SEED_DOCUMENTS[0].title
     assert result["source_uri"] == "seed://repair/e61-overheating"
+
+
+def test_rag_evaluation_cases_retrieve_expected_sources() -> None:
+    repository = SqliteKnowledgeBaseRepository.in_memory()
+    embedding_provider = DeterministicEmbeddingProvider(dimensions=12)
+    ingest = IngestKnowledgeDocument(repository, embedding_provider)
+    retrieve = RetrieveKnowledge(repository, embedding_provider)
+    for document in REPAIR_KNOWLEDGE_SEED_DOCUMENTS:
+        ingest.execute(document)
+
+    results = run_rag_evaluation(retrieve)
+
+    assert len(RAG_EVALUATION_CASES) >= 6
+    assert all(result["passed"] is True for result in results)

@@ -87,6 +87,13 @@ describe("App", () => {
         actor: "dispatcher",
         created_at: "2026-06-05 10:15:00",
       },
+      {
+        status: "diagnostics" as const,
+        title: "Диагностика начата",
+        description: "Мастер проверяет кофемашину.",
+        actor: "technician",
+        created_at: "2026-06-05 10:30:00",
+      },
     ],
     clarification: {
       question_id: 4,
@@ -656,12 +663,19 @@ describe("App", () => {
     assert.match(html, /Назначить мастера/);
     assert.match(html, /Сохранить заметку/);
     assert.match(html, /AI-подсказки/);
+    assert.match(html, /Нажмите, чтобы открыть AI-ассистента/);
+    assert.match(html, /<details class="dispatcher-card ai-suggestions-panel">/);
     assert.match(html, /Уточнить перегрев/);
     assert.match(html, /Когда именно перегревается группа/);
+    assert.match(html, /Подробнее/);
     assert.match(html, /Принять как вопрос/);
     assert.match(html, /E61 overheating repair guide/);
     assert.match(html, /Черновик ответа/);
     assert.match(html, /Игнорировано/);
+    assert.match(html, /Последние события/);
+    assert.match(html, /Остальные события \(1\)/);
+    assert.match(html, /Технический лог/);
+    assert.doesNotMatch(html, /class="notification-delivery-panel"/);
   });
 
   it("renders technician assigned visit workflow controls", () => {
@@ -822,7 +836,7 @@ describe("App", () => {
     assert.doesNotMatch(html, /Вызвать мастера/);
   });
 
-  it("renders dispatcher notification delivery status for staff", () => {
+  it("keeps dispatcher notification delivery status in a collapsed technical log", () => {
     const html = renderToStaticMarkup(
       <DispatcherPage
         initialList={{
@@ -844,11 +858,13 @@ describe("App", () => {
       />,
     );
 
-    assert.match(html, /Доставка уведомлений/);
+    assert.match(html, /Технический лог/);
+    assert.match(html, /Уведомления/);
     assert.match(html, /service_request\.created/);
     assert.match(html, /sent/);
     assert.match(html, /telegram/);
     assert.match(html, /попытка 1/);
+    assert.doesNotMatch(html, /class="notification-delivery-panel"/);
   });
 
   it("renders the public status page with timeline, clarification answer, and Telegram opt-in", () => {

@@ -32,6 +32,8 @@ SERVICEOPS_CORS_ALLOWED_ORIGINS=https://serviceops.example.com
 POSTGRES_PASSWORD=<strong password>
 SERVICEOPS_DATABASE_URL=postgresql+psycopg://serviceops:<strong password>@postgres:5432/serviceops
 SERVICEOPS_STAFF_AUTH_SECRET=<long random value>
+SERVICEOPS_AI_PROVIDER=deterministic
+SERVICEOPS_EMBEDDING_PROVIDER=deterministic
 SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET=<long random value>
 SERVICEOPS_N8N_CALLBACK_SECRET=<different long random value>
 SERVICEOPS_N8N_REQUEST_CREATED_WEBHOOK_URL=https://n8n.serviceops.example.com/webhook/serviceops/request-created
@@ -49,6 +51,8 @@ N8N_BASIC_AUTH_PASSWORD=<strong password>
 N8N_ENCRYPTION_KEY=<long random value>
 SERVICEOPS_BACKUP_DIR=/var/backups/serviceops
 ```
+
+For live AI, set the OpenAI-compatible values from `docs/operations/ai-providers.md` in Dokploy. Do not commit provider API keys to `.env.example`, screenshots, smoke evidence, or workflow exports.
 
 Do not use local development staff credentials, default passwords, or local URLs in production.
 
@@ -142,6 +146,16 @@ Minimum go/no-go evidence before enabling DNS or public traffic:
 5. Persisted staff login and dispatcher route smoke checks passed.
 6. Worker, Telegram bot, and n8n logs were reviewed.
 7. Rollback target and latest verified backup were identified.
+
+## AI Provider Go/No-Go
+
+Before switching `SERVICEOPS_AI_PROVIDER` or `SERVICEOPS_EMBEDDING_PROVIDER` to `openai-compatible`, verify:
+
+1. Provider API keys are present only in Dokploy or a secret store.
+2. `docs/operations/ai-providers.md` has been followed for model, base URL, timeout, and retry values.
+3. Deterministic RAG evaluation passes with the curated seed documents.
+4. A dispatcher AI suggestion smoke test succeeds on a non-sensitive request.
+5. Public status snapshots still exclude AI suggestions, provider payloads, and source metadata.
 
 ## Rollback
 

@@ -21,6 +21,11 @@ class AiSuggestionStore(Protocol):
     def save_suggestions(self, request_number: str, suggestions: list[AiSuggestionCreate]) -> list[dict[str, object]]:
         """Persist AI suggestions for dispatcher review."""
 
+    def replace_pending_suggestions(
+        self, request_number: str, suggestions: list[AiSuggestionCreate]
+    ) -> list[dict[str, object]]:
+        """Replace pending suggestions for a request while preserving acted-on suggestions."""
+
     def list_suggestions(self, request_number: str) -> list[dict[str, object]]:
         """Return suggestions for a request."""
 
@@ -90,6 +95,16 @@ class SqliteAiSuggestionRepository:
                 )
                 saved.append(self.get_suggestion(int(cursor.lastrowid)))
         return saved
+
+    def replace_pending_suggestions(
+        self, request_number: str, suggestions: list[AiSuggestionCreate]
+    ) -> list[dict[str, object]]:
+        with self._connection:
+            self._connection.execute(
+                "DELETE FROM ai_suggestions WHERE request_number = ? AND status = ?",
+                (request_number, "pending"),
+            )
+        return self.save_suggestions(request_number, suggestions)
 
     def list_suggestions(self, request_number: str) -> list[dict[str, object]]:
         rows = self._connection.execute(
@@ -182,6 +197,17 @@ class PostgresAiSuggestionRepository:
                     raise RuntimeError("ai suggestion insert did not return an id")
                 saved.append(self.get_suggestion(int(row["id"])))
         return saved
+
+    def replace_pending_suggestions(
+        self, request_number: str, suggestions: list[AiSuggestionCreate]
+    ) -> list[dict[str, object]]:
+        connection = self._connect()
+        with connection.transaction():
+            connection.execute(
+                "DELETE FROM ai_suggestions WHERE request_number = %s AND status = %s",
+                (request_number, "pending"),
+            )
+        return self.save_suggestions(request_number, suggestions)
 
     def list_suggestions(self, request_number: str) -> list[dict[str, object]]:
         rows = self._connect().execute(

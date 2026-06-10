@@ -9,10 +9,10 @@
 - Dispatcher request list and request card.
 - Manual status transitions.
 - Manual technician assignment.
-- Telegram opt-in contract and notification workflow design. Outbound Telegram/n8n delivery remains deferred until a notification delivery slice.
+- Telegram opt-in linking, backend-to-n8n notification events, delivery-result persistence, and staff-visible delivery status.
 - PostgreSQL persistence.
-- Basic RAG document ingestion with pgvector.
-- First AI workflows for intake classification and diagnostic questions.
+- Source-backed RAG document ingestion with pgvector and curated repair seed content.
+- AI workflows for intake classification, diagnostic questions, likely causes, parts hints, and customer reply drafts, with deterministic local providers and configurable OpenAI-compatible live providers.
 - Docker Compose local environment.
 
 ## First Request Form Fields
@@ -32,6 +32,7 @@
 - Full client account.
 - Automatic technician assignment without confirmation.
 - Precise AI cost estimation.
+- Autonomous AI decisions without staff confirmation.
 - Advanced inventory procurement.
 - Billing automation.
 - Telephony integration.

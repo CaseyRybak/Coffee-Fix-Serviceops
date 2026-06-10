@@ -20,4 +20,10 @@ The first suggestion kinds are intake classification, diagnostic question, likel
 
 Prompt input assembly excludes customer phone and Telegram handles. Diagnostic and likely-cause suggestions may include knowledge-base source chunks, and those sources remain visible to dispatchers for traceability.
 
-The local provider is deterministic for testability. Live OpenAI-compatible provider calls, retry policy, rate limiting, and provider observability remain later production-hardening work.
+## Phase 13 Live Provider Behavior
+
+The local/test provider remains deterministic for testability. Production can select an OpenAI-compatible chat provider through environment configuration without changing application code.
+
+Live provider prompts are assembled from the existing safe `AiPromptInput` boundary. They exclude customer phone numbers, Telegram handles, technician phone numbers, internal note bodies, notification delivery errors, and shared secrets. Provider failures surface generic operator-safe errors and must not log raw prompts, API keys, provider request bodies, or provider response bodies.
+
+Live AI output is still only a dispatcher-reviewed suggestion. It never changes service-request lifecycle state, assignment state, inventory reservations, notifications, or customer-visible content unless a staff member explicitly accepts an allowed suggestion through the normal use case.

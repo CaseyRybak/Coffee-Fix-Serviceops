@@ -57,7 +57,10 @@ def test_sqlite_ai_suggestion_repository_tracks_lifecycle() -> None:
     assert repository.get_suggestion(int(saved[0]["suggestion_id"]))["status"] == "accepted"
 
 
-def test_dispatcher_ai_suggestion_lifecycle_accepts_question_and_ignores_draft() -> None:
+def test_dispatcher_ai_suggestion_lifecycle_accepts_question_and_ignores_draft(monkeypatch) -> None:
+    monkeypatch.setenv("SERVICEOPS_AI_SUGGESTION_LIMIT", "5")
+    get_settings.cache_clear()
+
     async def scenario() -> tuple[dict[str, object], dict[str, object], dict[str, object], dict[str, object]]:
         service_repository = ServiceRequestRepository.in_memory()
         knowledge_repository = SqliteKnowledgeBaseRepository.in_memory()
@@ -113,7 +116,10 @@ def test_dispatcher_ai_suggestion_lifecycle_accepts_question_and_ignores_draft()
             detail = await client.get(f"/dispatcher/service-requests/{request_number}", headers=headers)
         return generated.json(), accepted.json(), ignored.json(), {"public": public_status.json(), "detail": detail.json()}
 
-    generated, accepted, ignored, snapshots = asyncio.run(scenario())
+    try:
+        generated, accepted, ignored, snapshots = asyncio.run(scenario())
+    finally:
+        get_settings.cache_clear()
 
     assert len(generated["suggestions"]) == 5
     assert accepted["suggestion"]["status"] == "accepted"
@@ -124,7 +130,7 @@ def test_dispatcher_ai_suggestion_lifecycle_accepts_question_and_ignores_draft()
 
 
 def test_ai_suggestion_generation_respects_configured_limit(monkeypatch) -> None:
-    monkeypatch.setenv("SERVICEOPS_AI_SUGGESTION_LIMIT", "3")
+    monkeypatch.setenv("SERVICEOPS_AI_SUGGESTION_LIMIT", "2")
     get_settings.cache_clear()
 
     async def scenario() -> dict[str, object]:
@@ -155,4 +161,93 @@ def test_ai_suggestion_generation_respects_configured_limit(monkeypatch) -> None
     finally:
         get_settings.cache_clear()
 
-    assert len(generated["suggestions"]) == 3
+    assert len(generated["suggestions"]) == 2
+
+
+def test_ai_suggestion_generation_replaces_pending_suggestions_without_growing_list() -> None:
+    async def scenario() -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
+        service_repository = ServiceRequestRepository.in_memory()
+        ai_repository = SqliteAiSuggestionRepository.in_memory()
+        app = create_app(
+            service_request_repository=service_repository,
+            knowledge_base_repository=SqliteKnowledgeBaseRepository.in_memory(),
+            ai_suggestion_repository=ai_repository,
+        )
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            login = await client.post(
+                "/staff/login",
+                json={"username": "dispatcher@coffeefix.local", "password": "dispatcher-local"},
+            )
+            token = str(login.json()["access_token"])
+            headers = {"Authorization": f"Bearer {token}"}
+            created = await client.post("/service-requests", json=request_payload())
+            request_number = str(created.json()["request_number"])
+
+            first = await client.post(
+                f"/dispatcher/service-requests/{request_number}/ai-suggestions/generate",
+                json={},
+                headers=headers,
+            )
+            diagnostic = next(
+                suggestion
+                for suggestion in first.json()["suggestions"]
+                if suggestion["kind"] == "diagnostic_question"
+            )
+            await client.post(
+                f"/dispatcher/service-requests/{request_number}/ai-suggestions/{diagnostic['suggestion_id']}/accept-clarification",
+                headers=headers,
+            )
+            second = await client.post(
+                f"/dispatcher/service-requests/{request_number}/ai-suggestions/generate",
+                json={},
+                headers=headers,
+            )
+            listed = await client.get(
+                f"/dispatcher/service-requests/{request_number}/ai-suggestions",
+                headers=headers,
+            )
+        return first.json(), second.json(), listed.json()
+
+    first, second, listed = asyncio.run(scenario())
+
+    assert len(first["suggestions"]) == 3
+    assert len(second["suggestions"]) == 3
+    assert len(listed["suggestions"]) == 4
+    assert sum(1 for suggestion in listed["suggestions"] if suggestion["status"] == "pending") == 3
+    assert sum(1 for suggestion in listed["suggestions"] if suggestion["status"] == "accepted") == 1
+
+
+def test_ai_suggestion_generation_does_not_mutate_service_request_lifecycle() -> None:
+    async def scenario() -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
+        service_repository = ServiceRequestRepository.in_memory()
+        app = create_app(
+            service_request_repository=service_repository,
+            knowledge_base_repository=SqliteKnowledgeBaseRepository.in_memory(),
+            ai_suggestion_repository=SqliteAiSuggestionRepository.in_memory(),
+        )
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            login = await client.post(
+                "/staff/login",
+                json={"username": "dispatcher@coffeefix.local", "password": "dispatcher-local"},
+            )
+            token = str(login.json()["access_token"])
+            created = await client.post("/service-requests", json=request_payload())
+            request_number = str(created.json()["request_number"])
+            before = await client.get(f"/service-requests/{request_number}/status")
+            generated = await client.post(
+                f"/dispatcher/service-requests/{request_number}/ai-suggestions/generate",
+                json={},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            after = await client.get(f"/service-requests/{request_number}/status")
+        return before.json(), generated.json(), after.json()
+
+    before, generated, after = asyncio.run(scenario())
+
+    assert before["status"] == "new"
+    assert after["status"] == "new"
+    assert before["clarification"] is None
+    assert after["clarification"] is None
+    assert all(suggestion["status"] == "pending" for suggestion in generated["suggestions"])

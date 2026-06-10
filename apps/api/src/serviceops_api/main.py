@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from serviceops_api.ai_agents.api import create_dispatcher_ai_router
-from serviceops_api.ai_agents.providers import DeterministicAiSuggestionProvider
+from serviceops_api.ai_agents.providers import create_ai_suggestion_provider
 from serviceops_api.ai_agents.repository import (
     PostgresAiSuggestionRepository,
     SqliteAiSuggestionRepository,
@@ -25,7 +25,7 @@ from serviceops_api.inventory.repository import (
 )
 from serviceops_api.inventory.use_cases import CreatePart, ListParts, SetStockCount
 from serviceops_api.knowledge_base.api import create_knowledge_base_router
-from serviceops_api.knowledge_base.embeddings import DeterministicEmbeddingProvider
+from serviceops_api.knowledge_base.embeddings import create_embedding_provider
 from serviceops_api.knowledge_base.repository import (
     PostgresKnowledgeBaseRepository,
     SqliteKnowledgeBaseRepository,
@@ -150,9 +150,9 @@ def create_app(
         else N8nWebhookClient(settings)
     )
     notification_publisher = NotificationPublisher(notification_store, delivery_client, repository)
-    embedding_provider = DeterministicEmbeddingProvider(settings.knowledge_embedding_dimensions)
+    embedding_provider = create_embedding_provider(settings)
     retrieve_knowledge = RetrieveKnowledge(knowledge_repository, embedding_provider)
-    suggestion_provider = DeterministicAiSuggestionProvider()
+    suggestion_provider = create_ai_suggestion_provider(settings)
     authenticator = staff_authenticator or StaffAuthenticator(settings, staff_account_store)
     get_public_status = GetPublicStatus(repository)
     app.include_router(create_staff_auth_router(authenticator))

@@ -52,6 +52,33 @@ def test_prompt_input_uses_service_request_and_rag_sources() -> None:
     assert "@hidden" not in serialized
 
 
+def test_prompt_input_excludes_sensitive_operational_details() -> None:
+    request = _request_snapshot()
+    request["assignment"] = {
+        "technician_name": "Sergey Morozov",
+        "technician_phone": "+7 999 222-33-44",
+        "technician_region": "ЦАО",
+        "visit_window": "tomorrow",
+    }
+    request["internal_notes"] = [
+        {"body": "Customer is angry; discount approved by manager.", "author": "dispatcher@coffeefix.local"}
+    ]
+    request["ai_suggestions"] = [{"content": "Old provider output should not be echoed."}]
+    request["notification_deliveries"] = [{"error": "bot token failed with secret-value"}]
+
+    prompt = build_prompt_input(request=request, rag_results=[])
+
+    serialized = prompt.model_dump_json()
+    assert "Sergey Morozov" not in serialized
+    assert "+7 999 222-33-44" not in serialized
+    assert "Customer is angry" not in serialized
+    assert "dispatcher@coffeefix.local" not in serialized
+    assert "Old provider output" not in serialized
+    assert "secret-value" not in serialized
+    assert prompt.assignment_state == "assigned"
+    assert prompt.internal_note_count == 1
+
+
 def test_deterministic_provider_returns_bounded_human_review_suggestions() -> None:
     prompt = build_prompt_input(
         request=_request_snapshot("E61 group overheats and pressure rises"),

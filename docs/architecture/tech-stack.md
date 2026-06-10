@@ -23,7 +23,9 @@
 
 ## AI And RAG
 
-- OpenAI API or compatible LLM provider.
+- OpenAI-compatible chat provider adapter for live AI suggestions.
+- OpenAI-compatible embedding provider adapter for live vector generation.
+- Deterministic local/test providers for network-free development and CI.
 - Custom RAG pipeline before adopting heavier orchestration.
 - LangGraph can be introduced when agent workflows need durable state graphs.
 

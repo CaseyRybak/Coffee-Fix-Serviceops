@@ -87,6 +87,24 @@ docker compose -f docker-compose.production.yml exec worker \
 
 Expected: worker process is running and Celery responds when the container is healthy.
 
+## AI And RAG
+
+Run deterministic provider and curated knowledge checks before enabling live AI:
+
+```bash
+cd apps/api && uv run --extra dev pytest tests/test_knowledge_base_seed.py -v
+```
+
+Expected: curated repair seed documents pass source checks and representative RAG evaluation queries retrieve the expected source URI in the top three results.
+
+Optional live-provider smoke should use a non-sensitive request and production secrets from the deployment environment:
+
+```bash
+cd apps/api && uv run --extra dev pytest tests/test_live_ai_provider.py tests/test_live_embedding_provider.py -v
+```
+
+Expected: provider contract tests pass with fake transports. To test real provider credentials, use a controlled deployment environment and do not place live API keys in shell history, smoke evidence, or repository files.
+
 ## Telegram Bot
 
 ```bash

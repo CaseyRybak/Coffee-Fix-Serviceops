@@ -18,6 +18,10 @@ This file preserves historical phase context that used to make `project_notes.md
 - 2026-06-07: Inserted Phase 09 staff admin before deployment and completed persisted staff accounts, password hashes, admin-only lifecycle API, audit events, persisted login before development fallback, and `/admin` workspace.
 - 2026-06-07: Completed Phase 10 deployment and operations with production Compose, expanded env docs, JSON logging, PostgreSQL migration command, backup/restore scripts, smoke-test script, n8n workflow records, operations runbooks, and local review fixes.
 - 2026-06-07: Completed documentation audit after Phase 10, correcting current-stack descriptions, notification/deployment boundaries, public status endpoint docs, and production staff bootstrap caveats.
+- 2026-06-10: Completed Phase 11 production launch readiness with first-admin bootstrap, launch smoke evidence template, persisted-staff smoke check, and runbook updates.
+- 2026-06-10: Completed Phase 12 notification automation with backend-to-n8n webhook emission, delivery-result persistence, staff delivery visibility, Telegram opt-in token consumption, and workflow exports.
+- 2026-06-10: Completed Phase 13 live AI provider and knowledge-base content with OpenAI-compatible AI/embedding adapters, curated repair knowledge seed content, RAG evaluation fixtures, and AI provider operations guidance.
+- 2026-06-10: Completed documentation audit after Phase 13, correcting current product, architecture, notification domain, repository map, and review handoff docs.
 
 ## Historical Decisions
 
@@ -41,15 +45,13 @@ This file preserves historical phase context that used to make `project_notes.md
 - API, worker, and Telegram bot services emit structured JSON logs to stdout for Dokploy log collection.
 - n8n can automate delivery and operational routing but must not own service-request state, staff identity, customer answers, inventory counts, or repair lifecycle transitions.
 - Production backups use PostgreSQL custom-format dumps with checksum files, and restore drills should run against a non-production database.
+- AI and embedding providers default to deterministic local/test mode; OpenAI-compatible live providers are enabled only through secret-backed environment variables.
 
 ## Deferred Work Ledger
 
 - Binary attachment storage.
 - Full client accounts.
-- Bot-side Telegram opt-in token consumption and outbound notification delivery.
-- Backend-to-n8n webhook emission and delivery-result persistence.
-- Production-safe first-admin bootstrap.
 - Full technician profiles, availability calendar, automatic matching, and rescheduling rules.
 - Warehouses, suppliers, purchase orders, barcode scanning, billing totals, and warranty stock handling.
-- Live OpenAI-compatible provider calls, retry policy, rate limiting, provider observability, and log shipping.
+- Provider observability, provider latency/error dashboards, log shipping, and incident procedures.
 - Real Dokploy/VPS smoke-test evidence before public launch.

@@ -43,6 +43,8 @@
 - `docs/execution-plans/detailed/09-staff-admin-and-user-management-implementation.md`: completed detailed plan for persisted staff accounts and admin user management.
 - `docs/execution-plans/detailed/10-deployment-and-operations-implementation.md`: completed detailed plan for Dokploy deployment, backups, observability, n8n workflows, and smoke tests.
 - `docs/execution-plans/detailed/11-production-launch-readiness-implementation.md`: completed detailed plan for first-admin bootstrap and launch smoke evidence.
+- `docs/execution-plans/detailed/12-notification-automation-implementation.md`: completed detailed plan for backend-to-n8n events, delivery persistence, workflow exports, and staff delivery visibility.
+- `docs/execution-plans/detailed/13-live-ai-provider-and-knowledge-base-content-implementation.md`: completed detailed plan for OpenAI-compatible providers, curated repair knowledge, and RAG evaluation.
 - `docs/execution-plans/completed/`: completed phase plans.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
@@ -55,7 +57,10 @@
 - `docs/review/phase-09-review.md`: Phase 09 review artifact for staff admin and user management.
 - `docs/review/phase-10-review.md`: Phase 10 review artifact for deployment and operations.
 - `docs/review/phase-11-review.md`: Phase 11 review artifact for production launch readiness.
+- `docs/review/phase-12-review.md`: Phase 12 review artifact for notification automation.
+- `docs/review/phase-13-review.md`: Phase 13 review artifact for live provider adapters and curated knowledge-base content.
 - `docs/review/documentation-audit-2026-06-07.md`: documentation consistency and quality audit after Phase 10.
+- `docs/review/documentation-audit-2026-06-10.md`: documentation consistency and quality audit after Phase 13.
 
 ## Workflow Skills
 
@@ -68,22 +73,23 @@
 - `docs/operations/backup-restore.md`: PostgreSQL backup, restore, checksum, retention, and restore-drill procedure.
 - `docs/operations/launch-smoke-evidence.md`: first-launch evidence template for production smoke checks and go/no-go decisions.
 - `docs/operations/smoke-tests.md`: manual and scripted deployment smoke-test checklist.
-- `docs/operations/n8n-workflows.md`: n8n workflow design records for request and status notifications.
+- `docs/operations/ai-providers.md`: deterministic and OpenAI-compatible AI/embedding provider operations guide.
+- `docs/operations/n8n-workflows.md`: n8n workflow contracts, live workflow IDs, import guidance, and delivery-result callback shape.
 - `tools/operations/`: operational shell scripts and regression checks for backup, restore, and smoke checks.
 
 ## Code Areas
 
-- `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, Telegram opt-in contracts, dispatcher routes, technician routes, inventory routes, staff admin routes, knowledge-base RAG routes, AI suggestion routes, sqlite test persistence, and PostgreSQL Compose persistence.
-- `apps/api/src/serviceops_api/ai_agents`: AI suggestion models, prompt assembly, deterministic provider, sqlite/PostgreSQL repositories, dispatcher use cases, and protected routes.
+- `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, Telegram opt-in/linking contracts, notification callbacks, dispatcher routes, technician routes, inventory routes, staff admin routes, knowledge-base RAG routes, AI suggestion routes, sqlite test persistence, and PostgreSQL Compose persistence.
+- `apps/api/src/serviceops_api/ai_agents`: AI suggestion models, prompt assembly, deterministic and OpenAI-compatible providers, sqlite/PostgreSQL repositories, dispatcher use cases, and protected routes.
 - `apps/api/src/serviceops_api/service_requests`: service request intake/status/dispatcher API, use cases, models, sqlite repository, PostgreSQL repository, and repository factory.
 - `apps/api/src/serviceops_api/technicians`: technician assigned-visit models, protected routes, and workflow use cases for diagnosis, repair result, and parts used.
 - `apps/api/src/serviceops_api/inventory`: parts catalog models, sqlite/PostgreSQL repositories, inventory use cases, protected inventory routes, and stock decrement behavior.
 - `apps/api/src/serviceops_api/staff_management`: persisted staff account models, sqlite/PostgreSQL repositories, admin account lifecycle use cases, local persisted staff seed command, audit records, and protected admin routes.
 - `apps/api/src/serviceops_api/operations`: migration and first-admin bootstrap commands for production operations.
-- `apps/api/src/serviceops_api/knowledge_base`: knowledge document models, chunking, deterministic embeddings, sqlite/PostgreSQL repositories, ingestion and retrieval use cases, API routes, and seed repair documents.
+- `apps/api/src/serviceops_api/knowledge_base`: knowledge document models, chunking, deterministic and OpenAI-compatible embeddings, sqlite/PostgreSQL repositories, ingestion and retrieval use cases, API routes, curated seed repair documents, and RAG evaluation fixtures.
 - `apps/web`: React/Vite public intake form, request-number success state, public status page, dispatcher workspace, dispatcher AI suggestion panel, technician workspace, inventory workspace, and admin staff-management workspace.
-- `apps/worker`: Celery worker shell and knowledge-base embedding task boundary.
-- `apps/telegram-bot`: aiogram bot shell.
+- `apps/worker`: Celery worker shell and knowledge-base embedding task boundary with deterministic/live-compatible provider selection.
+- `apps/telegram-bot`: aiogram bot for `/start <token>` Telegram opt-in linking.
 - `packages/shared-kernel`: shared domain primitives.
 - `packages/observability`: logging and metrics helpers.
 - `packages/test-harness`: test utilities.

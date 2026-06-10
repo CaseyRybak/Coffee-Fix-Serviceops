@@ -4,7 +4,7 @@ This is the current operating dashboard. Historical phase chronology and older d
 
 ## Current Status
 
-Coffee Fix ServiceOps has completed implementation slices through Phase 12:
+Coffee Fix ServiceOps has completed implementation slices through Phase 13:
 
 - Public repair intake, request numbers, public status snapshots, clarification answers, and Telegram opt-in link contracts.
 - Dispatcher, staff login/RBAC, admin staff management, technician assigned-visit workflow, and inventory basics.
@@ -13,17 +13,18 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 12:
 - Production-oriented Dokploy/VPS operations artifacts: production Compose, environment docs, JSON logging, migration command, backup/restore scripts, smoke-test script, n8n workflow design records, deployment runbook, and Phase 10 review artifact.
 - Production launch readiness artifacts: one-time first-admin bootstrap command, optional persisted-staff smoke check, first-launch evidence template, updated deployment runbook, and Phase 11 review artifact.
 - Notification automation artifacts: backend-to-n8n webhook emission, delivery-result persistence, staff delivery visibility, production n8n workflow exports, and live n8n workflows for request-created, status-changed, clarification-requested, and customer-answered events.
+- Live AI provider and knowledge-base content artifacts: OpenAI-compatible AI suggestion and embedding adapters, deterministic local/test provider selection, curated repair knowledge seed set, RAG evaluation fixtures, and AI provider operations guidance.
 
 ## Active Focus
 
-Phase 13: Live AI Provider And Knowledge Base Content.
+Phase 14: Operational Hardening.
 
-Before executing Phase 13, create a detailed implementation plan in `docs/execution-plans/detailed/` and keep the review gate in `docs/review/subagent-review-protocol.md`.
+Before executing Phase 14, create a detailed implementation plan in `docs/execution-plans/detailed/` and keep the review gate in `docs/review/subagent-review-protocol.md`.
 
 ## Next Steps
 
-1. Create the detailed Phase 13 implementation plan for live AI provider adapters and knowledge-base content.
-2. Configure production n8n environment variables and Telegram chat IDs before enabling public notification traffic.
+1. Create the detailed Phase 14 implementation plan for operational hardening.
+2. Configure production n8n, Telegram, AI, and embedding provider environment variables before enabling public notification or live AI traffic.
 3. Run deployment smoke checks against a real Dokploy/VPS environment before public launch and record evidence with `docs/operations/launch-smoke-evidence.md`.
 4. Keep repository docs, tests, production Compose config, and operations scripts passing after changes.
 
@@ -35,9 +36,11 @@ Before executing Phase 13, create a detailed implementation plan in `docs/execut
 - Repository map: `docs/harness/repository-map.md`
 - Project history: `docs/harness/project-history.md`
 - Documentation audit: `docs/review/documentation-audit-2026-06-07.md`
+- Current documentation audit: `docs/review/documentation-audit-2026-06-10.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
 - Phase 10 review: `docs/review/phase-10-review.md`
 - Operations runbook: `docs/operations/deployment-runbook.md`
+- AI provider operations: `docs/operations/ai-providers.md`
 
 ## Verification Commands
 
@@ -64,4 +67,4 @@ Before executing Phase 13, create a detailed implementation plan in `docs/execut
 - PostgreSQL and Redis stay private in production; web, API, and n8n are routed through Dokploy or the reverse proxy.
 - n8n workflow records are operational artifacts. Phase 12 created live n8n workflows and repository exports; backend webhook emission and delivery-result persistence are implemented.
 - Production staff bootstrap uses `python -m serviceops_api.operations.bootstrap_admin`; local seed users remain disabled outside local/dev/test.
-- AI and embedding providers are not live-connected yet: current implementations use deterministic providers for local development and tests until Phase 13 adds production provider adapters and knowledge-base content.
+- AI and embedding providers default to deterministic mode for local development and tests; OpenAI-compatible live adapters are configurable for production through secret-backed environment variables.

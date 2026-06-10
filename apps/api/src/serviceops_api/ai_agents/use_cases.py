@@ -37,7 +37,7 @@ class GenerateAiSuggestions:
         rag = self._retrieve_knowledge.execute(RagRetrievalPayload(query=query, limit=3))
         prompt = build_prompt_input(request, [result.model_dump() for result in rag.results])
         suggestions = self._suggestion_provider.suggest(prompt)[: self._suggestion_limit]
-        saved = self._ai_repository.save_suggestions(request_number, suggestions)
+        saved = self._ai_repository.replace_pending_suggestions(request_number, suggestions)
         return AiSuggestionListResponse.model_validate({"request_number": request_number, "suggestions": saved})
 
 

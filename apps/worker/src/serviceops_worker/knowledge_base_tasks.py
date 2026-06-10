@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import json
 import hashlib
 import math
 import os
 import re
+from collections.abc import Callable
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 from typing import Protocol
 
 from celery import shared_task
@@ -12,6 +16,20 @@ from celery import shared_task
 class EmbeddingProvider(Protocol):
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """Return one embedding vector for each input text."""
+
+
+PostJson = Callable[[str, dict[str, object], dict[str, str], float], dict[str, object]]
+
+
+def post_json(url: str, body: dict[str, object], headers: dict[str, str], timeout: float) -> dict[str, object]:
+    request = Request(
+        url,
+        data=json.dumps(body).encode("utf-8"),
+        method="POST",
+        headers=headers,
+    )
+    with urlopen(request, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
 
 
 class KnowledgeChunkRepository(Protocol):
@@ -42,6 +60,59 @@ class DeterministicEmbeddingProvider:
         if magnitude == 0:
             return vector
         return [round(value / magnitude, 8) for value in vector]
+
+
+class OpenAiCompatibleEmbeddingProvider:
+    def __init__(
+        self,
+        api_base_url: str,
+        api_key: str,
+        model: str,
+        timeout_seconds: float = 20.0,
+        max_retries: int = 2,
+        post_json: PostJson = post_json,
+    ) -> None:
+        self._api_base_url = api_base_url.rstrip("/")
+        self._api_key = api_key
+        self._model = model
+        self._timeout_seconds = timeout_seconds
+        self._max_retries = max(0, max_retries)
+        self._post_json = post_json
+
+    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        if not texts:
+            return []
+        response = self._request_with_retries({"model": self._model, "input": texts})
+        try:
+            rows = response["data"]
+            if not isinstance(rows, list):
+                raise ValueError("embedding data missing")
+            ordered: dict[int, list[float]] = {}
+            for row in rows:
+                if not isinstance(row, dict):
+                    raise ValueError("invalid embedding row")
+                ordered[int(row["index"])] = [float(value) for value in row["embedding"]]  # type: ignore[index]
+            if sorted(ordered) != list(range(len(texts))):
+                raise ValueError("embedding count mismatch")
+            return [ordered[index] for index in range(len(texts))]
+        except Exception as exc:
+            raise RuntimeError("Embedding provider request failed") from exc
+
+    def _request_with_retries(self, body: dict[str, object]) -> dict[str, object]:
+        headers = {"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"}
+        url = f"{self._api_base_url}/embeddings"
+        for attempt in range(self._max_retries + 1):
+            try:
+                return self._post_json(url, body, headers, self._timeout_seconds)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError("Embedding provider request failed") from exc
+            except HTTPError as exc:
+                if attempt >= self._max_retries or exc.code not in {408, 409, 425, 429, 500, 502, 503, 504}:
+                    raise RuntimeError("Embedding provider request failed") from exc
+            except (TimeoutError, URLError, OSError) as exc:
+                if attempt >= self._max_retries:
+                    raise RuntimeError("Embedding provider request failed") from exc
+        raise RuntimeError("Embedding provider request failed")
 
 
 class PostgresKnowledgeChunkRepository:
@@ -108,9 +179,30 @@ def embed_document_chunks(
     return {"document_id": document_id, "embedded_chunks": len(chunks)}
 
 
-def _default_embedding_provider() -> DeterministicEmbeddingProvider:
-    dimensions = int(os.getenv("SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS", "12"))
-    return DeterministicEmbeddingProvider(dimensions=dimensions)
+def _default_embedding_provider() -> EmbeddingProvider:
+    provider = os.getenv("SERVICEOPS_EMBEDDING_PROVIDER", "deterministic").strip().lower()
+    if provider == "deterministic":
+        dimensions = int(os.getenv("SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS", "12"))
+        return DeterministicEmbeddingProvider(dimensions=dimensions)
+    if provider == "openai-compatible":
+        api_key = os.getenv("SERVICEOPS_EMBEDDING_API_KEY", "").strip()
+        if not api_key:
+            raise ValueError(
+                "SERVICEOPS_EMBEDDING_API_KEY is required when SERVICEOPS_EMBEDDING_PROVIDER=openai-compatible"
+            )
+        model = os.getenv("SERVICEOPS_EMBEDDING_MODEL", "").strip()
+        if not model:
+            raise ValueError(
+                "SERVICEOPS_EMBEDDING_MODEL is required when SERVICEOPS_EMBEDDING_PROVIDER=openai-compatible"
+            )
+        return OpenAiCompatibleEmbeddingProvider(
+            api_base_url=os.getenv("SERVICEOPS_EMBEDDING_API_BASE_URL", "https://api.openai.com/v1"),
+            api_key=api_key,
+            model=model,
+            timeout_seconds=float(os.getenv("SERVICEOPS_EMBEDDING_TIMEOUT_SECONDS", "20")),
+            max_retries=int(os.getenv("SERVICEOPS_EMBEDDING_MAX_RETRIES", "2")),
+        )
+    raise ValueError(f"Unsupported SERVICEOPS_EMBEDDING_PROVIDER: {provider}")
 
 
 def _default_repository() -> KnowledgeChunkRepository:

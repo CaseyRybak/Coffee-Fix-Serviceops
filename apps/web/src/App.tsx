@@ -1494,6 +1494,15 @@ export function DispatcherPage({
     setTechnicianRegion(candidate.region);
   }
 
+  const pendingAiSuggestions = detail?.ai_suggestions?.filter((suggestion) => suggestion.status === "pending") ?? [];
+  const archivedAiSuggestions = detail?.ai_suggestions?.filter((suggestion) => suggestion.status !== "pending") ?? [];
+  const visibleAiSuggestions = pendingAiSuggestions.length ? pendingAiSuggestions : detail?.ai_suggestions?.slice(0, 3) ?? [];
+  const visibleTimeline = detail?.timeline.slice(-2) ?? [];
+  const hiddenTimeline = detail?.timeline.slice(0, Math.max((detail?.timeline.length ?? 0) - 2, 0)) ?? [];
+  const hiddenTimelineCount = hiddenTimeline.length;
+  const notificationFailures = detail?.notification_deliveries?.filter((delivery) => delivery.status !== "sent") ?? [];
+  const technicalLogCount = detail?.notification_deliveries?.length ?? 0;
+
   return (
     <div className="app-page dispatcher-page">
       <WorkspaceHeader session={session} onLogout={onLogout} />
@@ -1580,6 +1589,12 @@ export function DispatcherPage({
                     <span className="status-pill">{statusLabel(detail.status)}</span>
                     <h2>{detail.request_number}</h2>
                     <p>{detail.problem}</p>
+                    <div className="dispatcher-focus-row" aria-label="Ключевые сигналы заявки">
+                      <span>{urgencyLabel(detail.urgency)}</span>
+                      <span>{detail.assignment.technician_name ? "Мастер назначен" : "Нужен мастер"}</span>
+                      <span>{detail.clarification?.answer ? "Клиент ответил" : detail.clarification ? "Ждем ответ" : "Уточнений нет"}</span>
+                      {notificationFailures.length ? <span className="danger">Ошибка уведомления</span> : null}
+                    </div>
                   </div>
                   <dl>
                     <div>
@@ -1612,87 +1627,90 @@ export function DispatcherPage({
                   </dl>
                 </div>
 
-                <section className="dispatcher-card ai-suggestions-panel">
-                  <div className="ai-suggestions-heading">
-                    <div>
+                <details className="dispatcher-card ai-suggestions-panel">
+                  <summary className="ai-suggestions-heading">
+                    <span className="ai-suggestions-badge" aria-hidden="true">AI</span>
+                    <div className="ai-suggestions-copy">
                       <h3>AI-подсказки</h3>
-                      <p>Черновики и рекомендации остаются внутренними, пока диспетчер не подтвердит действие.</p>
+                      <p>Нажмите, чтобы открыть AI-ассистента</p>
                     </div>
+                    <div className="ai-suggestions-meta">
+                      <span>
+                        {pendingAiSuggestions.length
+                          ? `${pendingAiSuggestions.length} на проверке`
+                          : "Нет активных подсказок"}
+                      </span>
+                    </div>
+                  </summary>
+                  <div className="ai-suggestions-body">
                     <button className="secondary-status-button" type="button" onClick={() => void generateAiSuggestions()} disabled={loading}>
                       Сгенерировать
                     </button>
-                  </div>
-                  {detail.ai_suggestions?.length ? (
-                    <div className="ai-suggestion-list">
-                      {detail.ai_suggestions.map((suggestion) => (
-                        <article className="ai-suggestion-item" key={suggestion.suggestion_id}>
-                          <div className="ai-suggestion-titleline">
-                            <span>{aiSuggestionKindLabel(suggestion.kind)}</span>
-                            <strong>{suggestion.title}</strong>
-                            <em>{aiSuggestionStatusLabel(suggestion.status)}</em>
-                          </div>
-                          <p>{suggestion.content}</p>
-                          <small>{suggestion.rationale}</small>
-                          {suggestion.source_chunks.length ? (
-                            <div className="ai-source-list">
-                              {suggestion.source_chunks.map((source) => (
-                                <span key={`${source.chunk_id}-${source.document_title}`}>
-                                  {source.document_title} · {Math.round(source.score * 100)}%
-                                </span>
-                              ))}
+                    {visibleAiSuggestions.length ? (
+                      <div className="ai-suggestion-list">
+                        {visibleAiSuggestions.map((suggestion) => (
+                          <article className="ai-suggestion-item" key={suggestion.suggestion_id}>
+                            <div className="ai-suggestion-titleline">
+                              <span>{aiSuggestionKindLabel(suggestion.kind)}</span>
+                              <strong>{suggestion.title}</strong>
+                              <em>{aiSuggestionStatusLabel(suggestion.status)}</em>
                             </div>
-                          ) : null}
-                          {suggestion.status === "pending" ? (
-                            <div className="ai-suggestion-actions">
-                              {suggestion.kind === "diagnostic_question" ? (
-                                <button type="button" onClick={() => void acceptAiClarification(suggestion.suggestion_id)}>
-                                  Принять как вопрос
-                                </button>
+                            <p className="ai-suggestion-content">{suggestion.content}</p>
+                            <details className="ai-suggestion-details">
+                              <summary>Подробнее</summary>
+                              <small>{suggestion.rationale}</small>
+                              <span>Уверенность: {Math.round(suggestion.confidence * 100)}%</span>
+                              {suggestion.source_chunks.length ? (
+                                <div className="ai-source-list">
+                                  {suggestion.source_chunks.map((source) => (
+                                    <span key={`${source.chunk_id}-${source.document_title}`}>
+                                      {source.document_title} · {Math.round(source.score * 100)}%
+                                    </span>
+                                  ))}
+                                </div>
                               ) : null}
-                              <button type="button" onClick={() => void ignoreAiSuggestion(suggestion.suggestion_id)}>
-                                Игнорировать
-                              </button>
-                            </div>
-                          ) : null}
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <p>Подсказок пока нет. Сгенерируйте их после проверки описания заявки.</p>
-                  )}
-                </section>
-
-                <section className="dispatcher-card notification-delivery-panel">
-                  <div className="notification-delivery-heading">
-                    <h3>Доставка уведомлений</h3>
-                    <span>{detail.notification_deliveries?.length ?? 0}</span>
+                            </details>
+                            {suggestion.status === "pending" ? (
+                              <div className="ai-suggestion-actions">
+                                {suggestion.kind === "diagnostic_question" ? (
+                                  <button type="button" onClick={() => void acceptAiClarification(suggestion.suggestion_id)}>
+                                    Принять как вопрос
+                                  </button>
+                                ) : null}
+                                <button type="button" onClick={() => void ignoreAiSuggestion(suggestion.suggestion_id)}>
+                                  Игнорировать
+                                </button>
+                              </div>
+                            ) : null}
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>Подсказок пока нет. Сгенерируйте их после проверки описания заявки.</p>
+                    )}
+                    {archivedAiSuggestions.length ? (
+                      <details className="ai-archive">
+                        <summary>Архив AI ({archivedAiSuggestions.length})</summary>
+                        <div className="ai-archive-list">
+                          {archivedAiSuggestions.map((suggestion) => (
+                            <span key={suggestion.suggestion_id}>
+                              {aiSuggestionStatusLabel(suggestion.status)} · {suggestion.title}
+                            </span>
+                          ))}
+                        </div>
+                      </details>
+                    ) : null}
                   </div>
-                  {detail.notification_deliveries?.length ? (
-                    <div className="notification-delivery-list">
-                      {detail.notification_deliveries.map((delivery) => (
-                        <article className="notification-delivery-item" key={delivery.event_id}>
-                          <div>
-                            <strong>{delivery.event_type}</strong>
-                            <span>{delivery.status}</span>
-                          </div>
-                          <p>
-                            {delivery.channel ?? "канал не указан"} · попытка {delivery.attempt_count}
-                            {delivery.provider_message_id ? ` · ${delivery.provider_message_id}` : ""}
-                          </p>
-                          {delivery.error ? <small>{delivery.error}</small> : null}
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <p>Событий доставки пока нет.</p>
-                  )}
-                </section>
+                </details>
 
                 <div className="dispatcher-grid">
                   <section className="dispatcher-card">
-                    <h3>История</h3>
+                    <div className="dispatcher-card-heading">
+                      <h3>Последние события</h3>
+                      <span>{detail.timeline.length}</span>
+                    </div>
                     <div className="timeline compact-timeline">
-                      {detail.timeline.map((event) => (
+                      {visibleTimeline.map((event) => (
                         <article className="timeline-item" key={`${event.title}-${event.created_at}`}>
                           <span />
                           <div>
@@ -1704,6 +1722,36 @@ export function DispatcherPage({
                         </article>
                       ))}
                     </div>
+                    {hiddenTimelineCount ? (
+                      <details className="dispatcher-extra-events">
+                        <summary>Остальные события ({hiddenTimelineCount})</summary>
+                        <div className="technical-log-section">
+                          {hiddenTimeline.map((event) => (
+                            <p key={`${event.title}-${event.created_at}-hidden`}>
+                              {event.created_at} · {event.title}
+                            </p>
+                          ))}
+                        </div>
+                      </details>
+                    ) : null}
+                    {detail.notification_deliveries?.length ? (
+                      <details className="dispatcher-technical-log">
+                        <summary>Технический лог ({technicalLogCount})</summary>
+                        <div className="technical-log-section">
+                          <strong>Уведомления</strong>
+                          {detail.notification_deliveries?.length ? (
+                            detail.notification_deliveries.map((delivery) => (
+                              <p key={delivery.event_id}>
+                                {delivery.event_type} · {delivery.status} · {delivery.channel ?? "канал не указан"} · попытка {delivery.attempt_count}
+                                {delivery.error ? ` · ${delivery.error}` : ""}
+                              </p>
+                            ))
+                          ) : (
+                            <p>Событий доставки нет.</p>
+                          )}
+                        </div>
+                      </details>
+                    ) : null}
                   </section>
 
                   <section className="dispatcher-card">
