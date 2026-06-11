@@ -41,7 +41,7 @@ class KnowledgeChunkRepository(Protocol):
 
 
 class DeterministicEmbeddingProvider:
-    def __init__(self, dimensions: int = 12) -> None:
+    def __init__(self, dimensions: int = 1536) -> None:
         if dimensions < 1:
             raise ValueError("dimensions must be greater than zero")
         self.dimensions = dimensions
@@ -182,7 +182,7 @@ def embed_document_chunks(
 def _default_embedding_provider() -> EmbeddingProvider:
     provider = os.getenv("SERVICEOPS_EMBEDDING_PROVIDER", "deterministic").strip().lower()
     if provider == "deterministic":
-        dimensions = int(os.getenv("SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS", "12"))
+        dimensions = int(os.getenv("SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS", "1536"))
         return DeterministicEmbeddingProvider(dimensions=dimensions)
     if provider == "openai-compatible":
         api_key = os.getenv("SERVICEOPS_EMBEDDING_API_KEY", "").strip()

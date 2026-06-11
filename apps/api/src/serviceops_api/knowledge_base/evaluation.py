@@ -25,6 +25,11 @@ RAG_EVALUATION_CASES = [
         expected_terms=["brew unit", "flow meter", "pump"],
     ),
     RagEvaluationCase(
+        query="DeLonghi не включается нет питания",
+        expected_source_uri="seed://repair/no-power-startup",
+        expected_terms=["розетка", "кабель", "плата питания"],
+    ),
+    RagEvaluationCase(
         query="milk foam weak",
         expected_source_uri="seed://repair/milk-foam-weak",
         expected_terms=["cappuccinatore", "air intake", "milk tube"],

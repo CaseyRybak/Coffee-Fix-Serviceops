@@ -678,6 +678,15 @@ describe("App", () => {
     assert.doesNotMatch(html, /class="notification-delivery-panel"/);
   });
 
+  it("does not clamp dispatcher AI suggestion content", () => {
+    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf-8");
+    const match = css.match(/\.ai-suggestion-content\s*{(?<rules>[^}]*)}/);
+
+    assert.ok(match?.groups?.rules);
+    assert.doesNotMatch(match.groups.rules, /line-clamp/);
+    assert.doesNotMatch(match.groups.rules, /overflow:\\s*hidden/);
+  });
+
   it("renders technician assigned visit workflow controls", () => {
     const html = renderToStaticMarkup(
       <ProtectedTechnicianPage
@@ -865,6 +874,47 @@ describe("App", () => {
     assert.match(html, /telegram/);
     assert.match(html, /попытка 1/);
     assert.doesNotMatch(html, /class="notification-delivery-panel"/);
+  });
+
+  it("does not label queued notification delivery as an error", () => {
+    const html = renderToStaticMarkup(
+      <DispatcherPage
+        initialList={{
+          items: [
+            {
+              request_number: "CFX-20260605-000001",
+              status: "new",
+              customer_name: "Anna Petrova",
+              customer_phone: "+7 999 111-22-33",
+              machine_label: "Jura E8",
+              urgency: "today",
+              address: "Tverskaya district",
+              created_at: "2026-06-05 10:00:00",
+              latest_event_title: "Заявка создана",
+            },
+          ],
+        }}
+        initialDetail={{
+          ...dispatcherDetail,
+          notification_deliveries: [
+            {
+              event_id: "CFX-20260605-000001:service_request.created:1",
+              event_type: "service_request.created",
+              status: "queued",
+              channel: null,
+              provider_message_id: null,
+              error: null,
+              attempt_count: 1,
+              created_at: "2026-06-05 10:01:00",
+              updated_at: "2026-06-05 10:01:00",
+            },
+          ],
+        }}
+      />,
+    );
+
+    assert.doesNotMatch(html, /Ошибка уведомления/);
+    assert.match(html, /queued/);
   });
 
   it("renders the public status page with timeline, clarification answer, and Telegram opt-in", () => {

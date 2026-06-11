@@ -22,6 +22,20 @@ def test_e61_overheating_seed_document_captures_repair_knowledge() -> None:
     assert "pressurestat" in seed.body
 
 
+def test_no_power_seed_document_captures_startup_triage() -> None:
+    seed = next(
+        document
+        for document in REPAIR_KNOWLEDGE_SEED_DOCUMENTS
+        if document.source_uri == "seed://repair/no-power-startup"
+    )
+
+    assert "не включается" in seed.body
+    assert "нет питания" in seed.body
+    assert "розет" in seed.body
+    assert "кабель" in seed.body
+    assert "плата питания" in seed.body
+
+
 def test_repair_seed_documents_are_curated_and_source_backed() -> None:
     source_uris = [document.source_uri for document in REPAIR_KNOWLEDGE_SEED_DOCUMENTS]
 
@@ -71,5 +85,5 @@ def test_rag_evaluation_cases_retrieve_expected_sources() -> None:
 
     results = run_rag_evaluation(retrieve)
 
-    assert len(RAG_EVALUATION_CASES) >= 6
+    assert len(RAG_EVALUATION_CASES) >= 7
     assert all(result["passed"] is True for result in results)

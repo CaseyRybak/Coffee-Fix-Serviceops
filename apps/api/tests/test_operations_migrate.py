@@ -10,6 +10,20 @@ def test_run_migrations_rejects_sqlite_database() -> None:
         run_migrations(Settings(database_url="sqlite:///:memory:"))
 
 
+def test_knowledge_base_pgvector_migration_uses_live_embedding_dimensions() -> None:
+    migration_sql = (
+        __import__("pathlib").Path(__file__).resolve().parents[1]
+        / "src"
+        / "serviceops_api"
+        / "migrations"
+        / "0002_knowledge_base_rag.sql"
+    ).read_text(encoding="utf-8")
+
+    assert "embedding vector(1536)" in migration_sql
+    assert "ALTER COLUMN embedding TYPE vector(1536)" in migration_sql
+    assert "embedding vector(12)" not in migration_sql
+
+
 def test_run_migrations_initializes_all_postgres_repositories(monkeypatch) -> None:
     from serviceops_api.operations import migrate
 

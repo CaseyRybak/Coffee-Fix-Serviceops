@@ -1686,11 +1686,9 @@ select:focus {
 }
 
 .ai-suggestion-content {
-  display: -webkit-box;
-  line-clamp: 3;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  color: #5f3f2c;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .ai-suggestion-details,

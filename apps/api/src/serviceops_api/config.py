@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     staff_dev_password: str = "dispatcher-local"
     staff_dev_roles: str = "dispatcher"
     knowledge_sqlite_path: str = ".local/serviceops-knowledge.sqlite3"
-    knowledge_embedding_dimensions: int = 12
+    knowledge_embedding_dimensions: int = 1536
     knowledge_retrieval_limit: int = 5
     embedding_provider: str = "deterministic"
     embedding_model: str = "text-embedding-3-small"

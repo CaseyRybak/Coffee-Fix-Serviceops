@@ -9,7 +9,7 @@ Use deterministic providers for local development and automated tests:
 ```bash
 SERVICEOPS_AI_PROVIDER=deterministic
 SERVICEOPS_EMBEDDING_PROVIDER=deterministic
-SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS=12
+SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS=1536
 ```
 
 This mode performs no external network calls and does not require API keys.
@@ -36,6 +36,16 @@ SERVICEOPS_EMBEDDING_MAX_RETRIES=2
 
 When a live provider is selected, missing API key or model configuration fails at application startup with a clear configuration error. Deterministic mode remains available without secrets.
 
+For OpenRouter, use the OpenAI-compatible base URL and OpenRouter model slugs:
+
+```bash
+SERVICEOPS_AI_API_BASE_URL=https://openrouter.ai/api/v1
+SERVICEOPS_AI_MODEL=openai/gpt-4.1-mini
+SERVICEOPS_EMBEDDING_API_BASE_URL=https://openrouter.ai/api/v1
+SERVICEOPS_EMBEDDING_MODEL=openai/text-embedding-3-small
+SERVICEOPS_KNOWLEDGE_EMBEDDING_DIMENSIONS=1536
+```
+
 ## Provider Contracts
 
 Chat suggestions call `/chat/completions` and request strict JSON with a top-level `suggestions` array. Each suggestion includes `kind`, `title`, `content`, `rationale`, `confidence`, and optional `source_chunk_indexes`.
@@ -49,6 +59,14 @@ Provider prompts exclude customer phone numbers, Telegram handles, technician ph
 ## Knowledge Base Content
 
 Curated seed repair documents live in `apps/api/src/serviceops_api/knowledge_base/seed_documents.py`. Each document has a stable `seed://repair/<slug>` source URI and metadata for traceability.
+
+After migrations are applied, ingest the curated repair seed set into the configured database:
+
+```bash
+cd apps/api && uv run python -m serviceops_api.operations.seed_knowledge_base
+```
+
+The command is idempotent by `source_uri`: rerunning it skips seed documents that are already present.
 
 Run deterministic RAG evaluation through the API test suite:
 

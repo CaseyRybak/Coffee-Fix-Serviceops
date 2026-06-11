@@ -21,12 +21,15 @@ CREATE TABLE IF NOT EXISTS knowledge_chunks (
     content TEXT NOT NULL,
     start_char INTEGER NOT NULL,
     end_char INTEGER NOT NULL,
-    embedding vector(12),
+    embedding vector(1536),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (document_id, chunk_index)
 );
 
 CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_document_id ON knowledge_chunks (document_id);
+DROP INDEX IF EXISTS idx_knowledge_chunks_embedding_cosine;
+ALTER TABLE knowledge_chunks
+    ALTER COLUMN embedding TYPE vector(1536);
 CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_embedding_cosine
     ON knowledge_chunks USING ivfflat (embedding vector_cosine_ops)
     WITH (lists = 16);

@@ -38,6 +38,9 @@ class KnowledgeBaseStore(Protocol):
     def save_chunk_embeddings(self, document_id: int, embeddings_by_chunk_id: dict[int, list[float]]) -> None:
         """Persist chunk embeddings for a document."""
 
+    def source_uri_exists(self, source_uri: str) -> bool:
+        """Return whether a document with this source URI already exists."""
+
     def retrieve(self, query_embedding: list[float], limit: int) -> list[dict[str, object]]:
         """Return relevant chunks for an embedding query."""
 
@@ -185,6 +188,13 @@ class SqliteKnowledgeBaseRepository:
                 """,
                 ("embedded", document_id),
             )
+
+    def source_uri_exists(self, source_uri: str) -> bool:
+        row = self._connection.execute(
+            "SELECT 1 FROM knowledge_documents WHERE source_uri = ? LIMIT 1",
+            (source_uri,),
+        ).fetchone()
+        return row is not None
 
     def retrieve(self, query_embedding: list[float], limit: int) -> list[dict[str, object]]:
         rows = self._connection.execute(
@@ -346,6 +356,13 @@ class PostgresKnowledgeBaseRepository:
                 """,
                 ("embedded", document_id),
             )
+
+    def source_uri_exists(self, source_uri: str) -> bool:
+        row = self._connect().execute(
+            "SELECT 1 FROM knowledge_documents WHERE source_uri = %s LIMIT 1",
+            (source_uri,),
+        ).fetchone()
+        return row is not None
 
     def retrieve(self, query_embedding: list[float], limit: int) -> list[dict[str, object]]:
         rows = self._connect().execute(

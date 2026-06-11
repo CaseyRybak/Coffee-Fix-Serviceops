@@ -77,6 +77,14 @@ docker compose -f docker-compose.production.yml run --rm api python -m serviceop
 
 The command initializes the service request, knowledge base, AI suggestion, inventory, staff-management, and notification-delivery PostgreSQL schemas.
 
+If live AI/RAG is enabled, ingest the curated repair knowledge after migrations and before dispatcher AI smoke tests:
+
+```bash
+docker compose -f docker-compose.production.yml run --rm api python -m serviceops_api.operations.seed_knowledge_base
+```
+
+The seed command uses the configured embedding provider and skips already-ingested seed documents by `source_uri`.
+
 ## First Admin Bootstrap
 
 Create the first production admin after migrations and before public routing. Set these values from a secret store or secure shell session. Do not commit them to repository files, paste them into shared chat, or leave them in shell history.

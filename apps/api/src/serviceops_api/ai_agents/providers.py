@@ -133,6 +133,13 @@ class OpenAiCompatibleAiSuggestionProvider:
                 "Write all suggestion titles, content, and rationales in Russian.",
                 "Return only JSON with a top-level suggestions array.",
                 "Never claim that an action was performed. Suggestions are reviewed by staff.",
+                (
+                    "Если симптом: не включается, перестала включаться, нет питания, не горит дисплей или не реагирует "
+                    "на кнопку включения, это no-power/startup triage. Не предлагай проверки помпы, бака воды, пролива, "
+                    "дренажного клапана или flow meter, пока клиент не подтвердил, что машина включается и запускает цикл. "
+                    "Сначала уточняй розетку, кабель питания, главный выключатель, дисплей/индикаторы, запах гари, "
+                    "следы воды и перепад напряжения."
+                ),
                 f"Request number: {prompt.request_number}",
                 f"Status: {prompt.status}",
                 f"Urgency: {prompt.urgency}",

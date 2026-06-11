@@ -1525,7 +1525,7 @@ export function DispatcherPage({
   const visibleTimeline = detail?.timeline.slice(-2) ?? [];
   const hiddenTimeline = detail?.timeline.slice(0, Math.max((detail?.timeline.length ?? 0) - 2, 0)) ?? [];
   const hiddenTimelineCount = hiddenTimeline.length;
-  const notificationFailures = detail?.notification_deliveries?.filter((delivery) => delivery.status !== "sent") ?? [];
+  const notificationFailures = detail?.notification_deliveries?.filter((delivery) => delivery.status === "failed") ?? [];
   const technicalLogCount = detail?.notification_deliveries?.length ?? 0;
 
   return (

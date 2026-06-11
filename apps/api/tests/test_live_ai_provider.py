@@ -129,6 +129,51 @@ def test_openai_compatible_ai_provider_builds_safe_chat_payload() -> None:
     assert suggestions[0].source_chunks == [_prompt().rag_sources[0]]
 
 
+def test_openai_compatible_ai_provider_instructs_no_power_triage() -> None:
+    captured: dict[str, object] = {}
+
+    def fake_post_json(url: str, body: dict[str, object], headers: dict[str, str], timeout: float) -> dict[str, object]:
+        captured["body"] = body
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "suggestions": [
+                                    {
+                                        "kind": "diagnostic_question",
+                                        "title": "Уточнить питание",
+                                        "content": "Горится ли дисплей при включении?",
+                                        "rationale": "Диспетчер проверяет базовый симптом запуска.",
+                                        "confidence": 0.8,
+                                        "source_chunk_indexes": [],
+                                    }
+                                ]
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+
+    prompt = _prompt().model_copy(update={"problem_summary": "DeLonghi перестала включаться, нет питания."})
+    provider = OpenAiCompatibleAiSuggestionProvider(
+        api_base_url="https://provider.example/v1",
+        api_key="test-key",
+        model="gpt-4.1-mini",
+        max_retries=0,
+        post_json=fake_post_json,
+    )
+
+    provider.suggest(prompt)
+
+    prompt_text = json.dumps(captured["body"], ensure_ascii=False).lower()
+    assert "не включается" in prompt_text
+    assert "нет питания" in prompt_text
+    assert "не предлагай проверки помпы" in prompt_text
+
+
 def test_openai_compatible_ai_provider_accepts_word_confidence_from_provider() -> None:
     def fake_post_json(url: str, body: dict[str, object], headers: dict[str, str], timeout: float) -> dict[str, object]:
         return {
