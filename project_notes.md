@@ -19,11 +19,11 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 13:
 
 Phase 14: Operational Hardening.
 
-Before executing Phase 14, create a detailed implementation plan in `docs/execution-plans/detailed/` and keep the review gate in `docs/review/subagent-review-protocol.md`.
+Use `docs/execution-plans/detailed/14-operational-hardening-implementation.md` for implementation. Keep the review gate in `docs/review/subagent-review-protocol.md`.
 
 ## Next Steps
 
-1. Create the detailed Phase 14 implementation plan for operational hardening.
+1. Execute the detailed Phase 14 implementation plan for operational hardening.
 2. Configure production n8n, Telegram, AI, and embedding provider environment variables before enabling public notification or live AI traffic.
 3. Run deployment smoke checks against a real Dokploy/VPS environment before public launch and record evidence with `docs/operations/launch-smoke-evidence.md`.
 4. Keep repository docs, tests, production Compose config, and operations scripts passing after changes.
@@ -36,7 +36,8 @@ Before executing Phase 14, create a detailed implementation plan in `docs/execut
 - Repository map: `docs/harness/repository-map.md`
 - Project history: `docs/harness/project-history.md`
 - Documentation audit: `docs/review/documentation-audit-2026-06-07.md`
-- Current documentation audit: `docs/review/documentation-audit-2026-06-10.md`
+- Previous documentation audit: `docs/review/documentation-audit-2026-06-10.md`
+- Latest documentation audit: `docs/review/documentation-audit-2026-06-15.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
 - Phase 10 review: `docs/review/phase-10-review.md`
 - Operations runbook: `docs/operations/deployment-runbook.md`
