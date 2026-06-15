@@ -126,3 +126,7 @@ Scheduling changes now append normal service-request status events:
 The legacy dispatcher assignment endpoint still stores assignment metadata and optional `visit_window` text for compatibility. Structured appointment endpoints are the source for staff schedule views and current appointment snapshots.
 
 Public status snapshots may expose the current appointment window label, start, end, and state when a scheduled appointment exists. Public responses must not expose appointment ids, technician phone numbers, dispatcher-only reasons, capacity diagnostics, staff usernames beyond existing actor labels, AI data, audit data, or internal notes.
+
+## Phase 16 Inventory Boundary
+
+Inventory reservations and stock movements can be tied to service request numbers for staff operations, but service requests do not expose reservation details publicly. Public status snapshots must not reveal part ids, reserved quantities, available stock, low-stock thresholds, stock movement history, or inventory notes.

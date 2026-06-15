@@ -39,3 +39,9 @@ Technician boundary:
 
 - Technicians can see appointment timing and reschedule/cancel effects.
 - Technicians cannot create, reschedule, or cancel appointments in Phase 15; those actions remain dispatcher-owned.
+
+## Phase 16 Reserved Parts Consumption
+
+Technician parts usage now cooperates with inventory reservations. When a technician records parts used for an assigned request, the inventory domain consumes any active reservation for the same request and part before using unreserved available stock.
+
+Technician catalog access is read-only. The technician workspace can load the parts catalog, show available/reserved stock context, and let the technician select a catalog part by SKU/name before recording usage. Catalog creation, duplicate control, compatibility metadata, stock adjustment, and reservation creation/release remain inventory-owned.

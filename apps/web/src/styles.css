@@ -254,13 +254,51 @@ p {
   color: #2f6b4f;
 }
 
+.technician-parts-preview {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+
+.technician-parts-preview span,
+.technician-parts-preview button,
+.technician-part-stock {
+  display: block;
+  padding: 8px 10px;
+  color: #2f6b4f;
+  background: #f3f8ee;
+  border: 1px solid #d7e4c8;
+  border-radius: 7px;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.technician-parts-preview button {
+  width: 100%;
+  text-align: left;
+}
+
+.technician-parts-preview strong {
+  color: #1f1a17;
+  font-size: 0.86rem;
+}
+
+.technician-part-hint {
+  margin: 0;
+  color: #5a3825;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .compact-form {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .compact-form button,
 .compact-form textarea,
-.compact-form input:last-of-type:nth-child(3) {
+.compact-form input:last-of-type:nth-child(3),
+.compact-form .wide-field,
+.inventory-page .compact-form select {
   grid-column: 1 / -1;
 }
 
@@ -272,7 +310,105 @@ p {
 }
 
 .inventory-table-card {
-  grid-row: span 2;
+  grid-column: 1 / -1;
+  grid-row: auto;
+}
+
+.inventory-catalog-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.48fr);
+  gap: 12px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.inventory-catalog-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inventory-catalog-metrics span {
+  padding: 6px 9px;
+  color: #2f6b4f;
+  background: #f3f8ee;
+  border: 1px solid #d7e4c8;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.inventory-actions-card {
+  grid-column: 1 / -1;
+}
+
+.inventory-actions-heading {
+  display: flex;
+  gap: 14px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.inventory-actions-heading p {
+  margin: 4px 0 0;
+  color: #75665d;
+  line-height: 1.45;
+}
+
+.inventory-action-stack {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.inventory-action-panel {
+  border: 1px solid #e2d8cd;
+  border-radius: 8px;
+  background: #fffaf2;
+}
+
+.inventory-action-panel summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 14px;
+  align-items: center;
+  min-height: 48px;
+  padding: 12px 14px;
+  color: #1f1a17;
+  cursor: pointer;
+  list-style: none;
+}
+
+.inventory-action-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.inventory-action-panel summary::after {
+  content: "Открыть";
+  color: #5a3825;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.inventory-action-panel[open] summary {
+  border-bottom: 1px solid #e2d8cd;
+}
+
+.inventory-action-panel[open] summary::after {
+  content: "Свернуть";
+}
+
+.inventory-action-panel summary span {
+  font-weight: 900;
+}
+
+.inventory-action-panel summary small {
+  grid-column: 1;
+  color: #75665d;
+}
+
+.inventory-action-panel .dispatcher-form {
+  padding: 0 14px 14px;
 }
 
 .inventory-table {
@@ -290,6 +426,34 @@ p {
   border: 1px solid rgba(90, 56, 37, 0.12);
   border-radius: 7px;
   background: #fffaf2;
+}
+
+.inventory-part-card {
+  grid-template-columns: minmax(0, 1.15fr) minmax(150px, 0.62fr) minmax(220px, 1.05fr);
+  gap: 14px 18px;
+  align-items: start;
+  padding: 14px;
+}
+
+.inventory-part-identity,
+.inventory-part-stock {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.inventory-part-identity strong {
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.inventory-part-identity span {
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.inventory-part-stock em {
+  font-size: 1rem;
 }
 
 .inventory-table strong,
@@ -313,6 +477,102 @@ p {
   color: #2f6b4f;
   font-style: normal;
   font-weight: 800;
+}
+
+.inventory-low-stock {
+  color: #8f2f1f !important;
+  font-weight: 800;
+}
+
+.inventory-warning {
+  margin: 0;
+  padding: 10px 12px;
+  color: #8f2f1f;
+  background: #fff2ee;
+  border: 1px solid #efc5b7;
+  border-radius: 7px;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.inventory-compatibility-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.inventory-compatibility-list strong {
+  flex-basis: 100%;
+  color: #5a3825;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.inventory-compatibility-list small {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 8px;
+  color: #2f6b4f;
+  background: #f3f8ee;
+  border: 1px solid #d7e4c8;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.inventory-part-details {
+  grid-column: 1 / -1;
+  padding-top: 10px;
+  border-top: 1px solid rgba(90, 56, 37, 0.1);
+}
+
+.inventory-part-details summary {
+  width: fit-content;
+  min-height: 32px;
+  padding: 6px 10px;
+  color: #5a3825;
+  background: #ffffff;
+  border: 1px solid #d8c8b8;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 800;
+  list-style-position: inside;
+}
+
+.inventory-part-details dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 10px 0 0;
+}
+
+.inventory-part-details div {
+  min-width: 0;
+}
+
+.inventory-part-details dt {
+  margin-bottom: 4px;
+  color: #8b7a70;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.inventory-part-details dd {
+  margin: 0;
+  color: #5a3825;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.compact-inventory-list article {
+  grid-template-columns: minmax(120px, 0.9fr) minmax(160px, 1fr) minmax(110px, 0.6fr) auto;
 }
 
 .admin-workspace {
@@ -1394,6 +1654,10 @@ select:focus {
   text-align: left;
 }
 
+.passive-row {
+  cursor: default;
+}
+
 .schedule-row:hover {
   border-color: rgba(47, 107, 79, 0.55);
 }
@@ -2008,6 +2272,23 @@ select:focus {
   margin-top: 14px;
 }
 
+.form-field {
+  display: grid;
+  gap: 6px;
+}
+
+.form-field span {
+  color: #1f1a17;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.form-field small {
+  color: #75665d;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .dispatcher-form .submit-button {
   width: fit-content;
 }
@@ -2493,6 +2774,14 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
+  .inventory-catalog-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .inventory-catalog-toolbar input {
+    width: 100%;
+  }
+
   .appointment-card {
     grid-column: auto;
   }
@@ -2506,6 +2795,11 @@ select:focus {
   .inventory-table article {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+
+  .inventory-part-card,
+  .inventory-part-details dl {
+    grid-template-columns: 1fr;
   }
 }
 

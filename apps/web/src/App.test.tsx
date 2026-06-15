@@ -32,8 +32,12 @@ import {
   buildAdminStaffRolesPath,
   buildGenerateAiSuggestionsPath,
   buildIgnoreAiSuggestionPath,
+  buildInventoryPartCompatibilityPath,
   buildInventoryPartsPath,
   buildInventoryStockPath,
+  buildInventorySkuSuggestion,
+  buildInventoryPartSpecLabel,
+  buildInventoryCompatibilityLabel,
   buildTechnicianDetailPath,
   buildTechnicianDiagnosisPath,
   buildTechnicianListPath,
@@ -438,6 +442,7 @@ describe("App", () => {
     );
     assert.equal(buildInventoryPartsPath(), "/inventory/parts");
     assert.equal(buildInventoryStockPath(7), "/inventory/parts/7/stock");
+    assert.equal(buildInventoryPartCompatibilityPath(7), "/inventory/parts/7/compatibility");
   });
 
   it("builds staff login paths and auth headers", () => {
@@ -871,6 +876,44 @@ describe("App", () => {
             },
           ],
         }}
+        initialParts={{
+          items: [
+            {
+              part_id: 1,
+              sku: "E61-GASKET-73",
+              name: "Прокладка группы E61 73 мм",
+              brand: "Rocket",
+              model: "Appartamento",
+              unit: "pcs",
+              compatibility_note: "Подходит для распространенных групп E61.",
+              part_type: "gasket",
+              parameter_label: "diameter",
+              parameter_value: "73",
+              parameter_unit: "mm",
+              factual_key: "gasket|rocket|diameter|73|mm",
+              compatibility: [
+                {
+                  compatibility_id: 1,
+                  part_id: 1,
+                  compatibility_level: "exact_model",
+                  brand: "Rocket",
+                  model: "Appartamento",
+                  series: null,
+                  machine_family: null,
+                  note: "Check thickness.",
+                  created_at: "2026-06-07 12:03:00",
+                },
+              ],
+              created_at: "2026-06-07 12:00:00",
+              quantity_on_hand: 4,
+              reserved_quantity: 1,
+              available_quantity: 3,
+              low_stock_threshold: 2,
+              is_low_stock: false,
+              stock_updated_at: "2026-06-07 12:05:00",
+            },
+          ],
+        }}
       />,
     );
 
@@ -883,6 +926,11 @@ describe("App", () => {
     assert.match(html, /Питание включается/);
     assert.match(html, /Результат ремонта/);
     assert.match(html, /Использованные запчасти/);
+    assert.match(html, /Подходит к этой машине/);
+    assert.match(html, /Поиск по SKU, названию или бренду/);
+    assert.match(html, /E61-GASKET-73 · Прокладка группы E61 73 мм/);
+    assert.match(html, /доступно 3 шт\./);
+    assert.doesNotMatch(html, /placeholder="ID запчасти"/);
     assert.doesNotMatch(html, /class="service-bar"/);
   });
 
@@ -899,13 +947,35 @@ describe("App", () => {
             {
               part_id: 1,
               sku: "E61-GASKET-73",
-              name: "E61 group gasket 73mm",
+              name: "Прокладка группы E61 73 мм",
               brand: "Rocket",
               model: "Appartamento",
               unit: "pcs",
-              compatibility_note: "Fits common E61 groups.",
+              compatibility_note: "Подходит для распространенных групп E61.",
+              part_type: "seal",
+              parameter_label: "diameter",
+              parameter_value: "73",
+              parameter_unit: "mm",
+              factual_key: "seal|rocket|diameter|73|mm",
+              compatibility: [
+                {
+                  compatibility_id: 1,
+                  part_id: 1,
+                  compatibility_level: "exact_model",
+                  brand: "Rocket",
+                  model: "Appartamento",
+                  series: null,
+                  machine_family: null,
+                  note: "Check thickness.",
+                  created_at: "2026-06-07 12:03:00",
+                },
+              ],
               created_at: "2026-06-07 12:00:00",
               quantity_on_hand: 4,
+              reserved_quantity: 3,
+              available_quantity: 1,
+              low_stock_threshold: 2,
+              is_low_stock: true,
               stock_updated_at: "2026-06-07 12:05:00",
             },
           ],
@@ -914,12 +984,124 @@ describe("App", () => {
     );
 
     assert.match(html, /Склад запчастей/);
+    assert.ok(html.indexOf("<h2>Каталог</h2>") < html.indexOf("Складские действия"));
+    assert.match(html, /<summary>[\s\S]*Добавить позицию/);
+    assert.match(html, /<summary>[\s\S]*Добавить совместимость/);
+    assert.match(html, /<summary>[\s\S]*Обновить остаток/);
     assert.match(html, /E61-GASKET-73/);
-    assert.match(html, /E61 group gasket 73mm/);
-    assert.match(html, /Остаток/);
-    assert.match(html, /Новая позиция/);
+    assert.match(html, /Прокладка группы E61 73 мм/);
+    assert.match(html, /Доступно: 1 шт\./);
+    assert.match(html, /На складе: 4 · Резерв: 3/);
+    assert.match(html, /низкий остаток/);
+    assert.match(html, /inventory-part-card/);
+    assert.match(html, /inventory-part-stock/);
+    assert.match(html, /<summary>[\s\S]*Подробности/);
+    assert.match(html, /<dt>Характеристика<\/dt><dd>уплотнитель · диаметр: 73 мм<\/dd>/);
+    assert.match(html, /<dt>Комментарий<\/dt><dd>Подходит для распространенных групп E61.<\/dd>/);
+    assert.match(html, /Тип детали/);
+    assert.match(html, /Добавить совместимость/);
+    assert.match(html, /inventory-compatibility-list[\s\S]*Совместимость/);
+    assert.match(html, /Rocket · Appartamento/);
+    assert.match(html, /Добавить позицию/);
+    assert.match(html, /Артикул \/ SKU/);
+    assert.match(html, /Например: GAGGIA-CLASSIC-GASKET-MODEL-4-MM/);
+    assert.match(html, /Единица учета/);
+    assert.match(html, /Начальный остаток/);
     assert.match(html, /Обновить остаток/);
+    assert.match(html, /Позиция для остатка/);
+    assert.match(html, /Позиция для резерва/);
+    assert.doesNotMatch(html, /placeholder="ID позиции"/);
+    assert.match(html, /Создать резерв/);
+    assert.match(html, /Движения склада/);
     assert.doesNotMatch(html, /class="service-bar"/);
+  });
+
+  it("builds an editable inventory SKU suggestion from part identity fields", () => {
+    assert.equal(
+      buildInventorySkuSuggestion({
+        brand: "Gaggia",
+        model: "Classic",
+        partType: "gasket",
+        parameterLabel: "model",
+        parameterValue: "4",
+        parameterUnit: "mm",
+      }),
+      "GAGGIA-CLASSIC-GASKET-MODEL-4-MM",
+    );
+    assert.equal(
+      buildInventorySkuSuggestion({
+        brand: "  Nuova Simonelli ",
+        model: "",
+        partType: "steam valve seal",
+        parameterLabel: "",
+        parameterValue: "",
+        parameterUnit: "",
+      }),
+      "NUOVA-SIMONELLI-STEAM-VALVE-SEAL",
+    );
+  });
+
+  it("formats inventory part identity and compatibility without mixing unrelated fields", () => {
+    assert.equal(
+      buildInventoryPartSpecLabel({
+        part_type: "gasket",
+        parameter_label: "connector",
+        parameter_value: "55",
+        parameter_unit: "mm",
+      }),
+      "прокладка · соединение: 55 мм",
+    );
+    assert.equal(
+      buildInventoryPartSpecLabel({
+        part_type: "seal",
+        parameter_label: "diameter",
+        parameter_value: "73",
+        parameter_unit: "mm",
+      }),
+      "уплотнитель · диаметр: 73 мм",
+    );
+    assert.equal(
+      buildInventoryCompatibilityLabel({
+        compatibility_id: 1,
+        part_id: 1,
+        compatibility_level: "series",
+        brand: "Jura",
+        model: "Classic",
+        series: "E series",
+        machine_family: "Boiler probe",
+        note: null,
+        created_at: "2026-06-15 10:00:00",
+      }),
+      "Серия: Jura · серия E",
+    );
+    assert.equal(
+      buildInventoryCompatibilityLabel({
+        compatibility_id: 2,
+        part_id: 1,
+        compatibility_level: "exact_model",
+        brand: "Gaggia",
+        model: "Classic",
+        series: "E series",
+        machine_family: "Boiler probe",
+        note: null,
+        created_at: "2026-06-15 10:00:00",
+      }),
+      "Модель: Gaggia · Classic",
+    );
+    assert.equal(
+      buildInventoryCompatibilityLabel({
+        compatibility_id: 3,
+        part_id: 1,
+        compatibility_level: "generic_group",
+        brand: null,
+        model: null,
+        series: null,
+        machine_family: "Boiler probe",
+        note: null,
+        created_at: "2026-06-15 10:00:00",
+      }),
+      "Группа: датчик бойлера",
+    );
   });
 
   it("filters dispatcher request list by status and urgency", () => {

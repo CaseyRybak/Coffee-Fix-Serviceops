@@ -213,7 +213,7 @@ class StaffAuthenticator:
     def _invalid_token(self) -> HTTPException:
         return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid staff token")
 
-    def record_forbidden_role(self, staff: StaffUser, role: StaffRole) -> None:
+    def record_forbidden_role(self, staff: StaffUser, role: str) -> None:
         self._record_staff_audit(
             actor=staff.username,
             target=role,
@@ -281,6 +281,21 @@ def require_staff_role(role: StaffRole, authenticator: StaffAuthenticator):
         staff = authenticator.verify_token(credentials.credentials)
         if role not in staff.roles:
             authenticator.record_forbidden_role(staff, role)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff role is not allowed")
+        return staff
+
+    return dependency
+
+
+def require_staff_any_role(roles: set[StaffRole], authenticator: StaffAuthenticator):
+    async def dependency(
+        credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
+    ) -> StaffUser:
+        if credentials is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Staff authentication required")
+        staff = authenticator.verify_token(credentials.credentials)
+        if not any(role in staff.roles for role in roles):
+            authenticator.record_forbidden_role(staff, ",".join(sorted(roles)))
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff role is not allowed")
         return staff
 

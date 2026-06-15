@@ -23,7 +23,17 @@ from serviceops_api.inventory.repository import (
     SqliteInventoryRepository,
     create_inventory_repository,
 )
-from serviceops_api.inventory.use_cases import CreatePart, ListParts, SetStockCount
+from serviceops_api.inventory.use_cases import (
+    AddCompatibility,
+    AdjustReservation,
+    CreatePart,
+    ListParts,
+    ListReservations,
+    ListStockMovements,
+    ReleaseReservation,
+    ReservePart,
+    SetStockCount,
+)
 from serviceops_api.knowledge_base.api import create_knowledge_base_router
 from serviceops_api.knowledge_base.embeddings import create_embedding_provider
 from serviceops_api.knowledge_base.repository import (
@@ -70,7 +80,7 @@ from serviceops_api.scheduling.use_cases import (
     ListTechnicianSchedule,
     RescheduleAppointment,
 )
-from serviceops_api.staff_auth import StaffAuthenticator, create_staff_auth_router, require_staff_role
+from serviceops_api.staff_auth import StaffAuthenticator, create_staff_auth_router, require_staff_any_role, require_staff_role
 from serviceops_api.staff_management.api import create_staff_management_router
 from serviceops_api.staff_management.repository import (
     PostgresStaffAccountRepository,
@@ -239,9 +249,17 @@ def create_app(
     app.include_router(
         create_inventory_router(
             CreatePart(inventory_store),
+            AddCompatibility(inventory_store),
             ListParts(inventory_store),
             SetStockCount(inventory_store),
+            ReservePart(inventory_store),
+            AdjustReservation(inventory_store),
+            ReleaseReservation(inventory_store),
+            ListReservations(inventory_store),
+            ListStockMovements(inventory_store),
             staff_dependency=require_staff_role("inventory", authenticator),
+            read_dependency=require_staff_any_role({"admin", "inventory", "technician"}, authenticator),
+            low_stock_dependency=require_staff_any_role({"admin", "dispatcher", "inventory"}, authenticator),
         )
     )
     app.include_router(
