@@ -41,10 +41,12 @@ Choose the next approved implementation phase and create its detailed implementa
 - Documentation audit after Phase 10: `docs/review/documentation-audit-2026-06-07.md`
 - Documentation audit after Phase 13: `docs/review/documentation-audit-2026-06-10.md`
 - Documentation audit before Phase 14: `docs/review/documentation-audit-2026-06-15.md`
-- Latest documentation audit: `docs/review/documentation-audit-2026-06-15-current-state.md`
+- Documentation audit after Phase 14: `docs/review/documentation-audit-2026-06-15-current-state.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
 - Phase 10 review: `docs/review/phase-10-review.md`
 - Phase 14 review: `docs/review/phase-14-review.md`
+- Phase 15 review: `docs/review/phase-15-review.md`
+- Phase 16 review: `docs/review/phase-16-review.md`
 - Operations runbook: `docs/operations/deployment-runbook.md`
 - AI provider operations: `docs/operations/ai-providers.md`
 - Operational diagnostics: `docs/operations/operational-diagnostics.md`
