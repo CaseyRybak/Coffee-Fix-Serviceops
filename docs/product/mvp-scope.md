@@ -11,8 +11,8 @@
 - Manual technician assignment.
 - Telegram opt-in linking, backend-to-n8n notification events, delivery-result persistence, and staff-visible delivery status.
 - PostgreSQL persistence.
-- Source-backed RAG document ingestion with pgvector and curated repair seed content.
-- AI workflows for intake classification, diagnostic questions, likely causes, parts hints, and customer reply drafts, with deterministic local providers and configurable OpenAI-compatible live providers.
+- Source-backed RAG document ingestion with pgvector, curated repair seed content, relevance filtering, and explicit knowledge-gap fallback when the seed base does not cover a new symptom.
+- AI workflows for intake classification, diagnostic questions, likely causes, parts hints, and customer reply drafts, with deterministic local providers, configurable OpenAI-compatible live providers, safety-first triage for hazardous symptoms, and staff review before any operational action.
 - Docker Compose local environment.
 
 ## First Request Form Fields

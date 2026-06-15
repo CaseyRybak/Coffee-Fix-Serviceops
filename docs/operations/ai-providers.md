@@ -52,6 +52,14 @@ Chat suggestions call `/chat/completions` and request strict JSON with a top-lev
 
 Embeddings call `/embeddings` with ordered text input and expect one vector per input item. Response vectors are sorted by provider `index` before persistence.
 
+## RAG Coverage And Knowledge Gaps
+
+RAG retrieval is not treated as automatically authoritative. Before prompt assembly sends source chunks to the AI provider, ServiceOps filters retrieved chunks against the customer's problem summary. Weakly related chunks are omitted even if vector similarity ranked them highly.
+
+When no relevant source chunk remains, the prompt marks `RAG coverage: no relevant source chunks`. Live providers must treat this as a knowledge gap: do not force similar but different repair scenarios into the answer, leave `source_chunk_indexes` empty, and base suggestions on the customer symptom, safety triage, and neutral clarification questions. Deterministic mode follows the same behavior with a generic fallback instead of symptom-specific hardcoding.
+
+Hazardous symptoms get safety-first handling even when the general repair seed base is sparse. For example, electrical shock phrases such as "бьет током", "бьёт током", "корпус под напряжением", or "ток при касании" must produce dispatcher-reviewed suggestions to stop using the machine, disconnect it if safe, check grounding/RCD context, and route to a master, not no-power/startup checks.
+
 ## Privacy And Logging
 
 Provider prompts exclude customer phone numbers, Telegram handles, technician phone numbers, internal note bodies, notification delivery errors, and shared secrets. Provider failures are surfaced as generic `AI provider request failed` or `Embedding provider request failed` messages. Do not log raw prompts, API keys, provider request bodies, provider response bodies, or reusable customer contact data.
@@ -66,7 +74,7 @@ After migrations are applied, ingest the curated repair seed set into the config
 cd apps/api && uv run python -m serviceops_api.operations.seed_knowledge_base
 ```
 
-The command is idempotent by `source_uri`: rerunning it skips seed documents that are already present.
+The command is idempotent by `source_uri`: rerunning it skips seed documents that are already present. It is safe for first install and adding new seed documents, but it does not update existing seed bodies or embeddings. If a source-backed seed changes, replace or update that specific `source_uri` in the target database and regenerate its embeddings before validating production answers.
 
 Run deterministic RAG evaluation through the API test suite:
 
@@ -76,13 +84,19 @@ cd apps/api && uv run --extra dev pytest tests/test_knowledge_base_seed.py -v
 
 The evaluation cases verify that common repair queries retrieve the expected source-backed repair document in the top three results.
 
+Run AI prompt and provider fallback checks when changing retrieval, seed wording, or provider prompts:
+
+```bash
+cd apps/api && uv run --extra dev pytest tests/test_ai_agent_prompting.py tests/test_live_ai_provider.py -v
+```
+
 ## Production Go/No-Go
 
 Before enabling live AI in production:
 
 1. Confirm production uses real provider API keys from a secret store.
 2. Run migrations and ingest repair knowledge content.
-3. Run deterministic RAG evaluation in CI or local release verification.
-4. Perform one dispatcher AI suggestion smoke test on a non-sensitive request.
+3. Run deterministic RAG evaluation and AI prompt fallback tests in CI or local release verification.
+4. Perform one covered-topic dispatcher AI smoke test and one knowledge-gap smoke test on non-sensitive requests.
 5. Verify suggestions are visible only in staff dispatcher views.
 6. Verify public status responses contain no AI suggestions or provider metadata.

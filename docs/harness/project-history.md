@@ -22,6 +22,8 @@ This file preserves historical phase context that used to make `project_notes.md
 - 2026-06-10: Completed Phase 12 notification automation with backend-to-n8n webhook emission, delivery-result persistence, staff delivery visibility, Telegram opt-in token consumption, and workflow exports.
 - 2026-06-10: Completed Phase 13 live AI provider and knowledge-base content with OpenAI-compatible AI/embedding adapters, curated repair knowledge seed content, RAG evaluation fixtures, and AI provider operations guidance.
 - 2026-06-10: Completed documentation audit after Phase 13, correcting current product, architecture, notification domain, repository map, and review handoff docs.
+- 2026-06-15: Completed Phase 14 operational hardening with safe structured logs across API, worker, and Telegram bot; staff-auth audit expansion; operational diagnostics; incident response; restore dry-run guidance; and launch evidence updates.
+- 2026-06-15: Hardened AI/RAG prompt behavior with relevance filtering, knowledge-gap fallback instructions, electrical-shock safety triage, and regression tests for unknown topics.
 
 ## Historical Decisions
 
@@ -53,5 +55,5 @@ This file preserves historical phase context that used to make `project_notes.md
 - Full client accounts.
 - Full technician profiles, availability calendar, automatic matching, and rescheduling rules.
 - Warehouses, suppliers, purchase orders, barcode scanning, billing totals, and warranty stock handling.
-- Provider observability, provider latency/error dashboards, log shipping, and incident procedures.
+- Provider latency/error dashboards and external log shipping.
 - Real Dokploy/VPS smoke-test evidence before public launch.

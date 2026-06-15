@@ -35,3 +35,9 @@ Embedding generation remains behind an embedding-provider port. Local developmen
 The seed repair knowledge set now covers common coffee-machine symptoms, brand families, maintenance concepts, intake checklists, and professional pressure/steam triage. Each seed document has a stable `seed://repair/<slug>` source URI and metadata so dispatcher-visible AI suggestions can cite traceable source chunks.
 
 RAG evaluation fixtures exercise representative repair queries and require the expected source-backed document to appear in the top retrieval results. These fixtures are deterministic checks for retrieval usefulness; they do not make claims about live model answer quality.
+
+## Current Retrieval-To-Prompt Boundary
+
+Retrieval can return nearest-neighbor chunks that are numerically high scoring but still not useful for the customer's symptom. The AI prompt boundary therefore applies a second relevance filter before sources reach the suggestion provider. Weakly related chunks are dropped, hazardous electrical-shock topics get an explicit safety match path, and an empty filtered set is treated as a knowledge gap rather than permission to reuse an unrelated seed document.
+
+Seed ingestion is idempotent by `source_uri`. Rerunning the seed command inserts missing seed documents, but it does not update an existing document body or embeddings. When a seed document changes, operators must update or replace that source URI deliberately in the target database before relying on the new wording.

@@ -66,6 +66,7 @@
 - `docs/review/documentation-audit-2026-06-07.md`: documentation consistency and quality audit after Phase 10.
 - `docs/review/documentation-audit-2026-06-10.md`: documentation consistency and quality audit after Phase 13.
 - `docs/review/documentation-audit-2026-06-15.md`: documentation readiness audit before Phase 14 implementation.
+- `docs/review/documentation-audit-2026-06-15-current-state.md`: current-state documentation audit after Phase 14 and AI/RAG fallback hardening.
 
 ## Workflow Skills
 
@@ -80,14 +81,14 @@
 - `docs/operations/smoke-tests.md`: manual and scripted deployment smoke-test checklist.
 - `docs/operations/operational-diagnostics.md`: structured-log fields, request tracing, log queries, read-only PostgreSQL checks, and evidence redaction rules.
 - `docs/operations/incident-response.md`: first-line incident checklist for degraded API, web, PostgreSQL, Redis, worker, Telegram, n8n, notifications, AI/RAG, and restore decisions.
-- `docs/operations/ai-providers.md`: deterministic and OpenAI-compatible AI/embedding provider operations guide.
+- `docs/operations/ai-providers.md`: deterministic and OpenAI-compatible AI/embedding provider operations guide, including RAG relevance filtering, knowledge-gap fallback, safety triage, and seed-update caveats.
 - `docs/operations/n8n-workflows.md`: n8n workflow contracts, live workflow IDs, import guidance, and delivery-result callback shape.
 - `tools/operations/`: operational shell scripts and regression checks for backup, restore, and smoke checks.
 
 ## Code Areas
 
 - `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, Telegram opt-in/linking contracts, notification callbacks, dispatcher routes, technician routes, inventory routes, staff admin routes, knowledge-base RAG routes, AI suggestion routes, sqlite test persistence, and PostgreSQL Compose persistence.
-- `apps/api/src/serviceops_api/ai_agents`: AI suggestion models, prompt assembly, deterministic and OpenAI-compatible providers, sqlite/PostgreSQL repositories, dispatcher use cases, and protected routes.
+- `apps/api/src/serviceops_api/ai_agents`: AI suggestion models, prompt assembly with RAG relevance filtering, deterministic and OpenAI-compatible providers, knowledge-gap fallback behavior, sqlite/PostgreSQL repositories, dispatcher use cases, and protected routes.
 - `apps/api/src/serviceops_api/service_requests`: service request intake/status/dispatcher API, use cases, models, sqlite repository, PostgreSQL repository, and repository factory.
 - `apps/api/src/serviceops_api/technicians`: technician assigned-visit models, protected routes, and workflow use cases for diagnosis, repair result, and parts used.
 - `apps/api/src/serviceops_api/inventory`: parts catalog models, sqlite/PostgreSQL repositories, inventory use cases, protected inventory routes, and stock decrement behavior.

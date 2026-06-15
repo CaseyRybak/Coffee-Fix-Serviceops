@@ -8,12 +8,12 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 14:
 
 - Public repair intake, request numbers, public status snapshots, clarification answers, and Telegram opt-in link contracts.
 - Dispatcher, staff login/RBAC, admin staff management, technician assigned-visit workflow, and inventory basics.
-- Knowledge-base RAG, deterministic source-backed dispatcher suggestion framework, and accepted diagnostic-question suggestion lifecycle.
+- Knowledge-base RAG with source metadata, relevance-filtered prompt context, deterministic dispatcher suggestions, and accepted diagnostic-question suggestion lifecycle.
 - PostgreSQL/pgvector Docker Compose persistence with sqlite in-memory/local fallback for tests and direct Python use.
 - Production-oriented Dokploy/VPS operations artifacts: production Compose, environment docs, JSON logging, migration command, backup/restore scripts, smoke-test script, n8n workflow design records, deployment runbook, and Phase 10 review artifact.
 - Production launch readiness artifacts: one-time first-admin bootstrap command, optional persisted-staff smoke check, first-launch evidence template, updated deployment runbook, and Phase 11 review artifact.
 - Notification automation artifacts: backend-to-n8n webhook emission, delivery-result persistence, staff delivery visibility, production n8n workflow exports, and live n8n workflows for request-created, status-changed, clarification-requested, and customer-answered events.
-- Live AI provider and knowledge-base content artifacts: OpenAI-compatible AI suggestion and embedding adapters, deterministic local/test provider selection, curated repair knowledge seed set, RAG evaluation fixtures, and AI provider operations guidance.
+- Live AI provider and knowledge-base content artifacts: OpenAI-compatible AI suggestion and embedding adapters, deterministic local/test provider selection, curated repair knowledge seed set, RAG evaluation fixtures, safety triage and knowledge-gap fallback behavior, and AI provider operations guidance.
 - Operational hardening implementation artifacts: structured safe operational log contexts for API, worker, and Telegram bot; staff-auth audit expansion; request, dispatcher, notification, AI, embedding, and Telegram opt-in trace logs; restore dry-run procedure; operational diagnostics guide; incident response checklist; and launch evidence updates.
 
 ## Active Focus
@@ -36,9 +36,10 @@ Create a detailed Phase 15 implementation plan before execution. Keep the review
 - Phase index: `docs/execution-plans/index.md`
 - Repository map: `docs/harness/repository-map.md`
 - Project history: `docs/harness/project-history.md`
-- Documentation audit: `docs/review/documentation-audit-2026-06-07.md`
-- Previous documentation audit: `docs/review/documentation-audit-2026-06-10.md`
-- Latest documentation audit: `docs/review/documentation-audit-2026-06-15.md`
+- Documentation audit after Phase 10: `docs/review/documentation-audit-2026-06-07.md`
+- Documentation audit after Phase 13: `docs/review/documentation-audit-2026-06-10.md`
+- Documentation audit before Phase 14: `docs/review/documentation-audit-2026-06-15.md`
+- Latest documentation audit: `docs/review/documentation-audit-2026-06-15-current-state.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
 - Phase 10 review: `docs/review/phase-10-review.md`
 - Phase 14 review: `docs/review/phase-14-review.md`
@@ -73,4 +74,5 @@ Create a detailed Phase 15 implementation plan before execution. Keep the review
 - n8n workflow records are operational artifacts. Phase 12 created live n8n workflows and repository exports; backend webhook emission and delivery-result persistence are implemented.
 - Production staff bootstrap uses `python -m serviceops_api.operations.bootstrap_admin`; local seed users remain disabled outside local/dev/test.
 - AI and embedding providers default to deterministic mode for local development and tests; OpenAI-compatible live adapters are configurable for production through secret-backed environment variables.
+- AI prompt assembly filters weakly related RAG chunks before provider calls; when no relevant source remains, both deterministic and live providers must treat the request as a knowledge gap and avoid forcing old repair scenarios onto new symptoms.
 - Operational logs and audit metadata must use safe structured fields and must not expose passwords, tokens, webhook secrets, API keys, raw AI prompts, provider bodies, customer phone numbers, Telegram chat ids, internal note bodies, or unrestricted source chunk text.

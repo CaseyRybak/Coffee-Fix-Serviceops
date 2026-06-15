@@ -1,6 +1,6 @@
 # Coffee Fix ServiceOps
 
-Coffee Fix ServiceOps is a coffee machine repair operations system. Clients submit repair requests and track status. Dispatchers manage requests, assign technicians, ask clarification questions, and use AI suggestions. Technicians work from a mobile interface. The system includes a source-backed RAG knowledge base, OpenAI-compatible live provider adapters, Telegram opt-in linking, n8n notification automation, and VPS/Dokploy deployment artifacts.
+Coffee Fix ServiceOps is a coffee machine repair operations system. Clients submit repair requests and track status. Dispatchers manage requests, assign technicians, ask clarification questions, and use AI suggestions. Technicians work from a mobile interface. The system includes a source-backed RAG knowledge base with relevance filtering and knowledge-gap fallback behavior, OpenAI-compatible live provider adapters, Telegram opt-in linking, n8n notification automation, operational diagnostics, incident response, and VPS/Dokploy deployment artifacts.
 
 This repository is designed for repository-guided development. Product intent, plans, domain maps, review protocols, and reusable project workflows are stored in the repository so future work can continue without relying on chat history.
 
