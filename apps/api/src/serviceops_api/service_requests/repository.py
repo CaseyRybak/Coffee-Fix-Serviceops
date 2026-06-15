@@ -8,12 +8,17 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from serviceops_api.scheduling.models import SchedulingConflictError, SchedulingLifecycleError, parse_appointment_datetime
 from serviceops_api.service_requests.models import ServiceRequestRecord
 
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations"
 MIGRATION_PATH = MIGRATIONS_DIR / "0001_service_request_intake.sql"
 TECHNICIAN_INVENTORY_MIGRATION_PATH = MIGRATIONS_DIR / "0004_technician_inventory.sql"
+SCHEDULING_MIGRATION_PATH = MIGRATIONS_DIR / "0007_scheduling_appointments.sql"
+SCHEDULING_ALLOWED_STATUSES = {"new", "needs_clarification", "awaiting_assignment", "technician_assigned", "visit_scheduled"}
+RESCHEDULE_ALLOWED_STATUSES = SCHEDULING_ALLOWED_STATUSES | {"diagnostics", "waiting_for_parts", "repair_in_progress"}
+WORK_STARTED_STATUSES = {"diagnostics", "waiting_for_parts", "repair_in_progress"}
 
 
 class ServiceRequestRepository:
@@ -140,6 +145,26 @@ class ServiceRequestRepository:
                 actor TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS request_appointments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                service_request_id INTEGER NOT NULL REFERENCES service_requests(id),
+                technician_identifier TEXT NOT NULL,
+                technician_name TEXT NOT NULL,
+                starts_at TEXT NOT NULL,
+                ends_at TEXT NOT NULL,
+                window_label TEXT NOT NULL,
+                status TEXT NOT NULL,
+                reschedule_reason TEXT,
+                cancel_reason TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_request_appointments_request
+                ON request_appointments (service_request_id);
+            CREATE INDEX IF NOT EXISTS idx_request_appointments_technician_window
+                ON request_appointments (technician_identifier, starts_at, ends_at, status);
             """
         )
         self._ensure_sqlite_dispatcher_columns()
@@ -612,10 +637,249 @@ class ServiceRequestRepository:
             )
         return self._get_request_status(request_number)
 
+    def create_appointment(
+        self,
+        request_number: str,
+        technician_identifier: str,
+        technician_name: str | None,
+        starts_at: str,
+        ends_at: str,
+        window_label: str | None,
+        actor: str,
+    ) -> dict[str, Any]:
+        request = self._get_request_row_for_scheduling(request_number)
+        if request["status"] not in SCHEDULING_ALLOWED_STATUSES:
+            raise SchedulingLifecycleError("Request status does not allow scheduling changes")
+        resolved_label = self._resolve_window_label(starts_at, ends_at, window_label)
+        resolved_name = technician_name or technician_identifier
+        if self._has_appointment_overlap(technician_identifier, starts_at, ends_at):
+            raise SchedulingConflictError("Technician already has an appointment in this window")
+
+        with self._connection:
+            self._connection.execute(
+                """
+                UPDATE request_appointments
+                SET status = 'rescheduled',
+                    reschedule_reason = COALESCE(reschedule_reason, 'Superseded by a new appointment'),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE service_request_id = ? AND status = 'scheduled'
+                """,
+                (request["id"],),
+            )
+            cursor = self._connection.execute(
+                """
+                INSERT INTO request_appointments (
+                    service_request_id, technician_identifier, technician_name, starts_at, ends_at,
+                    window_label, status
+                )
+                VALUES (?, ?, ?, ?, ?, ?, 'scheduled')
+                """,
+                (request["id"], technician_identifier, resolved_name, starts_at, ends_at, resolved_label),
+            )
+            appointment_id = int(cursor.lastrowid)
+            self._connection.execute(
+                """
+                UPDATE service_requests
+                SET status = 'visit_scheduled',
+                    assigned_technician_name = ?,
+                    assigned_technician_phone = NULL,
+                    assigned_technician_region = NULL,
+                    visit_window = ?
+                WHERE id = ?
+                """,
+                (technician_identifier, resolved_label, request["id"]),
+            )
+            self._connection.execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (?, 'visit_scheduled', 'Визит запланирован', 'Диспетчер согласовал окно визита мастера.', ?)
+                """,
+                (request["id"], actor),
+            )
+        return self._appointment_response(request_number, "visit_scheduled", appointment_id, "Appointment scheduled")
+
+    def reschedule_appointment(
+        self,
+        request_number: str,
+        appointment_id: int,
+        starts_at: str,
+        ends_at: str,
+        window_label: str | None,
+        reason: str | None,
+        actor: str,
+    ) -> dict[str, Any]:
+        request = self._get_request_row_for_scheduling(request_number)
+        if request["status"] not in RESCHEDULE_ALLOWED_STATUSES:
+            raise SchedulingLifecycleError("Request status does not allow scheduling changes")
+        current = self._get_appointment_for_request(request["id"], appointment_id)
+        if current["status"] != "scheduled":
+            raise SchedulingLifecycleError("Only active appointments can be rescheduled")
+        if self._has_appointment_overlap(str(current["technician_identifier"]), starts_at, ends_at, ignored_appointment_id=appointment_id):
+            raise SchedulingConflictError("Technician already has an appointment in this window")
+        resolved_label = self._resolve_window_label(starts_at, ends_at, window_label)
+        status_after = request["status"] if request["status"] in WORK_STARTED_STATUSES else "visit_scheduled"
+
+        with self._connection:
+            self._connection.execute(
+                """
+                UPDATE request_appointments
+                SET status = 'rescheduled',
+                    reschedule_reason = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (reason, appointment_id),
+            )
+            cursor = self._connection.execute(
+                """
+                INSERT INTO request_appointments (
+                    service_request_id, technician_identifier, technician_name, starts_at, ends_at,
+                    window_label, status
+                )
+                VALUES (?, ?, ?, ?, ?, ?, 'scheduled')
+                """,
+                (
+                    request["id"],
+                    current["technician_identifier"],
+                    current["technician_name"],
+                    starts_at,
+                    ends_at,
+                    resolved_label,
+                ),
+            )
+            new_appointment_id = int(cursor.lastrowid)
+            self._connection.execute(
+                """
+                UPDATE service_requests
+                SET status = ?,
+                    visit_window = ?
+                WHERE id = ?
+                """,
+                (status_after, resolved_label, request["id"]),
+            )
+            self._connection.execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (?, ?, 'Визит перенесен', 'Диспетчер обновил согласованное окно визита.', ?)
+                """,
+                (request["id"], status_after, actor),
+            )
+        return self._appointment_response(request_number, status_after, new_appointment_id, "Appointment rescheduled")
+
+    def cancel_appointment(
+        self,
+        request_number: str,
+        appointment_id: int,
+        reason: str | None,
+        actor: str,
+    ) -> dict[str, Any]:
+        request = self._get_request_row_for_scheduling(request_number)
+        if request["status"] in {"completed", "closed", "warranty_case", "cancelled"}:
+            raise SchedulingLifecycleError("Request status does not allow scheduling changes")
+        current = self._get_appointment_for_request(request["id"], appointment_id)
+        if current["status"] != "scheduled":
+            raise SchedulingLifecycleError("Only active appointments can be cancelled")
+        status_after = request["status"] if request["status"] in WORK_STARTED_STATUSES else "technician_assigned"
+
+        with self._connection:
+            self._connection.execute(
+                """
+                UPDATE request_appointments
+                SET status = 'cancelled',
+                    cancel_reason = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (reason, appointment_id),
+            )
+            self._connection.execute(
+                """
+                UPDATE service_requests
+                SET status = ?,
+                    visit_window = NULL
+                WHERE id = ?
+                """,
+                (status_after, request["id"]),
+            )
+            self._connection.execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (?, ?, 'Визит отменен', 'Окно визита отменено, диспетчер согласует новое время.', ?)
+                """,
+                (request["id"], status_after, actor),
+            )
+        return self._appointment_response(request_number, status_after, appointment_id, "Appointment cancelled")
+
+    def list_dispatcher_schedule(self) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            """
+            SELECT
+                ra.*,
+                sr.request_number,
+                sr.status AS request_status,
+                sr.urgency,
+                sr.address,
+                c.name AS customer_name,
+                m.brand,
+                m.model,
+                (
+                    SELECT se.title
+                    FROM status_events se
+                    WHERE se.service_request_id = sr.id
+                    ORDER BY se.id DESC
+                    LIMIT 1
+                ) AS latest_event_title
+            FROM request_appointments ra
+            JOIN service_requests sr ON sr.id = ra.service_request_id
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE ra.status = 'scheduled'
+            ORDER BY ra.starts_at, ra.id
+            """
+        ).fetchall()
+        return [self._schedule_item(row) for row in rows]
+
+    def list_technician_schedule(self, technician_identifier: str) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            """
+            SELECT
+                ra.*,
+                sr.request_number,
+                sr.status AS request_status,
+                sr.urgency,
+                sr.address,
+                c.name AS customer_name,
+                m.brand,
+                m.model,
+                (
+                    SELECT se.title
+                    FROM status_events se
+                    WHERE se.service_request_id = sr.id
+                    ORDER BY se.id DESC
+                    LIMIT 1
+                ) AS latest_event_title
+            FROM request_appointments ra
+            JOIN service_requests sr ON sr.id = ra.service_request_id
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE ra.status = 'scheduled' AND ra.technician_identifier = ?
+            ORDER BY ra.starts_at, ra.id
+            """,
+            (technician_identifier,),
+        ).fetchall()
+        return [self._schedule_item(row) for row in rows]
+
     def list_requests_for_technician(self, technician_identifier: str) -> list[dict[str, Any]]:
         rows = self._connection.execute(
             """
             SELECT
+                sr.id,
                 sr.request_number,
                 sr.status,
                 sr.urgency,
@@ -648,6 +912,7 @@ class ServiceRequestRepository:
                 "urgency": row["urgency"],
                 "address": row["address"],
                 "visit_window": row["visit_window"],
+                "appointment": self._public_appointment_for_request_id(int(row["id"]), row["visit_window"]),
                 "latest_event_title": row["latest_event_title"] or "",
             }
             for row in rows
@@ -657,6 +922,7 @@ class ServiceRequestRepository:
         row = self._connection.execute(
             """
             SELECT
+                sr.id,
                 sr.request_number,
                 sr.status,
                 sr.problem,
@@ -688,6 +954,7 @@ class ServiceRequestRepository:
             "address": row["address"],
             "urgency": row["urgency"],
             "visit_window": row["visit_window"],
+            "appointment": self._public_appointment_for_request_id(int(row["id"]), row["visit_window"]),
             "diagnosis": diagnosis,
             "repair_result": repair_result,
         }
@@ -916,6 +1183,7 @@ class ServiceRequestRepository:
                 "technician_region": request["assigned_technician_region"],
                 "visit_window": request["visit_window"],
             },
+            "appointment": self._staff_appointment_for_request_id(int(request["id"])),
             "internal_notes": [
                 {
                     "note": note["note"],
@@ -934,6 +1202,7 @@ class ServiceRequestRepository:
                 sr.request_number,
                 sr.status,
                 sr.problem,
+                sr.visit_window,
                 c.name,
                 c.phone,
                 c.telegram,
@@ -1016,6 +1285,164 @@ class ServiceRequestRepository:
                 "enabled": opt_in is not None,
                 "link": f"/service-requests/{request['request_number']}/telegram-opt-in",
             },
+            "appointment": self._public_appointment_for_request_id(int(request["id"]), request["visit_window"]),
+        }
+
+    def _get_request_row_for_scheduling(self, request_number: str) -> sqlite3.Row:
+        row = self._connection.execute(
+            """
+            SELECT id, request_number, status
+            FROM service_requests
+            WHERE request_number = ?
+            """,
+            (request_number,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(request_number)
+        return row
+
+    def _get_appointment_for_request(self, request_id: int, appointment_id: int) -> sqlite3.Row:
+        row = self._connection.execute(
+            """
+            SELECT *
+            FROM request_appointments
+            WHERE id = ? AND service_request_id = ?
+            """,
+            (appointment_id, request_id),
+        ).fetchone()
+        if row is None:
+            raise KeyError(str(appointment_id))
+        return row
+
+    def _has_appointment_overlap(
+        self,
+        technician_identifier: str,
+        starts_at: str,
+        ends_at: str,
+        ignored_appointment_id: int | None = None,
+    ) -> bool:
+        requested_start = parse_appointment_datetime(starts_at)
+        requested_end = parse_appointment_datetime(ends_at)
+        rows = self._connection.execute(
+            """
+            SELECT id, starts_at, ends_at
+            FROM request_appointments
+            WHERE technician_identifier = ? AND status = 'scheduled'
+            """,
+            (technician_identifier,),
+        ).fetchall()
+        for row in rows:
+            if ignored_appointment_id is not None and int(row["id"]) == ignored_appointment_id:
+                continue
+            existing_start = parse_appointment_datetime(str(row["starts_at"]))
+            existing_end = parse_appointment_datetime(str(row["ends_at"]))
+            if existing_start < requested_end and existing_end > requested_start:
+                return True
+        return False
+
+    def _resolve_window_label(self, starts_at: str, ends_at: str, window_label: str | None) -> str:
+        if window_label:
+            return window_label
+        start = parse_appointment_datetime(starts_at)
+        end = parse_appointment_datetime(ends_at)
+        return f"{start.strftime('%Y-%m-%d %H:%M')}-{end.strftime('%H:%M')}"
+
+    def _appointment_response(
+        self,
+        request_number: str,
+        status: str,
+        appointment_id: int,
+        message: str,
+    ) -> dict[str, Any]:
+        appointment = self._connection.execute(
+            """
+            SELECT ra.*, sr.request_number
+            FROM request_appointments ra
+            JOIN service_requests sr ON sr.id = ra.service_request_id
+            WHERE ra.id = ?
+            """,
+            (appointment_id,),
+        ).fetchone()
+        if appointment is None:
+            raise KeyError(str(appointment_id))
+        return {
+            "request_number": request_number,
+            "status": status,
+            "appointment": self._staff_appointment_snapshot(appointment),
+            "message": message,
+        }
+
+    def _staff_appointment_for_request_id(self, request_id: int) -> dict[str, Any] | None:
+        row = self._connection.execute(
+            """
+            SELECT ra.*, sr.request_number
+            FROM request_appointments ra
+            JOIN service_requests sr ON sr.id = ra.service_request_id
+            WHERE ra.service_request_id = ? AND ra.status = 'scheduled'
+            ORDER BY ra.id DESC
+            LIMIT 1
+            """,
+            (request_id,),
+        ).fetchone()
+        return None if row is None else self._staff_appointment_snapshot(row)
+
+    def _public_appointment_for_request_id(
+        self,
+        request_id: int,
+        legacy_visit_window: str | None = None,
+    ) -> dict[str, Any] | None:
+        row = self._connection.execute(
+            """
+            SELECT starts_at, ends_at, window_label, status
+            FROM request_appointments
+            WHERE service_request_id = ? AND status = 'scheduled'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (request_id,),
+        ).fetchone()
+        if row is None:
+            if not legacy_visit_window:
+                return None
+            return {
+                "starts_at": None,
+                "ends_at": None,
+                "window_label": legacy_visit_window,
+                "status": "scheduled",
+            }
+        return {
+            "starts_at": row["starts_at"],
+            "ends_at": row["ends_at"],
+            "window_label": row["window_label"],
+            "status": row["status"],
+        }
+
+    def _staff_appointment_snapshot(self, row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "appointment_id": row["id"],
+            "request_number": row["request_number"],
+            "technician_identifier": row["technician_identifier"],
+            "technician_name": row["technician_name"],
+            "starts_at": row["starts_at"],
+            "ends_at": row["ends_at"],
+            "window_label": row["window_label"],
+            "status": row["status"],
+            "reschedule_reason": row["reschedule_reason"],
+            "cancel_reason": row["cancel_reason"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+
+    def _schedule_item(self, row: sqlite3.Row) -> dict[str, Any]:
+        model = row["model"]
+        return {
+            "appointment": self._staff_appointment_snapshot(row),
+            "request_status": row["request_status"],
+            "customer_name": row["customer_name"],
+            "machine_label": f"{row['brand']}{f' {model}' if model else ''}",
+            "urgency": row["urgency"],
+            "address": row["address"],
+            "latest_event_title": row["latest_event_title"] or "",
         }
 
     def _new_token(self, prefix: str) -> str:
@@ -1052,6 +1479,8 @@ class PostgresServiceRequestRepository:
         self._connect().execute(MIGRATION_PATH.read_text(encoding="utf-8"))
         if TECHNICIAN_INVENTORY_MIGRATION_PATH.exists():
             self._connect().execute(TECHNICIAN_INVENTORY_MIGRATION_PATH.read_text(encoding="utf-8"))
+        if SCHEDULING_MIGRATION_PATH.exists():
+            self._connect().execute(SCHEDULING_MIGRATION_PATH.read_text(encoding="utf-8"))
         self._connect().commit()
 
     def next_sequence(self) -> int:
@@ -1516,10 +1945,255 @@ class PostgresServiceRequestRepository:
         self._connect().commit()
         return self._get_request_status(request_number)
 
+    def create_appointment(
+        self,
+        request_number: str,
+        technician_identifier: str,
+        technician_name: str | None,
+        starts_at: str,
+        ends_at: str,
+        window_label: str | None,
+        actor: str,
+    ) -> dict[str, Any]:
+        request = self._get_request_row_for_scheduling(request_number)
+        if request["status"] not in SCHEDULING_ALLOWED_STATUSES:
+            raise SchedulingLifecycleError("Request status does not allow scheduling changes")
+        resolved_label = self._resolve_window_label(starts_at, ends_at, window_label)
+        resolved_name = technician_name or technician_identifier
+        if self._has_appointment_overlap(technician_identifier, starts_at, ends_at):
+            raise SchedulingConflictError("Technician already has an appointment in this window")
+
+        with self._connect().transaction():
+            self._connect().execute(
+                """
+                UPDATE request_appointments
+                SET status = 'rescheduled',
+                    reschedule_reason = COALESCE(reschedule_reason, 'Superseded by a new appointment'),
+                    updated_at = now()
+                WHERE service_request_id = %s AND status = 'scheduled'
+                """,
+                (request["id"],),
+            )
+            row = self._connect().execute(
+                """
+                INSERT INTO request_appointments (
+                    service_request_id, technician_identifier, technician_name, starts_at, ends_at,
+                    window_label, status
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, 'scheduled')
+                RETURNING id
+                """,
+                (request["id"], technician_identifier, resolved_name, starts_at, ends_at, resolved_label),
+            ).fetchone()
+            if row is None:
+                raise RuntimeError("appointment insert did not return an id")
+            appointment_id = int(row["id"])
+            self._connect().execute(
+                """
+                UPDATE service_requests
+                SET status = 'visit_scheduled',
+                    assigned_technician_name = %s,
+                    assigned_technician_phone = NULL,
+                    assigned_technician_region = NULL,
+                    visit_window = %s
+                WHERE id = %s
+                """,
+                (technician_identifier, resolved_label, request["id"]),
+            )
+            self._connect().execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (%s, 'visit_scheduled', 'Визит запланирован', 'Диспетчер согласовал окно визита мастера.', %s)
+                """,
+                (request["id"], actor),
+            )
+        return self._appointment_response(request_number, "visit_scheduled", appointment_id, "Appointment scheduled")
+
+    def reschedule_appointment(
+        self,
+        request_number: str,
+        appointment_id: int,
+        starts_at: str,
+        ends_at: str,
+        window_label: str | None,
+        reason: str | None,
+        actor: str,
+    ) -> dict[str, Any]:
+        request = self._get_request_row_for_scheduling(request_number)
+        if request["status"] not in RESCHEDULE_ALLOWED_STATUSES:
+            raise SchedulingLifecycleError("Request status does not allow scheduling changes")
+        current = self._get_appointment_for_request(int(request["id"]), appointment_id)
+        if current["status"] != "scheduled":
+            raise SchedulingLifecycleError("Only active appointments can be rescheduled")
+        if self._has_appointment_overlap(str(current["technician_identifier"]), starts_at, ends_at, appointment_id):
+            raise SchedulingConflictError("Technician already has an appointment in this window")
+        resolved_label = self._resolve_window_label(starts_at, ends_at, window_label)
+        status_after = request["status"] if request["status"] in WORK_STARTED_STATUSES else "visit_scheduled"
+
+        with self._connect().transaction():
+            self._connect().execute(
+                """
+                UPDATE request_appointments
+                SET status = 'rescheduled',
+                    reschedule_reason = %s,
+                    updated_at = now()
+                WHERE id = %s
+                """,
+                (reason, appointment_id),
+            )
+            row = self._connect().execute(
+                """
+                INSERT INTO request_appointments (
+                    service_request_id, technician_identifier, technician_name, starts_at, ends_at,
+                    window_label, status
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, 'scheduled')
+                RETURNING id
+                """,
+                (
+                    request["id"],
+                    current["technician_identifier"],
+                    current["technician_name"],
+                    starts_at,
+                    ends_at,
+                    resolved_label,
+                ),
+            ).fetchone()
+            if row is None:
+                raise RuntimeError("appointment insert did not return an id")
+            new_appointment_id = int(row["id"])
+            self._connect().execute(
+                """
+                UPDATE service_requests
+                SET status = %s,
+                    visit_window = %s
+                WHERE id = %s
+                """,
+                (status_after, resolved_label, request["id"]),
+            )
+            self._connect().execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (%s, %s, 'Визит перенесен', 'Диспетчер обновил согласованное окно визита.', %s)
+                """,
+                (request["id"], status_after, actor),
+            )
+        return self._appointment_response(request_number, status_after, new_appointment_id, "Appointment rescheduled")
+
+    def cancel_appointment(
+        self,
+        request_number: str,
+        appointment_id: int,
+        reason: str | None,
+        actor: str,
+    ) -> dict[str, Any]:
+        request = self._get_request_row_for_scheduling(request_number)
+        if request["status"] in {"completed", "closed", "warranty_case", "cancelled"}:
+            raise SchedulingLifecycleError("Request status does not allow scheduling changes")
+        current = self._get_appointment_for_request(int(request["id"]), appointment_id)
+        if current["status"] != "scheduled":
+            raise SchedulingLifecycleError("Only active appointments can be cancelled")
+        status_after = request["status"] if request["status"] in WORK_STARTED_STATUSES else "technician_assigned"
+
+        with self._connect().transaction():
+            self._connect().execute(
+                """
+                UPDATE request_appointments
+                SET status = 'cancelled',
+                    cancel_reason = %s,
+                    updated_at = now()
+                WHERE id = %s
+                """,
+                (reason, appointment_id),
+            )
+            self._connect().execute(
+                """
+                UPDATE service_requests
+                SET status = %s,
+                    visit_window = NULL
+                WHERE id = %s
+                """,
+                (status_after, request["id"]),
+            )
+            self._connect().execute(
+                """
+                INSERT INTO status_events (
+                    service_request_id, status, title, description, actor
+                )
+                VALUES (%s, %s, 'Визит отменен', 'Окно визита отменено, диспетчер согласует новое время.', %s)
+                """,
+                (request["id"], status_after, actor),
+            )
+        return self._appointment_response(request_number, status_after, appointment_id, "Appointment cancelled")
+
+    def list_dispatcher_schedule(self) -> list[dict[str, Any]]:
+        rows = self._connect().execute(
+            """
+            SELECT
+                ra.*,
+                sr.request_number,
+                sr.status AS request_status,
+                sr.urgency,
+                sr.address,
+                c.name AS customer_name,
+                m.brand,
+                m.model,
+                (
+                    SELECT se.title
+                    FROM status_events se
+                    WHERE se.service_request_id = sr.id
+                    ORDER BY se.id DESC
+                    LIMIT 1
+                ) AS latest_event_title
+            FROM request_appointments ra
+            JOIN service_requests sr ON sr.id = ra.service_request_id
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE ra.status = 'scheduled'
+            ORDER BY ra.starts_at, ra.id
+            """
+        ).fetchall()
+        return [self._schedule_item(row) for row in rows]
+
+    def list_technician_schedule(self, technician_identifier: str) -> list[dict[str, Any]]:
+        rows = self._connect().execute(
+            """
+            SELECT
+                ra.*,
+                sr.request_number,
+                sr.status AS request_status,
+                sr.urgency,
+                sr.address,
+                c.name AS customer_name,
+                m.brand,
+                m.model,
+                (
+                    SELECT se.title
+                    FROM status_events se
+                    WHERE se.service_request_id = sr.id
+                    ORDER BY se.id DESC
+                    LIMIT 1
+                ) AS latest_event_title
+            FROM request_appointments ra
+            JOIN service_requests sr ON sr.id = ra.service_request_id
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE ra.status = 'scheduled' AND ra.technician_identifier = %s
+            ORDER BY ra.starts_at, ra.id
+            """,
+            (technician_identifier,),
+        ).fetchall()
+        return [self._schedule_item(row) for row in rows]
+
     def list_requests_for_technician(self, technician_identifier: str) -> list[dict[str, Any]]:
         rows = self._connect().execute(
             """
             SELECT
+                sr.id,
                 sr.request_number,
                 sr.status,
                 sr.urgency,
@@ -1552,6 +2226,7 @@ class PostgresServiceRequestRepository:
                 "urgency": row["urgency"],
                 "address": row["address"],
                 "visit_window": row["visit_window"],
+                "appointment": self._public_appointment_for_request_id(int(row["id"]), row["visit_window"]),
                 "latest_event_title": row["latest_event_title"] or "",
             }
             for row in rows
@@ -1561,6 +2236,7 @@ class PostgresServiceRequestRepository:
         row = self._connect().execute(
             """
             SELECT
+                sr.id,
                 sr.request_number,
                 sr.status,
                 sr.problem,
@@ -1590,6 +2266,7 @@ class PostgresServiceRequestRepository:
             "address": row["address"],
             "urgency": row["urgency"],
             "visit_window": row["visit_window"],
+            "appointment": self._public_appointment_for_request_id(int(row["id"]), row["visit_window"]),
             "diagnosis": self._latest_technician_diagnosis(request_number),
             "repair_result": self._latest_technician_repair_result(request_number),
         }
@@ -1824,6 +2501,7 @@ class PostgresServiceRequestRepository:
                 "technician_region": request["assigned_technician_region"],
                 "visit_window": request["visit_window"],
             },
+            "appointment": self._staff_appointment_for_request_id(int(request["id"])),
             "internal_notes": [
                 {
                     "note": note["note"],
@@ -1842,6 +2520,7 @@ class PostgresServiceRequestRepository:
                 sr.request_number,
                 sr.status,
                 sr.problem,
+                sr.visit_window,
                 c.name,
                 c.phone,
                 c.telegram,
@@ -1926,6 +2605,164 @@ class PostgresServiceRequestRepository:
                 "enabled": opt_in is not None,
                 "link": f"/service-requests/{request['request_number']}/telegram-opt-in",
             },
+            "appointment": self._public_appointment_for_request_id(int(request["id"]), request["visit_window"]),
+        }
+
+    def _get_request_row_for_scheduling(self, request_number: str) -> dict[str, Any]:
+        row = self._connect().execute(
+            """
+            SELECT id, request_number, status
+            FROM service_requests
+            WHERE request_number = %s
+            """,
+            (request_number,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(request_number)
+        return row
+
+    def _get_appointment_for_request(self, request_id: int, appointment_id: int) -> dict[str, Any]:
+        row = self._connect().execute(
+            """
+            SELECT *
+            FROM request_appointments
+            WHERE id = %s AND service_request_id = %s
+            """,
+            (appointment_id, request_id),
+        ).fetchone()
+        if row is None:
+            raise KeyError(str(appointment_id))
+        return row
+
+    def _has_appointment_overlap(
+        self,
+        technician_identifier: str,
+        starts_at: str,
+        ends_at: str,
+        ignored_appointment_id: int | None = None,
+    ) -> bool:
+        requested_start = parse_appointment_datetime(starts_at)
+        requested_end = parse_appointment_datetime(ends_at)
+        rows = self._connect().execute(
+            """
+            SELECT id, starts_at, ends_at
+            FROM request_appointments
+            WHERE technician_identifier = %s AND status = 'scheduled'
+            """,
+            (technician_identifier,),
+        ).fetchall()
+        for row in rows:
+            if ignored_appointment_id is not None and int(row["id"]) == ignored_appointment_id:
+                continue
+            existing_start = row["starts_at"] if hasattr(row["starts_at"], "tzinfo") else parse_appointment_datetime(str(row["starts_at"]))
+            existing_end = row["ends_at"] if hasattr(row["ends_at"], "tzinfo") else parse_appointment_datetime(str(row["ends_at"]))
+            if existing_start < requested_end and existing_end > requested_start:
+                return True
+        return False
+
+    def _resolve_window_label(self, starts_at: str, ends_at: str, window_label: str | None) -> str:
+        if window_label:
+            return window_label
+        start = parse_appointment_datetime(starts_at)
+        end = parse_appointment_datetime(ends_at)
+        return f"{start.strftime('%Y-%m-%d %H:%M')}-{end.strftime('%H:%M')}"
+
+    def _appointment_response(
+        self,
+        request_number: str,
+        status: str,
+        appointment_id: int,
+        message: str,
+    ) -> dict[str, Any]:
+        appointment = self._connect().execute(
+            """
+            SELECT ra.*, sr.request_number
+            FROM request_appointments ra
+            JOIN service_requests sr ON sr.id = ra.service_request_id
+            WHERE ra.id = %s
+            """,
+            (appointment_id,),
+        ).fetchone()
+        if appointment is None:
+            raise KeyError(str(appointment_id))
+        return {
+            "request_number": request_number,
+            "status": status,
+            "appointment": self._staff_appointment_snapshot(appointment),
+            "message": message,
+        }
+
+    def _staff_appointment_for_request_id(self, request_id: int) -> dict[str, Any] | None:
+        row = self._connect().execute(
+            """
+            SELECT ra.*, sr.request_number
+            FROM request_appointments ra
+            JOIN service_requests sr ON sr.id = ra.service_request_id
+            WHERE ra.service_request_id = %s AND ra.status = 'scheduled'
+            ORDER BY ra.id DESC
+            LIMIT 1
+            """,
+            (request_id,),
+        ).fetchone()
+        return None if row is None else self._staff_appointment_snapshot(row)
+
+    def _public_appointment_for_request_id(
+        self,
+        request_id: int,
+        legacy_visit_window: str | None = None,
+    ) -> dict[str, Any] | None:
+        row = self._connect().execute(
+            """
+            SELECT starts_at, ends_at, window_label, status
+            FROM request_appointments
+            WHERE service_request_id = %s AND status = 'scheduled'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (request_id,),
+        ).fetchone()
+        if row is None:
+            if not legacy_visit_window:
+                return None
+            return {
+                "starts_at": None,
+                "ends_at": None,
+                "window_label": legacy_visit_window,
+                "status": "scheduled",
+            }
+        return {
+            "starts_at": self._format_timestamp(row["starts_at"]),
+            "ends_at": self._format_timestamp(row["ends_at"]),
+            "window_label": row["window_label"],
+            "status": row["status"],
+        }
+
+    def _staff_appointment_snapshot(self, row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "appointment_id": row["id"],
+            "request_number": row["request_number"],
+            "technician_identifier": row["technician_identifier"],
+            "technician_name": row["technician_name"],
+            "starts_at": self._format_timestamp(row["starts_at"]),
+            "ends_at": self._format_timestamp(row["ends_at"]),
+            "window_label": row["window_label"],
+            "status": row["status"],
+            "reschedule_reason": row["reschedule_reason"],
+            "cancel_reason": row["cancel_reason"],
+            "created_at": self._format_timestamp(row["created_at"]),
+            "updated_at": self._format_timestamp(row["updated_at"]),
+        }
+
+    def _schedule_item(self, row: dict[str, Any]) -> dict[str, Any]:
+        model = row["model"]
+        return {
+            "appointment": self._staff_appointment_snapshot(row),
+            "request_status": row["request_status"],
+            "customer_name": row["customer_name"],
+            "machine_label": f"{row['brand']}{f' {model}' if model else ''}",
+            "urgency": row["urgency"],
+            "address": row["address"],
+            "latest_event_title": row["latest_event_title"] or "",
         }
 
     def _format_timestamp(self, value: Any) -> str:

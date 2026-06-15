@@ -4,7 +4,7 @@ This is the current operating dashboard. Historical phase chronology and older d
 
 ## Current Status
 
-Coffee Fix ServiceOps has completed implementation slices through Phase 14:
+Coffee Fix ServiceOps has completed implementation slices through Phase 15:
 
 - Public repair intake, request numbers, public status snapshots, clarification answers, and Telegram opt-in link contracts.
 - Dispatcher, staff login/RBAC, admin staff management, technician assigned-visit workflow, and inventory basics.
@@ -15,16 +15,17 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 14:
 - Notification automation artifacts: backend-to-n8n webhook emission, delivery-result persistence, staff delivery visibility, production n8n workflow exports, and live n8n workflows for request-created, status-changed, clarification-requested, and customer-answered events.
 - Live AI provider and knowledge-base content artifacts: OpenAI-compatible AI suggestion and embedding adapters, deterministic local/test provider selection, curated repair knowledge seed set, RAG evaluation fixtures, safety triage and knowledge-gap fallback behavior, and AI provider operations guidance.
 - Operational hardening implementation artifacts: structured safe operational log contexts for API, worker, and Telegram bot; staff-auth audit expansion; request, dispatcher, notification, AI, embedding, and Telegram opt-in trace logs; restore dry-run procedure; operational diagnostics guide; incident response checklist; and launch evidence updates.
+- Scheduling depth artifacts: structured appointment window persistence, dispatcher create/reschedule/cancel scheduling APIs, technician overlap capacity checks, dispatcher and technician schedule views, technician-visible appointment timing, customer-safe public appointment snapshots, and request timeline events for scheduling changes.
 
 ## Active Focus
 
-Phase 15: Scheduling Depth.
+Phase 16: Inventory Reservations.
 
-Create a detailed Phase 15 implementation plan before execution. Keep the review gate in `docs/review/subagent-review-protocol.md`.
+Create a detailed Phase 16 implementation plan before execution. Keep the review gate in `docs/review/subagent-review-protocol.md`.
 
 ## Next Steps
 
-1. Create the detailed Phase 15 implementation plan for scheduling depth.
+1. Create the detailed Phase 16 implementation plan for inventory reservations.
 2. Configure production n8n, Telegram, AI, and embedding provider environment variables before enabling public notification or live AI traffic.
 3. Run deployment smoke checks, restore dry-run checks, and log trace checks against a real Dokploy/VPS environment before public launch; record evidence with `docs/operations/launch-smoke-evidence.md`.
 4. Keep repository docs, tests, production Compose config, and operations scripts passing after changes.

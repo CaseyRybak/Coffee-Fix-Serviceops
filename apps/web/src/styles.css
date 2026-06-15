@@ -1354,6 +1354,69 @@ select:focus {
   font-style: normal;
 }
 
+.schedule-panel {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(90, 56, 37, 0.14);
+}
+
+.schedule-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #1f1a17;
+}
+
+.schedule-panel-heading span {
+  display: inline-grid;
+  min-width: 26px;
+  height: 26px;
+  place-items: center;
+  color: #ffffff;
+  background: #2f6b4f;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.schedule-row {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  min-height: 96px;
+  padding: 12px;
+  color: #1f1a17;
+  background: #fdfaf4;
+  border: 1px solid rgba(47, 107, 79, 0.2);
+  border-radius: 7px;
+  text-align: left;
+}
+
+.schedule-row:hover {
+  border-color: rgba(47, 107, 79, 0.55);
+}
+
+.schedule-row span {
+  color: #2f6b4f;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.schedule-row strong,
+.schedule-row small,
+.schedule-row em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.schedule-row em {
+  color: #6f635c;
+  font-size: 0.82rem;
+  font-style: normal;
+}
+
 .dispatcher-empty,
 .dispatcher-card {
   background: #ffffff;
@@ -1385,6 +1448,30 @@ select:focus {
   margin-bottom: 12px;
   color: #5a3825;
   line-height: 1.55;
+}
+
+.appointment-card {
+  grid-column: span 2;
+}
+
+.appointment-current {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #f7f2ea;
+  border: 1px solid rgba(47, 107, 79, 0.18);
+  border-radius: 7px;
+}
+
+.appointment-current strong {
+  color: #2f6b4f;
+}
+
+.appointment-current span,
+.appointment-current small {
+  color: #6f635c;
+  overflow-wrap: anywhere;
 }
 
 .dispatcher-summary-card {
@@ -2404,6 +2491,10 @@ select:focus {
   .dispatcher-grid,
   .technician-action-grid {
     grid-template-columns: 1fr;
+  }
+
+  .appointment-card {
+    grid-column: auto;
   }
 
   .inventory-table-card,

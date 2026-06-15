@@ -258,6 +258,12 @@ def test_dispatcher_status_clarification_assignment_and_internal_notes_are_recor
     public_status = asyncio.run(get_json(repository, f"/service-requests/{request_number}/status")).json()
     public_text = str(public_status)
     assert public_status["status"] == "visit_scheduled"
+    assert public_status["appointment"] == {
+        "starts_at": None,
+        "ends_at": None,
+        "window_label": "Завтра 14:00-16:00",
+        "status": "scheduled",
+    }
     assert public_status["clarification"]["question"] == "Пришлите фото шильдика с моделью кофемашины."
     assert "Клиент просит звонить" not in public_text
     assert "Pavel Sokolov" not in public_text

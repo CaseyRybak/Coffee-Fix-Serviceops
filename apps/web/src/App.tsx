@@ -125,6 +125,41 @@ interface PublicStatusSnapshot {
     enabled: boolean;
     link: string;
   };
+  appointment?: PublicAppointmentSnapshot | null;
+}
+
+type AppointmentStatus = "scheduled" | "rescheduled" | "cancelled";
+
+interface PublicAppointmentSnapshot {
+  starts_at: string | null;
+  ends_at: string | null;
+  window_label: string;
+  status: AppointmentStatus;
+}
+
+interface AppointmentSnapshot extends PublicAppointmentSnapshot {
+  appointment_id: number;
+  request_number: string;
+  technician_identifier: string;
+  technician_name: string;
+  reschedule_reason: string | null;
+  cancel_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ScheduleListItem {
+  appointment: AppointmentSnapshot;
+  request_status: RequestStatus;
+  customer_name: string;
+  machine_label: string;
+  urgency: Urgency;
+  address: string;
+  latest_event_title: string;
+}
+
+interface ScheduleListResponse {
+  items: ScheduleListItem[];
 }
 
 interface DispatcherListItem {
@@ -204,6 +239,7 @@ interface DispatcherRequestDetail {
     technician_region: string | null;
     visit_window: string | null;
   };
+  appointment?: AppointmentSnapshot | null;
   internal_notes: Array<{
     note: string;
     actor: string;
@@ -259,6 +295,7 @@ interface TechnicianListItem {
   urgency: Urgency;
   address: string;
   visit_window: string | null;
+  appointment?: PublicAppointmentSnapshot | null;
   latest_event_title: string;
 }
 
@@ -276,6 +313,7 @@ interface TechnicianRequestDetail {
   address: string;
   urgency: Urgency;
   visit_window: string | null;
+  appointment?: PublicAppointmentSnapshot | null;
   diagnosis: {
     machine_powered_on: boolean;
     water_supply_checked: boolean;
@@ -485,18 +523,21 @@ const footerClientLinks = [
 const technicianCandidates = [
   {
     name: "Sergey Morozov",
+    username: "technician@coffeefix.local",
     phone: "+7 999 310-22-11",
     region: "ЦАО",
     skills: "Jura, Saeco",
   },
   {
     name: "Pavel Sokolov",
+    username: "pavel@coffeefix.local",
     phone: "+7 999 222-33-44",
     region: "СЗАО",
     skills: "DeLonghi, Philips",
   },
   {
     name: "Marina Volkova",
+    username: "marina@coffeefix.local",
     phone: "+7 999 450-18-07",
     region: "ЮЗАО",
     skills: "WMF, Nuova Simonelli",
@@ -614,6 +655,10 @@ export function buildDispatcherListPath(): string {
   return "/dispatcher/service-requests";
 }
 
+export function buildDispatcherSchedulePath(): string {
+  return "/dispatcher/schedule";
+}
+
 export function buildDispatcherDetailPath(requestNumber: string): string {
   return `/dispatcher/service-requests/${encodeURIComponent(normalizeRequestNumber(requestNumber))}`;
 }
@@ -634,6 +679,18 @@ export function buildDispatcherInternalNotePath(requestNumber: string): string {
   return `${buildDispatcherDetailPath(requestNumber)}/internal-notes`;
 }
 
+export function buildDispatcherAppointmentPath(requestNumber: string): string {
+  return `${buildDispatcherDetailPath(requestNumber)}/appointments`;
+}
+
+export function buildDispatcherAppointmentReschedulePath(requestNumber: string, appointmentId: number): string {
+  return `${buildDispatcherAppointmentPath(requestNumber)}/${appointmentId}/reschedule`;
+}
+
+export function buildDispatcherAppointmentCancelPath(requestNumber: string, appointmentId: number): string {
+  return `${buildDispatcherAppointmentPath(requestNumber)}/${appointmentId}/cancel`;
+}
+
 export function buildGenerateAiSuggestionsPath(requestNumber: string): string {
   return `${buildDispatcherDetailPath(requestNumber)}/ai-suggestions/generate`;
 }
@@ -648,6 +705,10 @@ export function buildIgnoreAiSuggestionPath(requestNumber: string, suggestionId:
 
 export function buildTechnicianListPath(): string {
   return "/technician/service-requests";
+}
+
+export function buildTechnicianSchedulePath(): string {
+  return "/technician/schedule";
 }
 
 export function buildTechnicianDetailPath(requestNumber: string): string {
@@ -791,6 +852,23 @@ function urgencyLabel(urgency: Urgency): string {
     planned: "Планово",
   };
   return labels[urgency];
+}
+
+function appointmentStatusLabel(status: AppointmentStatus): string {
+  const labels: Record<AppointmentStatus, string> = {
+    scheduled: "Запланировано",
+    rescheduled: "Перенесено",
+    cancelled: "Отменено",
+  };
+  return labels[status];
+}
+
+function toApiDateTime(value: string): string {
+  if (!value.trim()) return "";
+  if (value.includes("T") && /([+-]\d\d:\d\d|Z)$/.test(value)) return value;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toISOString();
 }
 
 export function formatCompactDateTime(value: string | null | undefined): string {
@@ -1251,6 +1329,17 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
                   </strong>
                   <p>{status.problem_summary}</p>
                 </div>
+                {status.appointment ? (
+                  <div>
+                    <span>Окно визита</span>
+                    <strong>{status.appointment.window_label}</strong>
+                    {status.appointment.starts_at && status.appointment.ends_at ? (
+                      <p>
+                        {formatCompactDateTime(status.appointment.starts_at)} - {formatCompactDateTime(status.appointment.ends_at)}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </section>
 
               <section className="status-panel">
@@ -1337,15 +1426,18 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
 export function DispatcherPage({
   initialList,
   initialDetail,
+  initialSchedule,
   session,
   onLogout,
 }: {
   initialList?: DispatcherListResponse;
   initialDetail?: DispatcherRequestDetail;
+  initialSchedule?: ScheduleListResponse;
   session?: StaffSession | null;
   onLogout?: () => void;
 }) {
   const [list, setList] = useState<DispatcherListResponse>(initialList ?? { items: [] });
+  const [schedule, setSchedule] = useState<ScheduleListResponse>(initialSchedule ?? { items: [] });
   const [selected, setSelected] = useState(initialDetail?.request_number ?? initialList?.items[0]?.request_number ?? "");
   const [detail, setDetail] = useState<DispatcherRequestDetail | null>(initialDetail ?? null);
   const [statusValue, setStatusValue] = useState<RequestStatus>("awaiting_assignment");
@@ -1356,6 +1448,16 @@ export function DispatcherPage({
   const [technicianPhone, setTechnicianPhone] = useState("");
   const [technicianRegion, setTechnicianRegion] = useState("");
   const [visitWindow, setVisitWindow] = useState("");
+  const [appointmentTechnician, setAppointmentTechnician] = useState("technician@coffeefix.local");
+  const [appointmentName, setAppointmentName] = useState("");
+  const [appointmentStart, setAppointmentStart] = useState("");
+  const [appointmentEnd, setAppointmentEnd] = useState("");
+  const [appointmentLabel, setAppointmentLabel] = useState("");
+  const [rescheduleStart, setRescheduleStart] = useState("");
+  const [rescheduleEnd, setRescheduleEnd] = useState("");
+  const [rescheduleLabel, setRescheduleLabel] = useState("");
+  const [rescheduleReason, setRescheduleReason] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1374,6 +1476,16 @@ export function DispatcherPage({
     return body;
   }
 
+  async function loadSchedule() {
+    const response = await fetch(`${apiBaseUrl()}${buildDispatcherSchedulePath()}`, {
+      headers: staffAuthHeaders(session),
+    });
+    if (!response.ok) throw new Error(`Dispatcher schedule failed with ${response.status}`);
+    const body = (await response.json()) as ScheduleListResponse;
+    setSchedule(body);
+    return body;
+  }
+
   async function loadDetail(requestNumber: string) {
     if (!requestNumber) return;
     const response = await fetch(`${apiBaseUrl()}${buildDispatcherDetailPath(requestNumber)}`, {
@@ -1389,7 +1501,7 @@ export function DispatcherPage({
     setLoading(true);
     setMessage(null);
     try {
-      await loadList();
+      await Promise.all([loadList(), loadSchedule()]);
       if (requestNumber) await loadDetail(requestNumber);
     } catch {
       setMessage("Не удалось обновить диспетчерские данные.");
@@ -1399,9 +1511,9 @@ export function DispatcherPage({
   }
 
   useEffect(() => {
-    if (initialList || initialDetail) return;
+    if (initialList || initialDetail || initialSchedule) return;
     void refresh();
-  }, [initialList, initialDetail]);
+  }, [initialList, initialDetail, initialSchedule]);
 
   useEffect(() => {
     if (!selected || selected === detail?.request_number) return;
@@ -1472,6 +1584,60 @@ export function DispatcherPage({
     );
   }
 
+  async function submitAppointment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!detail) return;
+    await postAction(
+      buildDispatcherAppointmentPath(detail.request_number),
+      {
+        technician_identifier: appointmentTechnician.trim(),
+        technician_name: appointmentName.trim() || undefined,
+        starts_at: toApiDateTime(appointmentStart),
+        ends_at: toApiDateTime(appointmentEnd),
+        window_label: appointmentLabel.trim() || undefined,
+      },
+      () => {
+        setAppointmentName("");
+        setAppointmentStart("");
+        setAppointmentEnd("");
+        setAppointmentLabel("");
+      },
+      "Визит запланирован.",
+    );
+  }
+
+  async function submitReschedule(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!detail?.appointment) return;
+    await postAction(
+      buildDispatcherAppointmentReschedulePath(detail.request_number, detail.appointment.appointment_id),
+      {
+        starts_at: toApiDateTime(rescheduleStart),
+        ends_at: toApiDateTime(rescheduleEnd),
+        window_label: rescheduleLabel.trim() || undefined,
+        reason: rescheduleReason.trim() || undefined,
+      },
+      () => {
+        setRescheduleStart("");
+        setRescheduleEnd("");
+        setRescheduleLabel("");
+        setRescheduleReason("");
+      },
+      "Визит перенесен.",
+    );
+  }
+
+  async function submitCancelAppointment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!detail?.appointment) return;
+    await postAction(
+      buildDispatcherAppointmentCancelPath(detail.request_number, detail.appointment.appointment_id),
+      { reason: cancelReason.trim() || undefined },
+      () => setCancelReason(""),
+      "Визит отменен.",
+    );
+  }
+
   async function submitInternalNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!detail) return;
@@ -1514,9 +1680,11 @@ export function DispatcherPage({
   }
 
   function selectTechnicianCandidate(candidate: (typeof technicianCandidates)[number]) {
-    setTechnicianName(candidate.name);
+    setTechnicianName(candidate.username);
     setTechnicianPhone(candidate.phone);
     setTechnicianRegion(candidate.region);
+    setAppointmentTechnician(candidate.username);
+    setAppointmentName(candidate.name);
   }
 
   const pendingAiSuggestions = detail?.ai_suggestions?.filter((suggestion) => suggestion.status === "pending") ?? [];
@@ -1609,6 +1777,29 @@ export function DispatcherPage({
               ) : (
                 <p className="dispatcher-empty">Заявок по выбранным фильтрам нет.</p>
               )}
+              <div className="schedule-panel" aria-label="Расписание">
+                <div className="schedule-panel-heading">
+                  <strong>Расписание</strong>
+                  <span>{schedule.items.length}</span>
+                </div>
+                {schedule.items.length ? (
+                  schedule.items.map((item) => (
+                    <button
+                      className="schedule-row"
+                      key={item.appointment.appointment_id}
+                      type="button"
+                      onClick={() => setSelected(item.appointment.request_number)}
+                    >
+                      <span>{item.appointment.window_label}</span>
+                      <strong>{item.appointment.request_number}</strong>
+                      <small>{item.appointment.technician_identifier}</small>
+                      <em>{item.customer_name} · {item.machine_label}</em>
+                    </button>
+                  ))
+                ) : (
+                  <p className="dispatcher-empty">Активных визитов нет.</p>
+                )}
+              </div>
             </aside>
 
             {detail ? (
@@ -1858,12 +2049,59 @@ export function DispatcherPage({
                       ))}
                     </div>
                     <form className="dispatcher-form" onSubmit={submitAssignment}>
-                      <input value={technicianName} onChange={(event) => setTechnicianName(event.target.value)} placeholder="Имя мастера" required />
+                      <input value={technicianName} onChange={(event) => setTechnicianName(event.target.value)} placeholder="Логин мастера" required />
                       <input value={technicianPhone} onChange={(event) => setTechnicianPhone(event.target.value)} placeholder="Телефон мастера" />
                       <input value={technicianRegion} onChange={(event) => setTechnicianRegion(event.target.value)} placeholder="Регион" />
                       <input value={visitWindow} onChange={(event) => setVisitWindow(event.target.value)} placeholder="Окно визита" />
                       <button className="submit-button" type="submit">Назначить мастера</button>
                     </form>
+                  </section>
+
+                  <section className="dispatcher-card appointment-card">
+                    <div className="dispatcher-card-heading">
+                      <h3>Расписание визита</h3>
+                      {detail.appointment ? <span>{appointmentStatusLabel(detail.appointment.status)}</span> : null}
+                    </div>
+                    {detail.appointment ? (
+                      <div className="appointment-current">
+                        <strong>{detail.appointment.window_label}</strong>
+                        <span>{detail.appointment.technician_identifier}</span>
+                        <small>
+                          {formatCompactDateTime(detail.appointment.starts_at)} - {formatCompactDateTime(detail.appointment.ends_at)}
+                        </small>
+                      </div>
+                    ) : detail.assignment.visit_window ? (
+                      <div className="appointment-current">
+                        <strong>{detail.assignment.visit_window}</strong>
+                        <span>{detail.assignment.technician_name || "Мастер назначен"}</span>
+                        <small>Окно из назначения, без точного интервала расписания</small>
+                      </div>
+                    ) : (
+                      <p>Структурированное окно визита еще не создано.</p>
+                    )}
+                    <form className="dispatcher-form compact-form" onSubmit={submitAppointment}>
+                      <input value={appointmentTechnician} onChange={(event) => setAppointmentTechnician(event.target.value)} placeholder="Логин мастера" required />
+                      <input value={appointmentName} onChange={(event) => setAppointmentName(event.target.value)} placeholder="Имя для расписания" />
+                      <input value={appointmentStart} onChange={(event) => setAppointmentStart(event.target.value)} aria-label="Начало визита" required type="datetime-local" />
+                      <input value={appointmentEnd} onChange={(event) => setAppointmentEnd(event.target.value)} aria-label="Конец визита" required type="datetime-local" />
+                      <input value={appointmentLabel} onChange={(event) => setAppointmentLabel(event.target.value)} placeholder="Метка окна" />
+                      <button className="submit-button" type="submit">{detail.appointment ? "Создать новое окно" : "Создать визит"}</button>
+                    </form>
+                    {detail.appointment ? (
+                      <>
+                        <form className="dispatcher-form compact-form" onSubmit={submitReschedule}>
+                          <input value={rescheduleStart} onChange={(event) => setRescheduleStart(event.target.value)} aria-label="Новое начало визита" required type="datetime-local" />
+                          <input value={rescheduleEnd} onChange={(event) => setRescheduleEnd(event.target.value)} aria-label="Новый конец визита" required type="datetime-local" />
+                          <input value={rescheduleLabel} onChange={(event) => setRescheduleLabel(event.target.value)} placeholder="Новая метка" />
+                          <input value={rescheduleReason} onChange={(event) => setRescheduleReason(event.target.value)} placeholder="Причина переноса" />
+                          <button className="submit-button" type="submit">Перенести визит</button>
+                        </form>
+                        <form className="dispatcher-form compact-form" onSubmit={submitCancelAppointment}>
+                          <input value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Причина отмены" />
+                          <button className="secondary-status-button" type="submit">Отменить визит</button>
+                        </form>
+                      </>
+                    ) : null}
                   </section>
 
                   <section className="dispatcher-card">
@@ -2389,15 +2627,18 @@ export function ProtectedAdminPage({
 export function TechnicianPage({
   initialList,
   initialDetail,
+  initialSchedule,
   session,
   onLogout,
 }: {
   initialList?: TechnicianListResponse;
   initialDetail?: TechnicianRequestDetail;
+  initialSchedule?: ScheduleListResponse;
   session?: StaffSession | null;
   onLogout?: () => void;
 }) {
   const [list, setList] = useState<TechnicianListResponse>(initialList ?? { items: [] });
+  const [schedule, setSchedule] = useState<ScheduleListResponse>(initialSchedule ?? { items: [] });
   const [selected, setSelected] = useState(initialDetail?.request_number ?? initialList?.items[0]?.request_number ?? "");
   const [detail, setDetail] = useState<TechnicianRequestDetail | null>(initialDetail ?? null);
   const [diagnosisSummary, setDiagnosisSummary] = useState("");
@@ -2418,6 +2659,14 @@ export function TechnicianPage({
     return body;
   }
 
+  async function loadSchedule() {
+    const response = await fetch(`${apiBaseUrl()}${buildTechnicianSchedulePath()}`, { headers: staffAuthHeaders(session) });
+    if (!response.ok) throw new Error(`Technician schedule failed with ${response.status}`);
+    const body = (await response.json()) as ScheduleListResponse;
+    setSchedule(body);
+    return body;
+  }
+
   async function loadDetail(requestNumber: string) {
     if (!requestNumber) return;
     const response = await fetch(`${apiBaseUrl()}${buildTechnicianDetailPath(requestNumber)}`, {
@@ -2433,7 +2682,7 @@ export function TechnicianPage({
     setLoading(true);
     setMessage(null);
     try {
-      await loadList();
+      await Promise.all([loadList(), loadSchedule()]);
       if (requestNumber) await loadDetail(requestNumber);
     } catch {
       setMessage("Не удалось обновить выезды мастера.");
@@ -2443,9 +2692,9 @@ export function TechnicianPage({
   }
 
   useEffect(() => {
-    if (initialList || initialDetail) return;
+    if (initialList || initialDetail || initialSchedule) return;
     void refresh();
-  }, [initialList, initialDetail]);
+  }, [initialList, initialDetail, initialSchedule]);
 
   useEffect(() => {
     if (!selected || selected === detail?.request_number) return;
@@ -2545,6 +2794,29 @@ export function TechnicianPage({
           {message ? <p className="status-message">{message}</p> : null}
           <div className="dispatcher-workspace technician-workspace">
             <aside className="dispatcher-list">
+              <div className="schedule-panel technician-schedule-panel" aria-label="Мое расписание">
+                <div className="schedule-panel-heading">
+                  <strong>Мое расписание</strong>
+                  <span>{schedule.items.length}</span>
+                </div>
+                {schedule.items.length ? (
+                  schedule.items.map((item) => (
+                    <button
+                      className="schedule-row"
+                      key={item.appointment.appointment_id}
+                      type="button"
+                      onClick={() => setSelected(item.appointment.request_number)}
+                    >
+                      <span>{item.appointment.window_label}</span>
+                      <strong>{appointmentStatusLabel(item.appointment.status)}</strong>
+                      <small>{item.appointment.request_number}</small>
+                      <em>{item.customer_name} · {item.address}</em>
+                    </button>
+                  ))
+                ) : (
+                  <p className="dispatcher-empty">Запланированных окон нет.</p>
+                )}
+              </div>
               {list.items.length ? (
                 list.items.map((item) => (
                   <button
@@ -2557,7 +2829,7 @@ export function TechnicianPage({
                     <strong>{item.request_number}</strong>
                     <em>{item.customer_name}</em>
                     <small>{item.machine_label}</small>
-                    <small>{item.visit_window ?? item.latest_event_title}</small>
+                    <small>{item.appointment?.window_label ?? item.visit_window ?? item.latest_event_title}</small>
                   </button>
                 ))
               ) : (
@@ -2587,8 +2859,14 @@ export function TechnicianPage({
                     </div>
                     <div>
                       <dt>Окно визита</dt>
-                      <dd>{detail.visit_window ?? "Не указано"}</dd>
+                      <dd>{detail.appointment?.window_label ?? detail.visit_window ?? "Не указано"}</dd>
                     </div>
+                    {detail.appointment ? (
+                      <div>
+                        <dt>Состояние визита</dt>
+                        <dd>{appointmentStatusLabel(detail.appointment.status)}</dd>
+                      </div>
+                    ) : null}
                     <div>
                       <dt>Адрес</dt>
                       <dd>{detail.address}</dd>
@@ -2656,11 +2934,13 @@ export function ProtectedTechnicianPage({
   initialSession,
   initialList,
   initialDetail,
+  initialSchedule,
 }: {
   hasSession?: boolean;
   initialSession?: StaffSession | null;
   initialList?: TechnicianListResponse;
   initialDetail?: TechnicianRequestDetail;
+  initialSchedule?: ScheduleListResponse;
 }) {
   const [session, setSession] = useState<StaffSession | null>(() => {
     if (initialSession !== undefined) return initialSession;
@@ -2707,7 +2987,15 @@ export function ProtectedTechnicianPage({
     );
   }
 
-  return <TechnicianPage session={session} onLogout={logout} initialList={initialList} initialDetail={initialDetail} />;
+  return (
+    <TechnicianPage
+      session={session}
+      onLogout={logout}
+      initialList={initialList}
+      initialDetail={initialDetail}
+      initialSchedule={initialSchedule}
+    />
+  );
 }
 
 export function InventoryPage({

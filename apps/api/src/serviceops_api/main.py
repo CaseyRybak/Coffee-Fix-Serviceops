@@ -62,6 +62,14 @@ from serviceops_api.service_requests.use_cases import (
     SubmitCustomerAnswer,
     UpdateDispatcherStatus,
 )
+from serviceops_api.scheduling.api import create_scheduling_router
+from serviceops_api.scheduling.use_cases import (
+    CancelAppointment,
+    CreateAppointment,
+    ListDispatcherSchedule,
+    ListTechnicianSchedule,
+    RescheduleAppointment,
+)
 from serviceops_api.staff_auth import StaffAuthenticator, create_staff_auth_router, require_staff_role
 from serviceops_api.staff_management.api import create_staff_management_router
 from serviceops_api.staff_management.repository import (
@@ -192,6 +200,17 @@ def create_app(
             AssignDispatcherTechnician(repository),
             SaveDispatcherInternalNote(repository),
             staff_dependency=require_staff_role("dispatcher", authenticator),
+        )
+    )
+    app.include_router(
+        create_scheduling_router(
+            CreateAppointment(repository),
+            RescheduleAppointment(repository),
+            CancelAppointment(repository),
+            ListDispatcherSchedule(repository),
+            ListTechnicianSchedule(repository),
+            dispatcher_staff_dependency=require_staff_role("dispatcher", authenticator),
+            technician_staff_dependency=require_staff_role("technician", authenticator),
         )
     )
     app.include_router(

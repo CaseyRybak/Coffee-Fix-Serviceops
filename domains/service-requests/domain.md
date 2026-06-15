@@ -113,3 +113,16 @@ Accepting an AI diagnostic-question suggestion creates a normal dispatcher clari
 Technician workflow extends the service-request lifecycle after dispatcher assignment. Assigned technicians can record diagnosis, repair result, and parts-used actions through protected technician routes. Those actions update status history with actor `technician` and statuses such as `diagnostics`, `waiting_for_parts`, `repair_in_progress`, and `completed`.
 
 Public status snapshots may show customer-safe technician status event titles and descriptions. They must not expose technician-only checklist summaries, repair result internal notes, parts-used notes, stock counts, part IDs, or inventory metadata.
+
+## Phase 15 Scheduling Boundary
+
+Scheduling changes now append normal service-request status events:
+
+- Appointment creation sets the request to `visit_scheduled` and appends `Визит запланирован`.
+- Appointment rescheduling keeps the request in `visit_scheduled` and appends `Визит перенесен`.
+- Appointment cancellation clears the active visit window, returns the request to `technician_assigned`, and appends `Визит отменен`.
+- If technician work has already moved the request into `diagnostics`, `waiting_for_parts`, or `repair_in_progress`, rescheduling/cancellation preserves that lifecycle status while still appending the scheduling event and updating or clearing the active visit window.
+
+The legacy dispatcher assignment endpoint still stores assignment metadata and optional `visit_window` text for compatibility. Structured appointment endpoints are the source for staff schedule views and current appointment snapshots.
+
+Public status snapshots may expose the current appointment window label, start, end, and state when a scheduled appointment exists. Public responses must not expose appointment ids, technician phone numbers, dispatcher-only reasons, capacity diagnostics, staff usernames beyond existing actor labels, AI data, audit data, or internal notes.

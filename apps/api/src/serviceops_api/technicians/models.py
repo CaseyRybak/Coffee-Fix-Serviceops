@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from serviceops_api.service_requests.models import RequestStatus, Urgency
+from serviceops_api.service_requests.models import PublicAppointmentSnapshot, RequestStatus, Urgency
 from serviceops_api.inventory.models import RecordPartsUsedPayload
 
 
@@ -33,6 +33,7 @@ class TechnicianRequestListItem(BaseModel):
     urgency: Urgency
     address: str
     visit_window: str | None
+    appointment: PublicAppointmentSnapshot | None = None
     latest_event_title: str
 
 
@@ -79,6 +80,7 @@ class TechnicianRequestDetail(BaseModel):
     address: str
     urgency: Urgency
     visit_window: str | None
+    appointment: PublicAppointmentSnapshot | None = None
     diagnosis: DiagnosisSnapshot | None
     repair_result: RepairResultSnapshot | None
 

@@ -129,6 +129,13 @@ class TelegramOptInSnapshot(BaseModel):
     link: str
 
 
+class PublicAppointmentSnapshot(BaseModel):
+    starts_at: str | None = None
+    ends_at: str | None = None
+    window_label: str
+    status: str
+
+
 class PublicStatusResponse(BaseModel):
     request_number: str
     public_token: str
@@ -139,6 +146,7 @@ class PublicStatusResponse(BaseModel):
     timeline: list[StatusEvent]
     clarification: ClarificationSnapshot | None
     telegram_opt_in: TelegramOptInSnapshot
+    appointment: PublicAppointmentSnapshot | None = None
 
 
 class CustomerAnswerPayload(BaseModel):
@@ -228,6 +236,17 @@ class DispatcherNotificationDelivery(BaseModel):
     updated_at: str | None = None
 
 
+class DispatcherAppointmentSnapshot(PublicAppointmentSnapshot):
+    appointment_id: int
+    request_number: str
+    technician_identifier: str
+    technician_name: str
+    reschedule_reason: str | None = None
+    cancel_reason: str | None = None
+    created_at: str
+    updated_at: str
+
+
 class DispatcherRequestDetail(BaseModel):
     request_number: str
     status: RequestStatus
@@ -240,6 +259,7 @@ class DispatcherRequestDetail(BaseModel):
     timeline: list[StatusEvent]
     clarification: ClarificationSnapshot | None
     assignment: DispatcherAssignmentSnapshot
+    appointment: DispatcherAppointmentSnapshot | None = None
     internal_notes: list[DispatcherInternalNote]
     ai_suggestions: list[DispatcherAiSuggestion] = Field(default_factory=list)
     notification_deliveries: list[DispatcherNotificationDelivery] = Field(default_factory=list)

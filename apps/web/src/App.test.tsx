@@ -19,6 +19,10 @@ import {
   buildDispatcherDetailPath,
   buildDispatcherInternalNotePath,
   buildDispatcherListPath,
+  buildDispatcherSchedulePath,
+  buildDispatcherAppointmentPath,
+  buildDispatcherAppointmentReschedulePath,
+  buildDispatcherAppointmentCancelPath,
   buildAcceptAiClarificationPath,
   buildAdminStaffActivatePath,
   buildAdminStaffAuditPath,
@@ -35,6 +39,7 @@ import {
   buildTechnicianListPath,
   buildTechnicianPartsUsedPath,
   buildTechnicianResultPath,
+  buildTechnicianSchedulePath,
   buildDispatcherStatusPath,
   buildCustomerAnswerPayload,
   buildServiceRequestPayload,
@@ -365,6 +370,7 @@ describe("App", () => {
 
   it("builds dispatcher API paths", () => {
     assert.equal(buildDispatcherListPath(), "/dispatcher/service-requests");
+    assert.equal(buildDispatcherSchedulePath(), "/dispatcher/schedule");
     assert.equal(
       buildDispatcherDetailPath(" CFX-20260605-000001 "),
       "/dispatcher/service-requests/CFX-20260605-000001",
@@ -386,6 +392,18 @@ describe("App", () => {
       "/dispatcher/service-requests/CFX-20260605-000001/internal-notes",
     );
     assert.equal(
+      buildDispatcherAppointmentPath(" cfx-20260605-000001 "),
+      "/dispatcher/service-requests/CFX-20260605-000001/appointments",
+    );
+    assert.equal(
+      buildDispatcherAppointmentReschedulePath("CFX-20260605-000001", 7),
+      "/dispatcher/service-requests/CFX-20260605-000001/appointments/7/reschedule",
+    );
+    assert.equal(
+      buildDispatcherAppointmentCancelPath("CFX-20260605-000001", 7),
+      "/dispatcher/service-requests/CFX-20260605-000001/appointments/7/cancel",
+    );
+    assert.equal(
       buildGenerateAiSuggestionsPath("CFX-20260605-000001"),
       "/dispatcher/service-requests/CFX-20260605-000001/ai-suggestions/generate",
     );
@@ -401,6 +419,7 @@ describe("App", () => {
 
   it("builds technician and inventory API paths", () => {
     assert.equal(buildTechnicianListPath(), "/technician/service-requests");
+    assert.equal(buildTechnicianSchedulePath(), "/technician/schedule");
     assert.equal(
       buildTechnicianDetailPath(" CFX-20260605-000001 "),
       "/technician/service-requests/CFX-20260605-000001",
@@ -678,6 +697,104 @@ describe("App", () => {
     assert.doesNotMatch(html, /class="notification-delivery-panel"/);
   });
 
+  it("renders dispatcher schedule and appointment controls", () => {
+    const appointment = {
+      appointment_id: 7,
+      request_number: "CFX-20260605-000001",
+      technician_identifier: "technician@coffeefix.local",
+      technician_name: "Pavel Sokolov",
+      starts_at: "2026-06-16T14:00:00+03:00",
+      ends_at: "2026-06-16T16:00:00+03:00",
+      window_label: "16 июня 14:00-16:00",
+      status: "scheduled" as const,
+      reschedule_reason: null,
+      cancel_reason: null,
+      created_at: "2026-06-15 10:00:00",
+      updated_at: "2026-06-15 10:00:00",
+    };
+
+    const html = renderToStaticMarkup(
+      <DispatcherPage
+        initialList={{
+          items: [
+            {
+              request_number: "CFX-20260605-000001",
+              status: "visit_scheduled",
+              customer_name: "Anna Petrova",
+              customer_phone: "+7 999 111-22-33",
+              machine_label: "Jura E8",
+              urgency: "today",
+              address: "Tverskaya district",
+              created_at: "2026-06-05 10:00:00",
+              latest_event_title: "Визит запланирован",
+            },
+          ],
+        }}
+        initialSchedule={{
+          items: [
+            {
+              appointment,
+              request_status: "visit_scheduled",
+              customer_name: "Anna Petrova",
+              machine_label: "Jura E8",
+              urgency: "today",
+              address: "Tverskaya district",
+              latest_event_title: "Визит запланирован",
+            },
+          ],
+        }}
+        initialDetail={{ ...dispatcherDetail, appointment }}
+      />,
+    );
+
+    assert.match(html, /Расписание/);
+    assert.match(html, /16 июня 14:00-16:00/);
+    assert.match(html, /technician@coffeefix\.local/);
+    assert.match(html, /Создать новое окно/);
+    assert.match(html, /Перенести визит/);
+    assert.match(html, /Отменить визит/);
+    assert.match(html, /Логин мастера/);
+    assert.doesNotMatch(html, /Начало ISO/);
+    assert.doesNotMatch(html, /Конец ISO/);
+  });
+
+  it("shows customer-safe appointment timing on public status", () => {
+    const html = renderToStaticMarkup(
+      <StatusPage
+        initialStatus={{
+          request_number: "CFX-20260615-000022",
+          public_token: "status_token",
+          status: "visit_scheduled",
+          customer: { name: "test", phone_masked: "***", telegram: null },
+          machine: { brand: "Nuova Simonelli", model: null },
+          problem_summary: "кофемашина загорелась без причины",
+          timeline: [
+            {
+              status: "visit_scheduled",
+              title: "Визит запланирован",
+              description: "Диспетчер назначил мастера и обновил следующий шаг по заявке.",
+              actor: "dispatcher",
+              created_at: "2026-06-15 15:56:00",
+            },
+          ],
+          clarification: null,
+          telegram_opt_in: { enabled: false, link: "/service-requests/CFX-20260615-000022/telegram-opt-in" },
+          appointment: {
+            starts_at: null,
+            ends_at: null,
+            window_label: "11:00",
+            status: "scheduled",
+          },
+        }}
+      />,
+    );
+
+    assert.match(html, /Окно визита/);
+    assert.match(html, /11:00/);
+    assert.doesNotMatch(html, /appointment_id/);
+    assert.doesNotMatch(html, /Sergey Morozov/);
+  });
+
   it("does not clamp dispatcher AI suggestion content", () => {
     const css = readFileSync(new URL("./styles.css", import.meta.url), "utf-8");
     const match = css.match(/\.ai-suggestion-content\s*{(?<rules>[^}]*)}/);
@@ -719,15 +836,49 @@ describe("App", () => {
           address: "Tverskaya district",
           urgency: "today",
           visit_window: "Сегодня 16:00-18:00",
+          appointment: {
+            starts_at: "2026-06-16T16:00:00+03:00",
+            ends_at: "2026-06-16T18:00:00+03:00",
+            window_label: "Сегодня 16:00-18:00",
+            status: "scheduled",
+          },
           diagnosis: null,
           repair_result: null,
+        }}
+        initialSchedule={{
+          items: [
+            {
+              appointment: {
+                appointment_id: 7,
+                request_number: "CFX-20260605-000001",
+                technician_identifier: "technician@coffeefix.local",
+                technician_name: "Pavel Sokolov",
+                starts_at: "2026-06-16T16:00:00+03:00",
+                ends_at: "2026-06-16T18:00:00+03:00",
+                window_label: "Сегодня 16:00-18:00",
+                status: "scheduled",
+                reschedule_reason: null,
+                cancel_reason: null,
+                created_at: "2026-06-15 10:00:00",
+                updated_at: "2026-06-15 10:00:00",
+              },
+              request_status: "visit_scheduled",
+              customer_name: "Anna Petrova",
+              machine_label: "Rocket Appartamento",
+              urgency: "today",
+              address: "Tverskaya district",
+              latest_event_title: "Визит запланирован",
+            },
+          ],
         }}
       />,
     );
 
     assert.match(html, /Выезды мастера/);
+    assert.match(html, /Мое расписание/);
     assert.match(html, /Rocket Appartamento/);
     assert.match(html, /Сегодня 16:00-18:00/);
+    assert.match(html, /Запланировано/);
     assert.match(html, /Чеклист диагностики/);
     assert.match(html, /Питание включается/);
     assert.match(html, /Результат ремонта/);
