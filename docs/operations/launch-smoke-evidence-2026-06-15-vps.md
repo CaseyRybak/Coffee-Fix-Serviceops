@@ -9,7 +9,8 @@ This record captures the first real Coffee Fix ServiceOps VPS/Dokploy test deplo
 - Environment: Aeza VPS test production environment
 - VPS: Ubuntu 24.04, IP `138.124.91.212`, root SSH key access
 - Initial deployed Git revision: `4b65f18` on branch `production`
-- Latest verified Git revision after worker fix: `f59989c` on branch `production`
+- Latest verified application-code revision after worker fix: `f59989c` on branch `production`
+- Latest observed Dokploy checkout during post-evidence redeploy: `e2c0f75` on branch `production`
 - Dokploy app: `coffee-fix-serviceops`
 - Web URL: `http://138.124.91.212:3001`
 - API URL: `http://138.124.91.212:8000`
@@ -144,7 +145,17 @@ Result:
 15 passed
 ```
 
-The Dokploy working copy on the VPS was updated to `f59989c`, and the worker service was rebuilt and recreated from `docker-compose.production.yml`.
+The Dokploy working copy on the VPS was updated to include `f59989c`, and the worker service was rebuilt and recreated from `docker-compose.production.yml`.
+
+After the evidence documentation commit, the Dokploy checkout was observed at `e2c0f75` and `api`, `web`, and `worker` were rebuilt/recreated from the production compose file:
+
+```text
+BEFORE_COMMIT e2c0f75
+AFTER_COMMIT e2c0f75
+coffeefixserviceops-coffeefixserviceops-up3whl-api-1 Up 11 seconds (healthy)
+coffeefixserviceops-coffeefixserviceops-up3whl-web-1 Up Less than a second
+coffeefixserviceops-coffeefixserviceops-up3whl-worker-1 Up 11 seconds
+```
 
 Fresh deployed verification:
 
@@ -229,7 +240,8 @@ Checksum result:
 ## Rollback Readiness
 
 - Previous known-good compose configuration before worker fix: branch `production`, commit `4b65f18`.
-- Latest verified compose code after worker fix: branch `production`, commit `f59989c`.
+- Latest verified application-code fix after worker fix: branch `production`, commit `f59989c`.
+- Latest observed Dokploy checkout after evidence redeploy: branch `production`, commit `e2c0f75`.
 - Latest verified backup identified: `/var/backups/serviceops/serviceops-20260615-205909.dump`.
 - Maintenance/public-route disable procedure: close UFW rules for `3001/tcp` and `8000/tcp`, and disable Dokploy routes when domains are later configured.
 - Restore decision owner: project owner.
