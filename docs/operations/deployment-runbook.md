@@ -15,7 +15,7 @@
 - API: FastAPI app from `apps/api`.
 - Web: static React/Vite app served by nginx from `apps/web`.
 - Worker: Celery worker from `apps/worker`.
-- Telegram bot: optional aiogram polling process from `apps/telegram-bot`.
+- Telegram bot: aiogram polling process from `apps/telegram-bot`.
 - PostgreSQL: `pgvector/pgvector:pg16` with the `postgres-data` volume.
 - Redis: private broker/cache service.
 - n8n: operational automation UI and webhook runner with the `n8n-data` volume.
@@ -121,7 +121,7 @@ The command refuses to run when an active admin already exists. After the first 
 4. Web.
 5. Worker.
 6. n8n.
-7. Telegram bot with the `integrations` profile when a production token is configured.
+7. Telegram bot when a production token is configured.
 
 ## Healthchecks
 
@@ -130,7 +130,7 @@ curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/health"
 curl -fsS "$SERVICEOPS_PUBLIC_WEB_BASE_URL/"
 docker compose -f docker-compose.production.yml logs --tail=100 worker
 docker compose -f docker-compose.production.yml logs --tail=100 n8n
-docker compose -f docker-compose.production.yml --profile integrations logs --tail=100 telegram-bot
+docker compose -f docker-compose.production.yml logs --tail=100 telegram-bot
 ```
 
 The Telegram bot is allowed to log that it is disabled when `SERVICEOPS_TELEGRAM_BOT_TOKEN` is empty.

@@ -69,6 +69,7 @@ Choose the next approved implementation phase and create its detailed implementa
 - `bash -n tools/operations/postgres_restore.sh`
 - `bash -n tools/operations/smoke_test.sh`
 - `python3 tools/operations/test_smoke_script_contract.py`
+- `python3 tools/operations/test_production_compose_contract.py`
 
 ## Current Decisions
 

@@ -108,7 +108,7 @@ Expected: provider contract tests pass with fake transports. To test real provid
 ## Telegram Bot
 
 ```bash
-docker compose -f docker-compose.production.yml --profile integrations logs --tail=100 telegram-bot
+docker compose -f docker-compose.production.yml logs --tail=100 telegram-bot
 ```
 
 Expected: disabled-token log when no token is configured, or polling startup with a production token.

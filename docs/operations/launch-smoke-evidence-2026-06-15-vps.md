@@ -97,7 +97,7 @@ checking status by request number: CFX-20260615-000002
 checking status by public token
 SERVICEOPS_SMOKE_STAFF_USERNAME/PASSWORD not configured; skipping staff route smoke check.
 N8N_TEST_WEBHOOK_URL is not configured; manually verify the n8n webhook path.
-manual follow-up: inspect worker logs and Telegram bot profile logs in Dokploy or Docker Compose.
+manual follow-up: inspect worker logs and Telegram bot logs in Dokploy or Docker Compose.
 smoke checks passed for request CFX-20260615-000002
 ```
 
@@ -116,7 +116,7 @@ smoke checks passed for request CFX-20260615-000002
 - Staff login and dispatcher route automated smoke was not run because no disposable staff smoke credentials were provided to the script.
 - Production admin and dispatcher accounts were created manually through the application flow.
 - Worker runtime review was completed after a Redis client dependency fix; see "Worker Fix And Redeploy Evidence".
-- Telegram bot container is not running in the current compose profile; customer Telegram opt-in bot verification remains a follow-up before public launch.
+- Telegram bot container was not running during the initial deployment because production compose still used an optional profile for that service; customer Telegram opt-in verification remained a follow-up at that point.
 - n8n Cloud webhook execution for a real API-created request succeeded.
 
 ## Worker Fix And Redeploy Evidence
@@ -250,7 +250,7 @@ Checksum result:
 
 - Domains and HTTPS are not configured; current deployment is IP-and-port based test access over HTTP.
 - Staff route smoke should be rerun with disposable staff credentials through `tools/operations/smoke_test.sh`.
-- Telegram bot opt-in runtime should be reviewed after deciding whether the optional Telegram bot profile is part of the launch.
+- Telegram bot opt-in runtime should be reviewed after each production deploy.
 - n8n MCP API key and any exposed setup secrets should be rotated before public launch.
 - Real database transfer has not happened yet; smoke, backup, and n8n checks must be repeated after import.
 

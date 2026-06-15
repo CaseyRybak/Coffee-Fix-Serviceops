@@ -34,7 +34,7 @@ Never copy passwords, hashes, bearer tokens, Telegram opt-in tokens, webhook sec
 ```bash
 docker compose -f docker-compose.production.yml logs --tail=500 api
 docker compose -f docker-compose.production.yml logs --tail=500 worker
-docker compose -f docker-compose.production.yml --profile integrations logs --tail=500 telegram-bot
+docker compose -f docker-compose.production.yml logs --tail=500 telegram-bot
 docker compose -f docker-compose.production.yml logs --tail=500 n8n
 ```
 

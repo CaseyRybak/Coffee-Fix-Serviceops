@@ -55,7 +55,7 @@ Use this checklist during production degradation. Keep customer-facing updates s
 
 - First checks: Telegram bot logs, bot token presence, API base URL, opt-in link API failures, Telegram platform status.
 - Customer impact: Telegram opt-in and customer notifications may fail; public status page remains the fallback.
-- Containment: disable the integrations profile or stop bot polling if it loops on failures.
+- Containment: stop bot polling if it loops on failures.
 - Rollback criteria: bot image, token rotation, or API URL change broke linking.
 - Restore criteria: not applicable unless notification data is corrupted.
 - Owner handoff: integrations owner plus operations owner.
