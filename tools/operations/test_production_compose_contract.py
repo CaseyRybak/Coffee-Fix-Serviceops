@@ -20,5 +20,14 @@ def test_production_telegram_bot_runs_with_default_compose_profile() -> None:
     assert "profiles:" not in telegram_bot
 
 
+def test_production_n8n_does_not_publish_direct_port() -> None:
+    compose = (ROOT / "docker-compose.production.yml").read_text(encoding="utf-8")
+    n8n = _service_block(compose, "n8n")
+
+    assert "ports:" not in n8n
+    assert "5678:5678" not in n8n
+
+
 if __name__ == "__main__":
     test_production_telegram_bot_runs_with_default_compose_profile()
+    test_production_n8n_does_not_publish_direct_port()

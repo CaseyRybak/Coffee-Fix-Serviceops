@@ -63,7 +63,7 @@ Do not use local development staff credentials, default passwords, or local URLs
 3. Configure persistent volumes for `postgres-data` and `n8n-data`.
 4. Route the web domain to service `web` port `80`.
 5. Route the API domain to service `api` port `8000`.
-6. Route the n8n domain to service `n8n` port `5678`.
+6. Do not publish `5678` directly. If self-hosted n8n is intentionally enabled later, route the n8n domain through Dokploy/Traefik to service `n8n` port `5678` instead of exposing `http://IP:5678`.
 7. Keep PostgreSQL and Redis without public routes.
 8. Deploy the Compose app.
 
