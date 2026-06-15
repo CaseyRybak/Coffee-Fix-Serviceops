@@ -17,19 +17,21 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 16:
 - Operational hardening implementation artifacts: structured safe operational log contexts for API, worker, and Telegram bot; staff-auth audit expansion; request, dispatcher, notification, AI, embedding, and Telegram opt-in trace logs; restore dry-run procedure; operational diagnostics guide; incident response checklist; and launch evidence updates.
 - Scheduling depth artifacts: structured appointment window persistence, dispatcher create/reschedule/cancel scheduling APIs, technician overlap capacity checks, dispatcher and technician schedule views, technician-visible appointment timing, customer-safe public appointment snapshots, and request timeline events for scheduling changes.
 - Inventory reservation and catalog-control artifacts: request-linked part reservations, reservation release/adjustment, stock movement audit records, available/reserved/on-hand stock visibility, low-stock thresholds, dispatcher read-only low-stock visibility, technician consumption of reserved parts, structured factual part keys, duplicate catalog protection, and exact-model/series/generic-group compatibility records.
+- First real Aeza VPS/Dokploy test deployment evidence: Docker/Dokploy installed, `production` branch deployed, API/web/PostgreSQL/Redis healthy, migrations and first-admin bootstrap completed, n8n Cloud notification path verified through Telegram and backend delivery callback, PostgreSQL backup/restore drill recorded, and worker Redis broker dependency fixed/redeployed at `f59989c`.
 
 ## Active Focus
 
-Backlog grooming after Phase 16.
+Backlog grooming after Phase 16, with a live VPS test deployment available for launch-readiness follow-up.
 
 Choose the next approved implementation phase and create its detailed implementation plan before execution. Keep the review gate in `docs/review/subagent-review-protocol.md`.
 
 ## Next Steps
 
 1. Define the next approved phase or backlog slice after inventory reservations.
-2. Configure production n8n, Telegram, AI, and embedding provider environment variables before enabling public notification or live AI traffic.
-3. Run deployment smoke checks, restore dry-run checks, and log trace checks against a real Dokploy/VPS environment before public launch; record evidence with `docs/operations/launch-smoke-evidence.md`.
-4. Keep repository docs, tests, production Compose config, and operations scripts passing after changes.
+2. Before public launch, configure domains and HTTPS for web/API/Dokploy, then close temporary direct test ports that should not remain public.
+3. Rerun staff-route smoke with disposable staff credentials, review Telegram bot opt-in runtime if the optional bot profile is part of launch, and repeat deployment smoke checks after the real database transfer.
+4. Rotate setup-exposed secrets such as the n8n MCP API key before public launch.
+5. Keep repository docs, tests, production Compose config, and operations scripts passing after changes.
 
 ## Current Entry Points
 
@@ -42,6 +44,7 @@ Choose the next approved implementation phase and create its detailed implementa
 - Documentation audit after Phase 13: `docs/review/documentation-audit-2026-06-10.md`
 - Documentation audit before Phase 14: `docs/review/documentation-audit-2026-06-15.md`
 - Documentation audit after Phase 14: `docs/review/documentation-audit-2026-06-15-current-state.md`
+- Aeza VPS launch smoke evidence: `docs/operations/launch-smoke-evidence-2026-06-15-vps.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
 - Phase 10 review: `docs/review/phase-10-review.md`
 - Phase 14 review: `docs/review/phase-14-review.md`

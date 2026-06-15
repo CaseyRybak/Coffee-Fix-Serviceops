@@ -78,6 +78,7 @@
 - `docs/operations/deployment-runbook.md`: concrete Dokploy/VPS deployment runbook.
 - `docs/operations/backup-restore.md`: PostgreSQL backup, restore, checksum, retention, and restore-drill procedure.
 - `docs/operations/launch-smoke-evidence.md`: first-launch evidence template for production smoke checks and go/no-go decisions.
+- `docs/operations/launch-smoke-evidence-2026-06-15-vps.md`: sanitized Aeza VPS/Dokploy test deployment evidence with smoke, n8n callback, backup, and restore-drill results.
 - `docs/operations/smoke-tests.md`: manual and scripted deployment smoke-test checklist.
 - `docs/operations/operational-diagnostics.md`: structured-log fields, request tracing, log queries, read-only PostgreSQL checks, and evidence redaction rules.
 - `docs/operations/incident-response.md`: first-line incident checklist for degraded API, web, PostgreSQL, Redis, worker, Telegram, n8n, notifications, AI/RAG, and restore decisions.
