@@ -9,6 +9,8 @@ from serviceops_telegram_bot.config import BotSettings
 from serviceops_telegram_bot.observability import configure_logging
 from serviceops_telegram_bot.serviceops_client import ServiceOpsClient
 
+logger = logging.getLogger(__name__)
+
 
 def parse_start_token(text: str | None) -> str | None:
     if not text:
@@ -35,6 +37,21 @@ def build_linked_request_message(linked: dict[str, object], public_api_base_url:
     )
 
 
+def log_opt_in_link_failed() -> None:
+    logger.info(
+        "Telegram opt-in link failed",
+        extra={
+            "serviceops_context": {
+                "action": "telegram.opt_in_linked",
+                "target": "telegram",
+                "outcome": "failed",
+                "reason": "api_request_failed",
+                "provider": "telegram",
+            }
+        },
+    )
+
+
 def register_handlers(dispatcher: Dispatcher, serviceops: ServiceOpsClient, settings: BotSettings) -> None:
     @dispatcher.message(CommandStart())
     async def start(message: Message) -> None:
@@ -52,7 +69,7 @@ def register_handlers(dispatcher: Dispatcher, serviceops: ServiceOpsClient, sett
                 username=message.from_user.username if message.from_user else None,
             )
         except Exception:
-            logging.getLogger(__name__).exception("Telegram opt-in link failed")
+            log_opt_in_link_failed()
             await message.answer("Не удалось подключить уведомления. Проверьте ссылку или попробуйте позже.")
             return
         await message.answer(build_linked_request_message(linked, settings.public_api_base_url))
@@ -65,7 +82,7 @@ async def run_bot(settings: BotSettings | None = None) -> None:
         environment=resolved_settings.environment,
     )
     if not resolved_settings.is_enabled:
-        logging.getLogger(__name__).warning("Telegram bot disabled: token is not configured")
+        logger.warning("Telegram bot disabled: token is not configured")
         return
 
     bot = Bot(token=resolved_settings.telegram_bot_token)

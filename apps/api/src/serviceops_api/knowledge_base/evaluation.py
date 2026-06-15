@@ -30,6 +30,11 @@ RAG_EVALUATION_CASES = [
         expected_terms=["розетка", "кабель", "плата питания"],
     ),
     RagEvaluationCase(
+        query="Bosch бьет током при касании корпуса",
+        expected_source_uri="seed://repair/electric-shock-safety",
+        expected_terms=["не пользоваться", "заземление", "УЗО"],
+    ),
+    RagEvaluationCase(
         query="milk foam weak",
         expected_source_uri="seed://repair/milk-foam-weak",
         expected_terms=["cappuccinatore", "air intake", "milk tube"],

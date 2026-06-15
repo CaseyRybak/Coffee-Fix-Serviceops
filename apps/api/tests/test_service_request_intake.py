@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 
 import httpx
@@ -99,6 +100,25 @@ def test_create_service_request_persists_intake_data() -> None:
             }
         ],
     }
+
+
+def test_create_service_request_logs_safe_intake_context(caplog) -> None:
+    repository = ServiceRequestRepository.in_memory()
+
+    with caplog.at_level(logging.INFO, logger="serviceops_api.service_requests.use_cases"):
+        response = asyncio.run(post_service_request(repository, valid_payload()))
+
+    assert response.status_code == 201
+    request_number = response.json()["request_number"]
+    contexts = [record.serviceops_context for record in caplog.records if hasattr(record, "serviceops_context")]
+    assert {
+        "request_number": request_number,
+        "action": "service_request.created",
+        "target": request_number,
+        "outcome": "succeeded",
+    } in contexts
+    assert "+7 999 111-22-33" not in str(contexts)
+    assert "Machine leaks water" not in str(contexts)
 
 
 def test_create_service_request_allows_optional_telegram_and_attachments() -> None:

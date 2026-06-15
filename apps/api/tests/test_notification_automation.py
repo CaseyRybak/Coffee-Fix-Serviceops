@@ -1,9 +1,12 @@
 import asyncio
+import logging
 
 import httpx
 
 from serviceops_api.main import create_app
+from serviceops_api.notifications.models import DeliveryResultPayload, NotificationEvent
 from serviceops_api.notifications.repository import SqliteNotificationRepository
+from serviceops_api.notifications.use_cases import NotificationPublisher, RecordN8nDeliveryResult
 from serviceops_api.service_requests.repository import ServiceRequestRepository
 
 
@@ -33,6 +36,33 @@ class RecordingN8nClient:
     def deliver(self, event: dict[str, object]) -> dict[str, str]:
         self.events.append(event)
         return {"status": "sent", "provider_message_id": f"n8n-{event['event_id']}"}
+
+
+class FailingN8nClient:
+    def deliver(self, event: dict[str, object]) -> dict[str, str]:
+        return {"status": "failed", "error": "telegram route unavailable"}
+
+
+class DuplicateNotificationStore:
+    def next_sequence(self, request_number: str) -> int:
+        return 1
+
+    def create_queued_attempt(self, event: NotificationEvent) -> bool:
+        return False
+
+    def record_delivery_result(
+        self,
+        event_id: str,
+        status: str,
+        channel: str | None = None,
+        provider_message_id: str | None = None,
+        error: str | None = None,
+        attempt_count: int = 1,
+    ) -> None:
+        raise AssertionError("duplicate events must not record delivery")
+
+    def record_callback_result(self, payload: DeliveryResultPayload) -> None:
+        raise AssertionError("not used by publisher")
 
 
 async def post_json(
@@ -124,6 +154,82 @@ def test_request_created_event_is_public_safe_and_persisted() -> None:
     assert "111-22-33" not in str(event)
     assert "Tverskaya" not in str(event)
     assert notification_repository.list_for_request(request_number)[0]["status"] == "sent"
+
+
+def test_notification_publisher_logs_delivery_outcomes(caplog) -> None:
+    service_repository = ServiceRequestRepository.in_memory()
+    notification_repository = SqliteNotificationRepository.in_memory()
+    n8n_client = RecordingN8nClient()
+
+    with caplog.at_level(logging.INFO, logger="serviceops_api.notifications.use_cases"):
+        request_number = asyncio.run(create_request(service_repository, notification_repository, n8n_client))
+
+    contexts = [record.serviceops_context for record in caplog.records if hasattr(record, "serviceops_context")]
+    event_id = str(n8n_client.events[0]["event_id"])
+    assert {
+        "request_number": request_number,
+        "event_id": event_id,
+        "event_type": "service_request.created",
+        "action": "notification.event_queued",
+        "target": event_id,
+        "outcome": "succeeded",
+        "provider": "n8n",
+    } in contexts
+    assert {
+        "request_number": request_number,
+        "event_id": event_id,
+        "event_type": "service_request.created",
+        "action": "notification.delivery_recorded",
+        "target": event_id,
+        "outcome": "succeeded",
+        "provider": "n8n",
+    } in contexts
+    assert "+7 999 111-22-33" not in str(contexts)
+
+
+def test_notification_publisher_logs_failed_and_duplicate_outcomes(caplog) -> None:
+    service_repository = ServiceRequestRepository.in_memory()
+    notification_repository = SqliteNotificationRepository.in_memory()
+    failing_client = FailingN8nClient()
+
+    with caplog.at_level(logging.INFO, logger="serviceops_api.notifications.use_cases"):
+        response = asyncio.run(
+            post_json(
+                service_repository,
+                notification_repository,
+                failing_client,  # type: ignore[arg-type]
+                "/service-requests",
+                payload(),
+            )
+        )
+        request_number = str(response.json()["request_number"])
+
+        duplicate_publisher = NotificationPublisher(
+            DuplicateNotificationStore(),
+            RecordingN8nClient(),
+            service_repository,
+        )
+        duplicate_publisher.publish_request_created(request_number)
+
+    contexts = [record.serviceops_context for record in caplog.records if hasattr(record, "serviceops_context")]
+    failed_context = next(
+        context for context in contexts if context["action"] == "notification.delivery_recorded" and context["outcome"] == "failed"
+    )
+    assert failed_context["request_number"] == request_number
+    assert failed_context["event_type"] == "service_request.created"
+    assert failed_context["provider"] == "n8n"
+    assert failed_context["reason"] == "delivery_failed"
+    assert "telegram route unavailable" not in str(contexts)
+    duplicate_context = next(context for context in contexts if context["action"] == "notification.event_duplicate")
+    assert duplicate_context == {
+        "request_number": request_number,
+        "event_id": f"{request_number}:service_request.created:1",
+        "event_type": "service_request.created",
+        "action": "notification.event_duplicate",
+        "target": f"{request_number}:service_request.created:1",
+        "outcome": "skipped",
+        "provider": "n8n",
+    }
 
 
 def test_lifecycle_events_are_emitted_and_deduplicated_by_event_id() -> None:
@@ -223,6 +329,69 @@ def test_n8n_delivery_result_callback_updates_attempt_without_changing_request_s
     assert response.json() == {"event_id": event_id, "status": "failed"}
     assert notification_repository.list_for_request(request_number)[0]["status"] == "failed"
     assert service_repository.get_public_status_by_request_number(request_number)["status"] == "new"
+
+
+def test_n8n_delivery_result_callback_logs_safe_context(caplog) -> None:
+    notification_repository = SqliteNotificationRepository.in_memory()
+    event = NotificationEvent(
+        event_id="CFX-20260615-000001:service_request.created:1",
+        event_type="service_request.created",
+        request_number="CFX-20260615-000001",
+        payload={"request_number": "CFX-20260615-000001"},
+    )
+    assert notification_repository.create_queued_attempt(event) is True
+    recorder = RecordN8nDeliveryResult(notification_repository)
+    payload = DeliveryResultPayload(
+        event_id=event.event_id,
+        status="sent",
+        channel="telegram",
+        provider_message_id="tg-123",
+        attempt_count=1,
+    )
+
+    with caplog.at_level(logging.INFO, logger="serviceops_api.notifications.use_cases"):
+        response = recorder.execute(payload)
+
+    assert response.event_id == payload.event_id
+    contexts = [record.serviceops_context for record in caplog.records if hasattr(record, "serviceops_context")]
+    assert {
+        "request_number": "CFX-20260615-000001",
+        "event_id": payload.event_id,
+        "event_type": "service_request.created",
+        "action": "notification.callback_recorded",
+        "target": payload.event_id,
+        "outcome": "succeeded",
+        "provider": "n8n",
+    } in contexts
+
+
+def test_n8n_delivery_result_callback_logs_unknown_event_without_success(caplog) -> None:
+    notification_repository = SqliteNotificationRepository.in_memory()
+    recorder = RecordN8nDeliveryResult(notification_repository)
+    payload = DeliveryResultPayload(
+        event_id="CFX-20260615-000001:service_request.created:1",
+        status="failed",
+        channel="telegram",
+        error="secret callback body with token",
+        attempt_count=1,
+    )
+
+    with caplog.at_level(logging.INFO, logger="serviceops_api.notifications.use_cases"):
+        response = recorder.execute(payload)
+
+    assert response.event_id == payload.event_id
+    contexts = [record.serviceops_context for record in caplog.records if hasattr(record, "serviceops_context")]
+    assert {
+        "request_number": "CFX-20260615-000001",
+        "event_id": payload.event_id,
+        "event_type": "service_request.created",
+        "action": "notification.callback_recorded",
+        "target": payload.event_id,
+        "outcome": "skipped",
+        "reason": "event_not_found",
+        "provider": "n8n",
+    } in contexts
+    assert "secret callback body" not in str(contexts)
 
 
 def test_dispatcher_detail_shows_notification_delivery_status_but_public_status_does_not() -> None:

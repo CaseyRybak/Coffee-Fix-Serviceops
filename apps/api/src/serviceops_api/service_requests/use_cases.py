@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import Protocol
 
@@ -20,6 +21,8 @@ from serviceops_api.service_requests.models import (
     TelegramOptInPayload,
     TelegramOptInResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceRequestStore(Protocol):
@@ -113,6 +116,17 @@ class CreateServiceRequest:
             attachment_metadata=payload.attachment_metadata,
         )
         self._repository.save(record)
+        logger.info(
+            "Service request created",
+            extra={
+                "serviceops_context": {
+                    "request_number": request_number,
+                    "action": "service_request.created",
+                    "target": request_number,
+                    "outcome": "succeeded",
+                }
+            },
+        )
         if self._notification_publisher is not None:
             self._notification_publisher.publish_request_created(request_number)
         return CreateServiceRequestResponse(
@@ -149,6 +163,17 @@ class SubmitCustomerAnswer:
 
     def execute(self, request_number: str, payload: CustomerAnswerPayload) -> CustomerAnswerResponse:
         status = self._repository.record_customer_answer(request_number, payload.question_id, payload.answer)
+        logger.info(
+            "Customer answer recorded",
+            extra={
+                "serviceops_context": {
+                    "request_number": request_number,
+                    "action": "service_request.customer_answered",
+                    "target": request_number,
+                    "outcome": "succeeded",
+                }
+            },
+        )
         if self._notification_publisher is not None:
             self._notification_publisher.publish_customer_answered(request_number, payload.question_id)
         return CustomerAnswerResponse(
@@ -209,13 +234,30 @@ class UpdateDispatcherStatus:
         self._repository = repository
         self._notification_publisher = notification_publisher
 
-    def execute(self, request_number: str, payload: DispatcherStatusUpdatePayload) -> DispatcherActionResponse:
+    def execute(
+        self,
+        request_number: str,
+        payload: DispatcherStatusUpdatePayload,
+        actor_username: str = "dispatcher",
+    ) -> DispatcherActionResponse:
         status = self._repository.update_status(
             request_number=request_number,
             status=payload.status,
             title=payload.title,
             description=payload.description,
             actor="dispatcher",
+        )
+        logger.info(
+            "Dispatcher status updated",
+            extra={
+                "serviceops_context": {
+                    "request_number": request_number,
+                    "actor_username": actor_username,
+                    "action": "dispatcher.status_updated",
+                    "target": request_number,
+                    "outcome": "succeeded",
+                }
+            },
         )
         if self._notification_publisher is not None:
             self._notification_publisher.publish_status_changed(request_number, status)
@@ -235,8 +277,25 @@ class AskDispatcherClarification:
         self._repository = repository
         self._notification_publisher = notification_publisher
 
-    def execute(self, request_number: str, payload: DispatcherClarificationPayload) -> DispatcherActionResponse:
+    def execute(
+        self,
+        request_number: str,
+        payload: DispatcherClarificationPayload,
+        actor_username: str = "dispatcher",
+    ) -> DispatcherActionResponse:
         question_id = self._repository.ask_clarification(request_number, payload.question)
+        logger.info(
+            "Dispatcher clarification requested",
+            extra={
+                "serviceops_context": {
+                    "request_number": request_number,
+                    "actor_username": actor_username,
+                    "action": "dispatcher.clarification_requested",
+                    "target": request_number,
+                    "outcome": "succeeded",
+                }
+            },
+        )
         if self._notification_publisher is not None:
             self._notification_publisher.publish_clarification_requested(request_number, question_id)
         return DispatcherActionResponse(
@@ -250,13 +309,30 @@ class AssignDispatcherTechnician:
     def __init__(self, repository: ServiceRequestStore) -> None:
         self._repository = repository
 
-    def execute(self, request_number: str, payload: DispatcherAssignmentPayload) -> DispatcherActionResponse:
+    def execute(
+        self,
+        request_number: str,
+        payload: DispatcherAssignmentPayload,
+        actor_username: str = "dispatcher",
+    ) -> DispatcherActionResponse:
         status = self._repository.assign_technician(
             request_number=request_number,
             technician_name=payload.technician_name,
             technician_phone=payload.technician_phone,
             technician_region=payload.technician_region,
             visit_window=payload.visit_window,
+        )
+        logger.info(
+            "Dispatcher technician assigned",
+            extra={
+                "serviceops_context": {
+                    "request_number": request_number,
+                    "actor_username": actor_username,
+                    "action": "dispatcher.technician_assigned",
+                    "target": request_number,
+                    "outcome": "succeeded",
+                }
+            },
         )
         return DispatcherActionResponse(
             request_number=request_number,
@@ -269,8 +345,25 @@ class SaveDispatcherInternalNote:
     def __init__(self, repository: ServiceRequestStore) -> None:
         self._repository = repository
 
-    def execute(self, request_number: str, payload: DispatcherInternalNotePayload) -> DispatcherActionResponse:
+    def execute(
+        self,
+        request_number: str,
+        payload: DispatcherInternalNotePayload,
+        actor_username: str = "dispatcher",
+    ) -> DispatcherActionResponse:
         status = self._repository.save_internal_note(request_number, payload.note, "dispatcher")
+        logger.info(
+            "Dispatcher internal note saved",
+            extra={
+                "serviceops_context": {
+                    "request_number": request_number,
+                    "actor_username": actor_username,
+                    "action": "dispatcher.internal_note_saved",
+                    "target": request_number,
+                    "outcome": "succeeded",
+                }
+            },
+        )
         return DispatcherActionResponse(
             request_number=request_number,
             status=status,  # type: ignore[arg-type]

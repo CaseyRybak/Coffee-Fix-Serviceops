@@ -88,6 +88,101 @@ The restore script uses `pg_restore --clean --if-exists --no-owner --no-acl`.
 4. Run the smoke tests against the restored stack.
 5. Record the backup timestamp, restore duration, and any manual steps.
 
+## Production-Safe Restore Dry-Run
+
+Run this dry-run at launch readiness time and after backup procedure changes. The dry-run must never target production data.
+
+### Abort Conditions
+
+Stop before running `postgres_restore.sh` when any condition is true:
+
+- Target host is the production PostgreSQL host.
+- Target database name is the production database name.
+- `SERVICEOPS_DATABASE_URL` points at the production database.
+- Backup checksum verification fails.
+- Backup age is outside the approved recovery window.
+- The operator cannot identify the backup timestamp, target host, target database, and restore owner.
+
+### Dry-Run Target
+
+Use a disposable Compose project or temporary PostgreSQL database:
+
+```bash
+export SERVICEOPS_RESTORE_DRILL_PROJECT=serviceops-restore-drill
+export SERVICEOPS_RESTORE_DRILL_DB=serviceops_restore_drill
+
+docker compose -p "$SERVICEOPS_RESTORE_DRILL_PROJECT" \
+  -f docker-compose.production.yml up -d postgres redis
+```
+
+Do not route web, API, Telegram bot, or n8n publicly for the dry-run target.
+
+Create the disposable database before running the restore script:
+
+```bash
+docker compose -p "$SERVICEOPS_RESTORE_DRILL_PROJECT" \
+  -f docker-compose.production.yml exec -T \
+  -e PGPASSWORD="$POSTGRES_PASSWORD" \
+  postgres \
+  createdb --host=localhost --port=5432 --username=serviceops "$SERVICEOPS_RESTORE_DRILL_DB"
+```
+
+Run these snippets from the repository root. If production overrides `POSTGRES_USER`, replace `serviceops` in the dry-run commands with the restore-drill database user from the disposable environment, not the production database user.
+
+### Verify Checksum
+
+```bash
+sha256sum -c /var/backups/serviceops/serviceops-YYYYmmdd-HHMMSS.dump.sha256
+```
+
+Expected: checksum succeeds before restore begins.
+
+### Restore Into Disposable Target
+
+```bash
+docker compose -p "$SERVICEOPS_RESTORE_DRILL_PROJECT" \
+  -f docker-compose.production.yml run --rm \
+  -e POSTGRES_HOST=postgres \
+  -e POSTGRES_PORT=5432 \
+  -e POSTGRES_DB="$SERVICEOPS_RESTORE_DRILL_DB" \
+  -e POSTGRES_USER=serviceops \
+  -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+  -v "$PWD:/workspace:ro" \
+  -v /var/backups/serviceops:/backups:ro \
+  postgres \
+  bash -lc 'cd /workspace && tools/operations/postgres_restore.sh /backups/serviceops-YYYYmmdd-HHMMSS.dump'
+```
+
+Before running the command, print and verify the target values in the shell. The database name must include `restore`, `drill`, or another non-production marker approved by the incident owner. The restore command runs inside the Compose network so `POSTGRES_HOST=postgres` resolves to the disposable project database service, not to production.
+
+### Migrate And Smoke
+
+Run migrations against only the restored dry-run target:
+
+```bash
+SERVICEOPS_DATABASE_URL="postgresql+psycopg://serviceops:${POSTGRES_PASSWORD}@postgres:5432/${SERVICEOPS_RESTORE_DRILL_DB}" \
+docker compose -p "$SERVICEOPS_RESTORE_DRILL_PROJECT" \
+  -f docker-compose.production.yml run --rm api python -m serviceops_api.operations.migrate
+```
+
+Run smoke checks against the disposable stack or a private restore-drill API route. Do not reuse production DNS for the drill.
+
+### Evidence To Capture
+
+- Operator:
+- Backup file:
+- Backup timestamp:
+- Checksum result:
+- Backup age:
+- Target host:
+- Target database:
+- Restore started at:
+- Restore duration:
+- Migration result:
+- Smoke result:
+- Abort conditions reviewed:
+- Notes:
+
 ## Retention
 
 Use `SERVICEOPS_BACKUP_RETENTION_DAYS` as the minimum local retention window. Host-level cleanup can delete backups older than that window only after confirming an off-host copy exists when required by operations policy.

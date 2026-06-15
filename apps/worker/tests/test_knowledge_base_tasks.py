@@ -1,4 +1,5 @@
 import json
+import logging
 
 from serviceops_worker.celery_app import create_celery_app
 from serviceops_worker.knowledge_base_tasks import (
@@ -26,6 +27,11 @@ class FakeKnowledgeChunkRepository:
         self.saved = embeddings_by_chunk_id
 
 
+class FailingEmbeddingProvider:
+    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        raise RuntimeError("provider response included secret document body")
+
+
 def test_celery_app_registers_knowledge_base_embedding_task() -> None:
     app = create_celery_app()
 
@@ -41,6 +47,51 @@ def test_embed_document_chunks_uses_provider_without_network_calls() -> None:
     assert result == {"document_id": 42, "embedded_chunks": 2}
     assert sorted(repository.saved) == [7, 8]
     assert all(len(embedding) == 12 for embedding in repository.saved.values())
+
+
+def test_embed_document_chunks_logs_success_without_chunk_content(caplog) -> None:
+    repository = FakeKnowledgeChunkRepository()
+    provider = DeterministicEmbeddingProvider(dimensions=12)
+
+    with caplog.at_level(logging.INFO, logger="serviceops_worker.knowledge_base_tasks"):
+        result = embed_document_chunks(42, repository, provider)
+
+    assert result == {"document_id": 42, "embedded_chunks": 2}
+    contexts = [record.serviceops_context for record in caplog.records if hasattr(record, "serviceops_context")]
+    started = next(context for context in contexts if context["action"] == "knowledge_base.embedding_started")
+    succeeded = next(context for context in contexts if context["action"] == "knowledge_base.embedding_completed")
+    assert started == {
+        "action": "knowledge_base.embedding_started",
+        "target": "document:42",
+        "outcome": "succeeded",
+        "provider": "deterministic",
+    }
+    assert succeeded["target"] == "document:42"
+    assert succeeded["outcome"] == "succeeded"
+    assert succeeded["provider"] == "deterministic"
+    assert isinstance(succeeded["duration_ms"], int)
+    assert "E61 thermosiphon scale" not in str(contexts)
+    assert "Boiler pressure" not in str(contexts)
+
+
+def test_embed_document_chunks_logs_failure_without_provider_body(caplog) -> None:
+    repository = FakeKnowledgeChunkRepository()
+
+    with caplog.at_level(logging.INFO, logger="serviceops_worker.knowledge_base_tasks"):
+        try:
+            embed_document_chunks(42, repository, FailingEmbeddingProvider())
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("expected embedding failure")
+
+    contexts = [record.serviceops_context for record in caplog.records if hasattr(record, "serviceops_context")]
+    failed = next(context for context in contexts if context["action"] == "knowledge_base.embedding_completed")
+    assert failed["target"] == "document:42"
+    assert failed["outcome"] == "failed"
+    assert failed["provider"] == "FailingEmbeddingProvider"
+    assert failed["reason"] == "embedding_failed"
+    assert "secret document body" not in str(contexts)
 
 
 def test_default_embedding_provider_is_deterministic(monkeypatch) -> None:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from serviceops_api.service_requests.models import (
@@ -30,6 +32,14 @@ from serviceops_api.service_requests.use_cases import (
     SubmitCustomerAnswer,
     UpdateDispatcherStatus,
 )
+
+
+def _anonymous_staff() -> None:
+    return None
+
+
+def _actor_username(staff: Any) -> str:
+    return str(getattr(staff, "username", "") or "dispatcher")
 
 
 def create_service_requests_router(
@@ -90,15 +100,18 @@ def create_dispatcher_router(
     save_internal_note: SaveDispatcherInternalNote,
     staff_dependency: Depends | None = None,
 ) -> APIRouter:
-    dependencies = [Depends(staff_dependency)] if staff_dependency is not None else []
-    router = APIRouter(prefix="/dispatcher/service-requests", tags=["dispatcher"], dependencies=dependencies)
+    staff_principal_dependency = staff_dependency or _anonymous_staff
+    router = APIRouter(prefix="/dispatcher/service-requests", tags=["dispatcher"])
 
     @router.get("", response_model=DispatcherRequestListResponse)
-    async def list_dispatcher_requests() -> DispatcherRequestListResponse:
+    async def list_dispatcher_requests(_staff: Any = Depends(staff_principal_dependency)) -> DispatcherRequestListResponse:
         return list_requests.execute()
 
     @router.get("/{request_number}", response_model=DispatcherRequestDetail)
-    async def get_dispatcher_request(request_number: str) -> DispatcherRequestDetail:
+    async def get_dispatcher_request(
+        request_number: str,
+        _staff: Any = Depends(staff_principal_dependency),
+    ) -> DispatcherRequestDetail:
         try:
             return get_request.execute(request_number)
         except KeyError as exc:
@@ -108,9 +121,10 @@ def create_dispatcher_router(
     async def update_dispatcher_status(
         request_number: str,
         payload: DispatcherStatusUpdatePayload,
+        staff: Any = Depends(staff_principal_dependency),
     ) -> DispatcherActionResponse:
         try:
-            return update_status.execute(request_number, payload)
+            return update_status.execute(request_number, payload, actor_username=_actor_username(staff))
         except KeyError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found") from exc
 
@@ -118,9 +132,10 @@ def create_dispatcher_router(
     async def create_dispatcher_clarification(
         request_number: str,
         payload: DispatcherClarificationPayload,
+        staff: Any = Depends(staff_principal_dependency),
     ) -> DispatcherActionResponse:
         try:
-            return ask_clarification.execute(request_number, payload)
+            return ask_clarification.execute(request_number, payload, actor_username=_actor_username(staff))
         except KeyError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found") from exc
 
@@ -128,9 +143,10 @@ def create_dispatcher_router(
     async def assign_dispatcher_technician(
         request_number: str,
         payload: DispatcherAssignmentPayload,
+        staff: Any = Depends(staff_principal_dependency),
     ) -> DispatcherActionResponse:
         try:
-            return assign_technician.execute(request_number, payload)
+            return assign_technician.execute(request_number, payload, actor_username=_actor_username(staff))
         except KeyError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found") from exc
 
@@ -138,9 +154,10 @@ def create_dispatcher_router(
     async def save_dispatcher_internal_note(
         request_number: str,
         payload: DispatcherInternalNotePayload,
+        staff: Any = Depends(staff_principal_dependency),
     ) -> DispatcherActionResponse:
         try:
-            return save_internal_note.execute(request_number, payload)
+            return save_internal_note.execute(request_number, payload, actor_username=_actor_username(staff))
         except KeyError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found") from exc
 

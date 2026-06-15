@@ -52,6 +52,38 @@ def test_prompt_input_uses_service_request_and_rag_sources() -> None:
     assert "@hidden" not in serialized
 
 
+def test_prompt_input_filters_irrelevant_rag_sources_for_new_topic() -> None:
+    prompt = build_prompt_input(
+        request=_request_snapshot("Saeco течет вода под кофемашиной при простое"),
+        rag_results=[
+            {
+                "document_id": 1,
+                "document_title": "E61 overheating repair guide",
+                "source_uri": "seed://repair/e61-overheating",
+                "chunk_id": 5,
+                "chunk_index": 0,
+                "start_char": 0,
+                "end_char": 120,
+                "content": "Check thermosiphon scale, boiler pressure, group overheating, restrictor, and descaling.",
+                "score": 0.91,
+            },
+            {
+                "document_id": 2,
+                "document_title": "No power startup",
+                "source_uri": "seed://repair/no-power-startup",
+                "chunk_id": 6,
+                "chunk_index": 0,
+                "start_char": 0,
+                "end_char": 120,
+                "content": "Check outlet, power cable, display, main switch, voltage drop, and control board.",
+                "score": 0.89,
+            },
+        ],
+    )
+
+    assert prompt.rag_sources == []
+
+
 def test_prompt_input_excludes_sensitive_operational_details() -> None:
     request = _request_snapshot()
     request["assignment"] = {
@@ -96,3 +128,63 @@ def test_deterministic_provider_returns_bounded_human_review_suggestions() -> No
     }
     assert all("диспетчер" in suggestion.rationale.lower() for suggestion in suggestions)
     assert all(0 <= suggestion.confidence <= 1 for suggestion in suggestions)
+
+
+def test_deterministic_provider_prioritizes_electric_shock_safety() -> None:
+    prompt = build_prompt_input(
+        request=_request_snapshot("Bosch бьет током при касании корпуса"),
+        rag_results=[
+            {
+                "document_id": 9,
+                "document_title": "Electrical shock safety triage",
+                "source_uri": "seed://repair/electric-shock-safety",
+                "chunk_id": 21,
+                "chunk_index": 0,
+                "start_char": 0,
+                "end_char": 180,
+                "content": "Не пользоваться кофемашиной, отключить от сети и проверить заземление, УЗО, влагу и утечку на корпус.",
+                "score": 0.91,
+            }
+        ],
+    )
+
+    suggestions = DeterministicAiSuggestionProvider().suggest(prompt)
+    combined = " ".join(f"{suggestion.title} {suggestion.content}" for suggestion in suggestions[:3]).lower()
+
+    assert "не пользоваться" in combined
+    assert "отключ" in combined
+    assert "мастер" in combined
+    assert "заземлен" in combined
+    assert "узо" in combined
+    assert "помп" not in combined
+    assert "пролив" not in combined
+    assert "горит ли дисплей" not in combined
+
+
+def test_deterministic_provider_uses_generic_fallback_when_rag_has_no_covering_topic() -> None:
+    prompt = build_prompt_input(
+        request=_request_snapshot("Saeco течет вода под кофемашиной при простое"),
+        rag_results=[
+            {
+                "document_id": 1,
+                "document_title": "E61 overheating repair guide",
+                "source_uri": "seed://repair/e61-overheating",
+                "chunk_id": 5,
+                "chunk_index": 0,
+                "start_char": 0,
+                "end_char": 120,
+                "content": "Check thermosiphon scale and boiler pressure.",
+                "score": 0.92,
+            }
+        ],
+    )
+
+    suggestions = DeterministicAiSuggestionProvider().suggest(prompt)
+    combined = " ".join(f"{suggestion.title} {suggestion.content}" for suggestion in suggestions).lower()
+
+    assert "течет" in combined
+    assert "вода" in combined
+    assert "когда" in combined
+    assert "фото" in combined
+    assert "термосифон" not in combined
+    assert "перегрева" not in combined

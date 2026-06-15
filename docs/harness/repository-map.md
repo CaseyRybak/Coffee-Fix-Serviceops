@@ -47,7 +47,7 @@
 - `docs/execution-plans/detailed/11-production-launch-readiness-implementation.md`: completed detailed plan for first-admin bootstrap and launch smoke evidence.
 - `docs/execution-plans/detailed/12-notification-automation-implementation.md`: completed detailed plan for backend-to-n8n events, delivery persistence, workflow exports, and staff delivery visibility.
 - `docs/execution-plans/detailed/13-live-ai-provider-and-knowledge-base-content-implementation.md`: completed detailed plan for OpenAI-compatible providers, curated repair knowledge, and RAG evaluation.
-- `docs/execution-plans/detailed/14-operational-hardening-implementation.md`: active detailed plan for observability, audit expansion, restore dry-runs, incident response, and diagnostics.
+- `docs/execution-plans/detailed/14-operational-hardening-implementation.md`: completed detailed plan for observability, audit expansion, restore dry-runs, incident response, and diagnostics.
 - `docs/execution-plans/completed/`: reserved archive directory for completed phase plans if the project later moves them out of `detailed/`.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
@@ -62,6 +62,7 @@
 - `docs/review/phase-11-review.md`: Phase 11 review artifact for production launch readiness.
 - `docs/review/phase-12-review.md`: Phase 12 review artifact for notification automation.
 - `docs/review/phase-13-review.md`: Phase 13 review artifact for live provider adapters and curated knowledge-base content.
+- `docs/review/phase-14-review.md`: Phase 14 review artifact for operational hardening.
 - `docs/review/documentation-audit-2026-06-07.md`: documentation consistency and quality audit after Phase 10.
 - `docs/review/documentation-audit-2026-06-10.md`: documentation consistency and quality audit after Phase 13.
 - `docs/review/documentation-audit-2026-06-15.md`: documentation readiness audit before Phase 14 implementation.
@@ -77,6 +78,8 @@
 - `docs/operations/backup-restore.md`: PostgreSQL backup, restore, checksum, retention, and restore-drill procedure.
 - `docs/operations/launch-smoke-evidence.md`: first-launch evidence template for production smoke checks and go/no-go decisions.
 - `docs/operations/smoke-tests.md`: manual and scripted deployment smoke-test checklist.
+- `docs/operations/operational-diagnostics.md`: structured-log fields, request tracing, log queries, read-only PostgreSQL checks, and evidence redaction rules.
+- `docs/operations/incident-response.md`: first-line incident checklist for degraded API, web, PostgreSQL, Redis, worker, Telegram, n8n, notifications, AI/RAG, and restore decisions.
 - `docs/operations/ai-providers.md`: deterministic and OpenAI-compatible AI/embedding provider operations guide.
 - `docs/operations/n8n-workflows.md`: n8n workflow contracts, live workflow IDs, import guidance, and delivery-result callback shape.
 - `tools/operations/`: operational shell scripts and regression checks for backup, restore, and smoke checks.

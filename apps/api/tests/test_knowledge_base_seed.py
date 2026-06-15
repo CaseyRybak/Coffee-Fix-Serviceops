@@ -36,6 +36,23 @@ def test_no_power_seed_document_captures_startup_triage() -> None:
     assert "плата питания" in seed.body
 
 
+def test_electric_shock_seed_document_captures_safety_triage() -> None:
+    seed = next(
+        document
+        for document in REPAIR_KNOWLEDGE_SEED_DOCUMENTS
+        if document.source_uri == "seed://repair/electric-shock-safety"
+    )
+
+    assert "бьет током" in seed.body
+    assert "не пользоваться" in seed.body
+    assert "отключить" in seed.body
+    assert "заземлен" in seed.body
+    assert "УЗО" in seed.body
+    assert "мастер" in seed.body
+    assert "помп" not in seed.body.lower()
+    assert "пролив" not in seed.body.lower()
+
+
 def test_repair_seed_documents_are_curated_and_source_backed() -> None:
     source_uris = [document.source_uri for document in REPAIR_KNOWLEDGE_SEED_DOCUMENTS]
 

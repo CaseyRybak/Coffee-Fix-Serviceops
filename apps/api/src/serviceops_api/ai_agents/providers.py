@@ -6,7 +6,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from typing import Any, Protocol
 
-from serviceops_api.ai_agents.models import AiPromptInput, AiSuggestionCreate
+from serviceops_api.ai_agents.models import AiPromptInput, AiRagSource, AiSuggestionCreate
 
 
 class AiSuggestionProvider(Protocol):
@@ -31,7 +31,13 @@ def post_json(url: str, body: dict[str, object], headers: dict[str, str], timeou
 class DeterministicAiSuggestionProvider:
     def suggest(self, prompt: AiPromptInput) -> list[AiSuggestionCreate]:
         source_chunks = prompt.rag_sources[:2]
-        source_hint = source_chunks[0].content if source_chunks else "Проверьте симптомы и историю заявки перед решением."
+        if _is_electric_shock_report(prompt):
+            return _electric_shock_suggestions(source_chunks)
+
+        if not source_chunks:
+            return _generic_gap_suggestions(prompt)
+
+        source_hint = source_chunks[0].content
         return [
             AiSuggestionCreate(
                 kind="intake_classification",
@@ -134,11 +140,27 @@ class OpenAiCompatibleAiSuggestionProvider:
                 "Return only JSON with a top-level suggestions array.",
                 "Never claim that an action was performed. Suggestions are reviewed by staff.",
                 (
+                    "Сначала оцени покрытие RAG. Если source chunks отсутствуют, слабо связаны с Problem summary "
+                    "или описывают похожий, но другой симптом, не притягивай их к заявке и не используй похожие, "
+                    "но другие сценарии как факт. В таком случае работай как RAG gap: гипотезы должны опираться "
+                    "на описание клиента, общую ремонтную логику и безопасные уточняющие вопросы; в rationale "
+                    "укажи knowledge_gap=true и source_chunk_indexes оставь пустым."
+                ),
+                (
                     "Если симптом: не включается, перестала включаться, нет питания, не горит дисплей или не реагирует "
                     "на кнопку включения, это no-power/startup triage. Не предлагай проверки помпы, бака воды, пролива, "
                     "дренажного клапана или flow meter, пока клиент не подтвердил, что машина включается и запускает цикл. "
                     "Сначала уточняй розетку, кабель питания, главный выключатель, дисплей/индикаторы, запах гари, "
                     "следы воды и перепад напряжения."
+                ),
+                (
+                    "Если симптом: бьет током, бьёт током, удар током, щиплет током, пробивает на корпус, корпус под "
+                    "напряжением или ток при касании - это electrical shock safety triage, не no-power/startup. "
+                    "Сначала предложи клиенту не пользоваться кофемашиной, не включать повторно и отключить от сети, "
+                    "если это можно сделать безопасно сухими руками. Уточняй заземление розетки, УЗО/автомат, влагу, "
+                    "воду под машиной, запах гари, искрение, когда именно бьет током. Не предлагай no-power/startup "
+                    "проверки вроде горит ли дисплей, главный выключатель, запуск цикла, проверка помпы или пролива. "
+                    "Рекомендуй осмотр мастером по электробезопасности."
                 ),
                 f"Request number: {prompt.request_number}",
                 f"Status: {prompt.status}",
@@ -151,6 +173,11 @@ class OpenAiCompatibleAiSuggestionProvider:
                 f"Clarification state: {prompt.clarification_state}",
                 f"Assignment state: {prompt.assignment_state}",
                 f"Internal note count: {prompt.internal_note_count}",
+                (
+                    "RAG coverage: relevant source chunks provided."
+                    if source_lines
+                    else "RAG coverage: no relevant source chunks."
+                ),
                 "RAG sources:",
                 "\n".join(source_lines) if source_lines else "No source chunks retrieved.",
                 "Allowed kinds: intake_classification, diagnostic_question, likely_cause, parts, customer_reply.",
@@ -205,6 +232,125 @@ def _parse_confidence(value: object) -> float:
         value = normalized
     parsed = float(value)  # type: ignore[arg-type]
     return max(0.0, min(1.0, parsed))
+
+
+def _is_electric_shock_report(prompt: AiPromptInput) -> bool:
+    text = " ".join(
+        [
+            prompt.problem_summary,
+            prompt.machine_label,
+            " ".join(source.content for source in prompt.rag_sources),
+        ]
+    ).lower()
+    markers = (
+        "бьет током",
+        "бьёт током",
+        "удар током",
+        "ударило током",
+        "щиплет током",
+        "пробивает током",
+        "пробивает на корпус",
+        "корпус под напряжением",
+        "ток при касании",
+        "при касании ток",
+    )
+    return any(marker in text for marker in markers)
+
+
+def _generic_gap_suggestions(prompt: AiPromptInput) -> list[AiSuggestionCreate]:
+    problem = prompt.problem_summary.strip() or "симптом не указан"
+    return [
+        AiSuggestionCreate(
+            kind="intake_classification",
+            title="Новая тема без покрытия базы знаний",
+            content=f"Заявка требует общей диагностики по описанию клиента: {problem}.",
+            rationale="Диспетчер видит, что RAG не дал релевантного источника; knowledge_gap=true.",
+            confidence=0.62,
+        ),
+        AiSuggestionCreate(
+            kind="diagnostic_question",
+            title="Уточнить проявление симптома",
+            content=(
+                f"По проблеме '{problem}' уточните, когда это происходит, повторяется ли постоянно, "
+                "есть ли фото/видео проявления, следы воды, запах гари, шумы или ошибки на дисплее."
+            ),
+            rationale="Диспетчер собирает базовые признаки без подстановки неподходящего сценария из базы знаний.",
+            confidence=0.68,
+        ),
+        AiSuggestionCreate(
+            kind="likely_cause",
+            title="Сформировать первичную гипотезу после уточнений",
+            content=(
+                "Пока база знаний не покрывает эту тему, не фиксируйте конкретную причину. "
+                "Сначала отделите условия появления симптома, безопасность, недавнее обслуживание и видимые следы неисправности."
+            ),
+            rationale="Диспетчер видит предварительную гипотезу без подстановки нерелевантного RAG.",
+            confidence=0.55,
+        ),
+        AiSuggestionCreate(
+            kind="parts",
+            title="Запчасти не подбирать до уточнений",
+            content="Не резервировать детали до ответа клиента или диагностики мастером.",
+            rationale="Диспетчер не получает шумную подсказку по деталям без релевантного источника и уточнений.",
+            confidence=0.5,
+        ),
+        AiSuggestionCreate(
+            kind="customer_reply",
+            title="Черновик ответа клиенту",
+            content=(
+                "Спасибо, приняли заявку. Уточните, пожалуйста, когда именно проявляется проблема, "
+                "и приложите фото или короткое видео, если это возможно."
+            ),
+            rationale="Диспетчер редактирует и отправляет ответ вручную; AI не отправляет сообщения.",
+            confidence=0.66,
+        ),
+    ]
+
+
+def _electric_shock_suggestions(source_chunks: list[AiRagSource]) -> list[AiSuggestionCreate]:
+    return [
+        AiSuggestionCreate(
+            kind="customer_reply",
+            title="Остановить использование до осмотра",
+            content=(
+                "Пожалуйста, не пользоваться кофемашиной и не включать ее повторно до осмотра мастером. "
+                "Если можно сделать это безопасно сухими руками, отключите вилку от сети."
+            ),
+            rationale="Диспетчер сначала снижает риск поражения током и не просит клиента продолжать проверки под напряжением.",
+            confidence=0.9,
+            source_chunks=source_chunks,
+        ),
+        AiSuggestionCreate(
+            kind="diagnostic_question",
+            title="Уточнить условия удара током",
+            content=(
+                "Бьет током при касании корпуса постоянно или только во время нагрева/работы? "
+                "Розетка с заземлением, срабатывает ли УЗО или автомат, есть ли вода под машиной, запах гари или искрение?"
+            ),
+            rationale="Диспетчер собирает признаки утечки на корпус, проблем заземления и влаги без небезопасных действий клиента.",
+            confidence=0.86,
+            source_chunks=source_chunks,
+        ),
+        AiSuggestionCreate(
+            kind="likely_cause",
+            title="Вероятна утечка на корпус или проблема заземления",
+            content=(
+                "Возможны отсутствие заземления, повреждение сетевого кабеля, влага внутри корпуса, пробой изоляции "
+                "ТЭНа или неисправность платы питания. Нужна диагностика мастером по электробезопасности."
+            ),
+            rationale="Диспетчер использует причину как ориентир для маршрутизации к мастеру, а не как удаленную диагностику.",
+            confidence=0.74,
+            source_chunks=source_chunks,
+        ),
+        AiSuggestionCreate(
+            kind="parts",
+            title="Электроузлы для проверки мастером",
+            content="Проверить сетевой кабель, заземление, ТЭН, плату питания, следы влаги и пробой изоляции.",
+            rationale="Диспетчер видит концепты узлов; клиенту не предлагается разборка или проверка под напряжением.",
+            confidence=0.58,
+            source_chunks=source_chunks,
+        ),
+    ]
 
 
 def create_ai_suggestion_provider(settings: object) -> AiSuggestionProvider:

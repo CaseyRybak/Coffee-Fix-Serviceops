@@ -135,6 +135,26 @@ tools/operations/postgres_backup.sh
 
 Expected: a `.dump` file and `.sha256` file are created in `SERVICEOPS_BACKUP_DIR`.
 
+## Restore Dry-Run Check
+
+Use the production-safe restore dry-run in `docs/operations/backup-restore.md` before public launch and after backup script changes.
+
+Expected: checksum verification passes, restore targets a disposable database, migrations pass against the restored target, smoke checks pass, and abort conditions are recorded.
+
+## Log Query Check
+
+Use `docs/operations/operational-diagnostics.md` to confirm one smoke request can be traced by `request_number` through:
+
+- `service_request.created`;
+- a staff action when staff smoke credentials are configured;
+- `notification.event_queued`;
+- `notification.delivery_recorded`;
+- `notification.callback_recorded` when n8n callback smoke is enabled.
+
+Expected: copied evidence contains safe operational fields only and excludes passwords, tokens, webhook secrets, API keys, customer phone numbers, Telegram chat ids, raw AI prompts, provider bodies, and internal notes.
+
 ## Evidence Capture
 
 For first launch, record smoke results in `docs/operations/launch-smoke-evidence.md` or an operations-controlled copy of that template. Completed evidence should include command output, request number, service checks, rollback readiness, and final go/no-go decision without reusable passwords or webhook secrets.
+
+For degraded-service follow-up, use `docs/operations/incident-response.md`.

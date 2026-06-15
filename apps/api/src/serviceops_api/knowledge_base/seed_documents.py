@@ -50,6 +50,21 @@ REPAIR_KNOWLEDGE_SEED_DOCUMENTS = [
         metadata={"topic": "electrical startup", "symptom": "не включается нет питания", "brand": "DeLonghi Jura Saeco"},
     ),
     IngestKnowledgeDocumentPayload(
+        title="Electrical shock on touch safety triage",
+        source_uri="seed://repair/electric-shock-safety",
+        body=(
+            "Если кофемашина бьет током при касании корпуса, металлических частей, крана, холдера или панели, "
+            "это первичный safety-сценарий с риском утечки на корпус, отсутствия заземления, влаги внутри, "
+            "повреждения сетевого кабеля, ТЭНа, платы питания или пробоя изоляции. Клиенту нужно "
+            "не пользоваться кофемашиной, не включать ее повторно, не выполнять проверки под напряжением и отключить "
+            "от сети, если это можно сделать безопасно сухими руками. Уточнить, есть ли заземленная розетка, "
+            "срабатывает ли УЗО или автомат, бьет ли током постоянно или только во время нагрева/работы, "
+            "есть ли вода под машиной, запах гари, искрение или недавний ремонт. Назначить мастера для "
+            "безопасной диагностики электрики; не советовать клиенту разбирать корпус или продолжать эксплуатацию."
+        ),
+        metadata={"topic": "electrical safety", "symptom": "бьет током при касании", "risk": "electric shock"},
+    ),
+    IngestKnowledgeDocumentPayload(
         title="Grinder spins but beans are not ground",
         source_uri="seed://repair/grinder-not-grinding",
         body=(

@@ -174,6 +174,106 @@ def test_openai_compatible_ai_provider_instructs_no_power_triage() -> None:
     assert "не предлагай проверки помпы" in prompt_text
 
 
+def test_openai_compatible_ai_provider_instructs_electric_shock_safety_triage() -> None:
+    captured: dict[str, object] = {}
+
+    def fake_post_json(url: str, body: dict[str, object], headers: dict[str, str], timeout: float) -> dict[str, object]:
+        captured["body"] = body
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "suggestions": [
+                                    {
+                                        "kind": "customer_reply",
+                                        "title": "Отключить кофемашину",
+                                        "content": "Не пользуйтесь кофемашиной до осмотра мастером.",
+                                        "rationale": "Электрический удар требует safety triage.",
+                                        "confidence": 0.88,
+                                        "source_chunk_indexes": [],
+                                    }
+                                ]
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+
+    prompt = _prompt().model_copy(update={"problem_summary": "Bosch бьет током при касании корпуса."})
+    provider = OpenAiCompatibleAiSuggestionProvider(
+        api_base_url="https://provider.example/v1",
+        api_key="test-key",
+        model="gpt-4.1-mini",
+        max_retries=0,
+        post_json=fake_post_json,
+    )
+
+    provider.suggest(prompt)
+
+    prompt_text = json.dumps(captured["body"], ensure_ascii=False).lower()
+    assert "бьет током" in prompt_text
+    assert "не пользоваться" in prompt_text
+    assert "отключить от сети" in prompt_text
+    assert "заземление" in prompt_text
+    assert "узо" in prompt_text
+    assert "не предлагай no-power/startup" in prompt_text
+
+
+def test_openai_compatible_ai_provider_instructs_rag_gap_fallback() -> None:
+    captured: dict[str, object] = {}
+
+    def fake_post_json(url: str, body: dict[str, object], headers: dict[str, str], timeout: float) -> dict[str, object]:
+        captured["body"] = body
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "suggestions": [
+                                    {
+                                        "kind": "diagnostic_question",
+                                        "title": "Уточнить протечку",
+                                        "content": "Где именно появляется вода и когда это происходит?",
+                                        "rationale": "RAG не покрыл новую тему, поэтому диспетчер уточняет симптом.",
+                                        "confidence": 0.65,
+                                        "source_chunk_indexes": [],
+                                    }
+                                ]
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+
+    prompt = _prompt().model_copy(
+        update={
+            "problem_summary": "Saeco течет вода под кофемашиной при простое.",
+            "rag_sources": [],
+        }
+    )
+    provider = OpenAiCompatibleAiSuggestionProvider(
+        api_base_url="https://provider.example/v1",
+        api_key="test-key",
+        model="gpt-4.1-mini",
+        max_retries=0,
+        post_json=fake_post_json,
+    )
+
+    provider.suggest(prompt)
+
+    prompt_text = json.dumps(captured["body"], ensure_ascii=False).lower()
+    assert "rag coverage: no relevant source chunks" in prompt_text
+    assert "не притягивай" in prompt_text
+    assert "не используй похожие, но другие сценарии" in prompt_text
+    assert "knowledge_gap" in prompt_text
+    assert "гипотезы должны опираться на описание клиента" in prompt_text
+
+
 def test_openai_compatible_ai_provider_accepts_word_confidence_from_provider() -> None:
     def fake_post_json(url: str, body: dict[str, object], headers: dict[str, str], timeout: float) -> dict[str, object]:
         return {

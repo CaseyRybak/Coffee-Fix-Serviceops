@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import httpx
 
@@ -127,6 +128,53 @@ def test_dispatcher_ai_suggestion_lifecycle_accepts_question_and_ignores_draft(m
     assert snapshots["public"]["clarification"]["question"] == accepted["suggestion"]["content"]
     assert "ai_suggestions" not in snapshots["public"]
     assert len(snapshots["detail"]["ai_suggestions"]) == 5
+
+
+def test_ai_suggestion_generation_logs_safe_provider_context(caplog) -> None:
+    async def scenario() -> tuple[str, int]:
+        service_repository = ServiceRequestRepository.in_memory()
+        knowledge_repository = SqliteKnowledgeBaseRepository.in_memory()
+        ai_repository = SqliteAiSuggestionRepository.in_memory()
+        app = create_app(
+            service_request_repository=service_repository,
+            knowledge_base_repository=knowledge_repository,
+            ai_suggestion_repository=ai_repository,
+        )
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            login = await client.post(
+                "/staff/login",
+                json={"username": "dispatcher@coffeefix.local", "password": "dispatcher-local"},
+            )
+            token = str(login.json()["access_token"])
+            created = await client.post("/service-requests", json=request_payload())
+            request_number = str(created.json()["request_number"])
+            await client.post(
+                "/knowledge-base/documents",
+                json=REPAIR_KNOWLEDGE_SEED_DOCUMENTS[0].model_dump(),
+            )
+            generated = await client.post(
+                f"/dispatcher/service-requests/{request_number}/ai-suggestions/generate",
+                json={},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        return request_number, len(generated.json()["suggestions"])
+
+    with caplog.at_level(logging.INFO, logger="serviceops_api.ai_agents.use_cases"):
+        request_number, suggestion_count = asyncio.run(scenario())
+
+    contexts = [record.serviceops_context for record in caplog.records if hasattr(record, "serviceops_context")]
+    assert {
+        "request_number": request_number,
+        "action": "ai.suggestions_generated",
+        "target": request_number,
+        "outcome": "succeeded",
+        "reason": f"suggestion_count={suggestion_count}",
+        "provider": "deterministic",
+    } in contexts
+    assert "E61 group overheats" not in str(contexts)
+    assert "+7 999 111-22-33" not in str(contexts)
+    assert "термосифон" not in str(contexts)
 
 
 def test_ai_suggestion_generation_respects_configured_limit(monkeypatch) -> None:

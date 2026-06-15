@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 import time
 from typing import Annotated, Literal, Protocol
@@ -14,6 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from serviceops_api.config import Settings
 
+logger = logging.getLogger(__name__)
 
 StaffRole = Literal["dispatcher", "admin", "technician", "inventory"]
 
@@ -88,13 +90,42 @@ class StaffAuthenticator:
         persisted = self._staff_account_reader.get_account_by_username(username) if self._staff_account_reader else None
         if persisted is not None:
             roles = [role for role in persisted.get("roles", []) if role in {"dispatcher", "admin", "technician", "inventory"}]
-            if (
-                not bool(persisted.get("active"))
-                or not roles
-                or not verify_staff_password(password, str(persisted.get("password_hash", "")))
-            ):
+            persisted_username = str(persisted["username"])
+            if not bool(persisted.get("active")):
+                self._record_staff_audit(
+                    actor=persisted_username,
+                    target=persisted_username,
+                    action="staff.login_failed",
+                    metadata={"outcome": "failed", "reason": "inactive", "source": "staff_auth"},
+                )
+                self._log_auth_event(persisted_username, "staff.login_failed", "failed", "inactive")
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid staff credentials")
-            return StaffUser(username=str(persisted["username"]), roles=roles)
+            if not roles:
+                self._record_staff_audit(
+                    actor=persisted_username,
+                    target=persisted_username,
+                    action="staff.login_failed",
+                    metadata={"outcome": "failed", "reason": "no_roles", "source": "staff_auth"},
+                )
+                self._log_auth_event(persisted_username, "staff.login_failed", "failed", "no_roles")
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid staff credentials")
+            if not verify_staff_password(password, str(persisted.get("password_hash", ""))):
+                self._record_staff_audit(
+                    actor=persisted_username,
+                    target=persisted_username,
+                    action="staff.login_failed",
+                    metadata={"outcome": "failed", "reason": "invalid_credentials", "source": "staff_auth"},
+                )
+                self._log_auth_event(persisted_username, "staff.login_failed", "failed", "invalid_credentials")
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid staff credentials")
+            self._record_staff_audit(
+                actor=persisted_username,
+                target=persisted_username,
+                action="staff.login_succeeded",
+                metadata={"outcome": "succeeded", "role": ",".join(roles), "source": "staff_auth"},
+            )
+            self._log_auth_event(persisted_username, "staff.login_succeeded", "succeeded", None)
+            return StaffUser(username=persisted_username, roles=roles)
 
         stored = self._users.get(username)
         if stored is None or not hmac.compare_digest(stored["password"], password):
@@ -139,6 +170,15 @@ class StaffAuthenticator:
                 if role in {"dispatcher", "admin", "technician", "inventory"}
             ]
             if not bool(persisted.get("active")) or not current_roles:
+                reason = "inactive" if not bool(persisted.get("active")) else "no_roles"
+                persisted_username = str(persisted["username"])
+                self._record_staff_audit(
+                    actor=persisted_username,
+                    target=persisted_username,
+                    action="staff.token_rejected",
+                    metadata={"outcome": "failed", "reason": reason, "source": "staff_auth"},
+                )
+                self._log_auth_event(persisted_username, "staff.token_rejected", "failed", reason)
                 raise self._invalid_token()
             return StaffUser(username=str(persisted["username"]), roles=current_roles)
         if username not in self._users:
@@ -173,6 +213,42 @@ class StaffAuthenticator:
     def _invalid_token(self) -> HTTPException:
         return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid staff token")
 
+    def record_forbidden_role(self, staff: StaffUser, role: StaffRole) -> None:
+        self._record_staff_audit(
+            actor=staff.username,
+            target=role,
+            action="staff.role_forbidden",
+            metadata={"outcome": "blocked", "reason": "missing_role", "role": role, "source": "staff_auth"},
+        )
+        logger.info(
+            "Staff role forbidden",
+            extra={
+                "serviceops_context": {
+                    "actor_username": staff.username,
+                    "action": "staff.role_forbidden",
+                    "target": role,
+                    "outcome": "blocked",
+                    "reason": "missing_role",
+                }
+            },
+        )
+
+    def _record_staff_audit(self, actor: str, target: str, action: str, metadata: dict[str, object]) -> None:
+        recorder = getattr(self._staff_account_reader, "record_audit_event", None)
+        if recorder is not None:
+            recorder(actor, target, action, metadata)
+
+    def _log_auth_event(self, username: str, action: str, outcome: str, reason: str | None) -> None:
+        context: dict[str, object] = {
+            "actor_username": username,
+            "action": action,
+            "target": username,
+            "outcome": outcome,
+        }
+        if reason is not None:
+            context["reason"] = reason
+        logger.info("Staff authentication event", extra={"serviceops_context": context})
+
 
 def create_staff_auth_router(authenticator: StaffAuthenticator) -> APIRouter:
     router = APIRouter(prefix="/staff", tags=["staff auth"])
@@ -204,6 +280,7 @@ def require_staff_role(role: StaffRole, authenticator: StaffAuthenticator):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Staff authentication required")
         staff = authenticator.verify_token(credentials.credentials)
         if role not in staff.roles:
+            authenticator.record_forbidden_role(staff, role)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Staff role is not allowed")
         return staff
 

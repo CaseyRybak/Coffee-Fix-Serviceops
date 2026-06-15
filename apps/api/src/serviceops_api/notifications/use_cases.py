@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Protocol
 
 from serviceops_api.notifications.models import (
@@ -10,6 +11,8 @@ from serviceops_api.notifications.models import (
     TelegramOptInLinkResponse,
 )
 from serviceops_api.notifications.n8n import N8nDeliveryClient, event_to_dict
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationStore(Protocol):
@@ -27,10 +30,10 @@ class NotificationStore(Protocol):
         provider_message_id: str | None = None,
         error: str | None = None,
         attempt_count: int = 1,
-    ) -> None:
+    ) -> bool:
         """Persist delivery result metadata."""
 
-    def record_callback_result(self, payload: DeliveryResultPayload) -> None:
+    def record_callback_result(self, payload: DeliveryResultPayload) -> bool:
         """Persist an n8n callback payload."""
 
 
@@ -117,15 +120,57 @@ class NotificationPublisher:
             payload=payload,
         )
         if not self._notification_store.create_queued_attempt(event):
+            logger.info(
+                "Notification event duplicate skipped",
+                extra={
+                    "serviceops_context": {
+                        "request_number": request_number,
+                        "event_id": event.event_id,
+                        "event_type": event.event_type,
+                        "action": "notification.event_duplicate",
+                        "target": event.event_id,
+                        "outcome": "skipped",
+                        "provider": "n8n",
+                    }
+                },
+            )
             return
+        logger.info(
+            "Notification event queued",
+            extra={
+                "serviceops_context": {
+                    "request_number": request_number,
+                    "event_id": event.event_id,
+                    "event_type": event.event_type,
+                    "action": "notification.event_queued",
+                    "target": event.event_id,
+                    "outcome": "succeeded",
+                    "provider": "n8n",
+                }
+            },
+        )
         result = self._n8n_client.deliver(event_to_dict(event))
+        status = result.get("status", "failed")
+        outcome = "succeeded" if status in {"sent", "queued"} else "failed"
         self._notification_store.record_delivery_result(
             event_id=event.event_id,
-            status=result.get("status", "failed"),
+            status=status,
             provider_message_id=result.get("provider_message_id") or None,
             error=result.get("error") or None,
             attempt_count=1,
         )
+        context: dict[str, object] = {
+            "request_number": request_number,
+            "event_id": event.event_id,
+            "event_type": event.event_type,
+            "action": "notification.delivery_recorded",
+            "target": event.event_id,
+            "outcome": outcome,
+            "provider": "n8n",
+        }
+        if result.get("error"):
+            context["reason"] = "delivery_failed"
+        logger.info("Notification delivery recorded", extra={"serviceops_context": context})
 
 
 class RecordN8nDeliveryResult:
@@ -133,7 +178,23 @@ class RecordN8nDeliveryResult:
         self._notification_store = notification_store
 
     def execute(self, payload: DeliveryResultPayload) -> DeliveryResultResponse:
-        self._notification_store.record_callback_result(payload)
+        recorded = self._notification_store.record_callback_result(payload)
+        request_number, event_type = _parse_event_id(payload.event_id)
+        context: dict[str, object] = {
+            "request_number": request_number,
+            "event_id": payload.event_id,
+            "event_type": event_type,
+            "action": "notification.callback_recorded",
+            "target": payload.event_id,
+            "outcome": _callback_outcome(payload.status) if recorded else "skipped",
+            "provider": "n8n",
+        }
+        if not recorded:
+            context["reason"] = "event_not_found"
+        logger.info(
+            "Notification callback recorded",
+            extra={"serviceops_context": context},
+        )
         return DeliveryResultResponse(event_id=payload.event_id, status=payload.status)
 
 
@@ -153,3 +214,18 @@ class LinkTelegramOptIn:
                 "message": "Telegram notifications linked",
             }
         )
+
+
+def _parse_event_id(event_id: str) -> tuple[str, str]:
+    parts = event_id.split(":", 2)
+    if len(parts) >= 2:
+        return parts[0], parts[1]
+    return "", ""
+
+
+def _callback_outcome(status: str) -> str:
+    if status in {"sent", "queued"}:
+        return "succeeded"
+    if status == "retried":
+        return "retried"
+    return "failed"

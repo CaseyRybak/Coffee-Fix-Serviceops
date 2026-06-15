@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import httpx
 
@@ -261,6 +262,88 @@ def test_dispatcher_status_clarification_assignment_and_internal_notes_are_recor
     assert "Клиент просит звонить" not in public_text
     assert "Pavel Sokolov" not in public_text
     assert "+7 999 222-33-44" not in public_text
+
+
+def test_dispatcher_actions_log_safe_operational_context(caplog) -> None:
+    repository = ServiceRequestRepository.in_memory()
+    request_number = asyncio.run(create_request(repository, payload()))
+    token = asyncio.run(dispatcher_token(repository))
+
+    with caplog.at_level(logging.INFO, logger="serviceops_api.service_requests.use_cases"):
+        asyncio.run(
+            post_json(
+                repository,
+                f"/dispatcher/service-requests/{request_number}/status",
+                {
+                    "status": "awaiting_assignment",
+                    "title": "Готово к назначению",
+                    "description": "Описание проверено диспетчером.",
+                },
+                token=token,
+            )
+        )
+        asyncio.run(
+            post_json(
+                repository,
+                f"/dispatcher/service-requests/{request_number}/clarifications",
+                {"question": "Пришлите фото шильдика с моделью кофемашины."},
+                token=token,
+            )
+        )
+        asyncio.run(
+            post_json(
+                repository,
+                f"/dispatcher/service-requests/{request_number}/assignment",
+                {
+                    "technician_name": "Pavel Sokolov",
+                    "technician_phone": "+7 999 222-33-44",
+                    "technician_region": "ЦАО",
+                    "visit_window": "Завтра 14:00-16:00",
+                },
+                token=token,
+            )
+        )
+        asyncio.run(
+            post_json(
+                repository,
+                f"/dispatcher/service-requests/{request_number}/internal-notes",
+                {"note": "Клиент просит звонить после 12:00."},
+                token=token,
+            )
+        )
+
+    contexts = [record.serviceops_context for record in caplog.records if hasattr(record, "serviceops_context")]
+    assert {
+        "request_number": request_number,
+        "actor_username": "dispatcher@coffeefix.local",
+        "action": "dispatcher.status_updated",
+        "target": request_number,
+        "outcome": "succeeded",
+    } in contexts
+    assert {
+        "request_number": request_number,
+        "actor_username": "dispatcher@coffeefix.local",
+        "action": "dispatcher.clarification_requested",
+        "target": request_number,
+        "outcome": "succeeded",
+    } in contexts
+    assert {
+        "request_number": request_number,
+        "actor_username": "dispatcher@coffeefix.local",
+        "action": "dispatcher.technician_assigned",
+        "target": request_number,
+        "outcome": "succeeded",
+    } in contexts
+    assert {
+        "request_number": request_number,
+        "actor_username": "dispatcher@coffeefix.local",
+        "action": "dispatcher.internal_note_saved",
+        "target": request_number,
+        "outcome": "succeeded",
+    } in contexts
+    assert "Pavel Sokolov" not in str(contexts)
+    assert "+7 999 222-33-44" not in str(contexts)
+    assert "Клиент просит звонить" not in str(contexts)
 
 
 def test_dispatcher_assignment_without_visit_window_marks_technician_assigned() -> None:

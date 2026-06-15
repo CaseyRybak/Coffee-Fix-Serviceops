@@ -155,6 +155,8 @@ Minimum go/no-go evidence before enabling DNS or public traffic:
 6. Worker, Telegram bot, and n8n logs were reviewed.
 7. Rollback target and latest verified backup were identified.
 
+Before public traffic, also complete the restore dry-run evidence in `docs/operations/backup-restore.md` and record request trace evidence with `docs/operations/operational-diagnostics.md`.
+
 ## AI Provider Go/No-Go
 
 Before switching `SERVICEOPS_AI_PROVIDER` or `SERVICEOPS_EMBEDDING_PROVIDER` to `openai-compatible`, verify:
@@ -173,6 +175,10 @@ Before switching `SERVICEOPS_AI_PROVIDER` or `SERVICEOPS_EMBEDDING_PROVIDER` to 
 4. Restore the latest verified database backup only when the rollback requires data rollback.
 5. Run smoke tests before restoring public routing.
 
+Use `docs/operations/incident-response.md` to decide between rollback, containment, and restore-from-backup.
+
 ## Logs
 
 API, worker, and Telegram bot logs are structured JSON on stdout. Dokploy service logs are the first operational log source for this slice.
+
+Use `docs/operations/operational-diagnostics.md` for `jq` filters, request tracing, safe evidence redaction, and read-only PostgreSQL checks.

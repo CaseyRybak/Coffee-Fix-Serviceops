@@ -91,6 +91,31 @@ record command output here without password values
 - n8n smoke webhook execution succeeded:
 - Backup command or backup readiness check completed:
 
+## Restore Dry-Run Evidence
+
+- Backup file:
+- Backup timestamp:
+- Checksum verification result:
+- Backup age within recovery window:
+- Disposable target host:
+- Disposable target database:
+- Abort conditions reviewed:
+- Restore duration:
+- Migration result against restored target:
+- Smoke result against restored target:
+- Operator:
+
+## Log Trace Evidence
+
+- Smoke request number:
+- `service_request.created` log found:
+- Staff action log found:
+- Notification event id:
+- `notification.event_queued` log found:
+- `notification.delivery_recorded` log found:
+- `notification.callback_recorded` log found when n8n callback is enabled:
+- Evidence redacted according to `docs/operations/operational-diagnostics.md`:
+
 ## Rollback Readiness
 
 - Previous known-good image or Compose configuration identified:

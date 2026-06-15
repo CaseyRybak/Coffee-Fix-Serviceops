@@ -221,6 +221,62 @@ def test_persisted_staff_login_and_deactivated_account_rejection() -> None:
     assert deactivated_response.status_code == 401
 
 
+def test_persisted_staff_auth_records_safe_audit_events() -> None:
+    service_repository = ServiceRequestRepository.in_memory()
+    staff_repository = SqliteStaffAccountRepository.in_memory()
+    CreateStaffAccount(staff_repository).execute(
+        CreateStaffAccountPayload(
+            username="audited-tech@coffeefix.local",
+            display_name="Audited Tech",
+            password="temporary-pass-1",
+            roles=["technician"],
+        ),
+        actor="admin@coffeefix.local",
+    )
+
+    success_response = asyncio.run(
+        login(service_repository, staff_repository, "audited-tech@coffeefix.local", "temporary-pass-1")
+    )
+    failed_response = asyncio.run(
+        login(service_repository, staff_repository, "audited-tech@coffeefix.local", "wrong-password")
+    )
+    staff_repository.set_active("audited-tech@coffeefix.local", False, actor="admin@coffeefix.local")
+    inactive_response = asyncio.run(
+        login(service_repository, staff_repository, "audited-tech@coffeefix.local", "temporary-pass-1")
+    )
+    token_response = asyncio.run(
+        get_json(
+            service_repository,
+            staff_repository,
+            "/technician/service-requests",
+            token=str(success_response.json()["access_token"]),
+        )
+    )
+
+    assert success_response.status_code == 200
+    assert failed_response.status_code == 401
+    assert inactive_response.status_code == 401
+    assert token_response.status_code == 401
+    audit_events = staff_repository.list_audit_events()
+    actions = [event["action"] for event in audit_events]
+    assert "staff.login_succeeded" in actions
+    assert "staff.login_failed" in actions
+    assert "staff.token_rejected" in actions
+    inactive_event = next(event for event in audit_events if event["action"] == "staff.login_failed" and event["metadata"]["reason"] == "inactive")
+    token_event = next(event for event in audit_events if event["action"] == "staff.token_rejected")
+    success_event = next(event for event in audit_events if event["action"] == "staff.login_succeeded")
+    assert success_event["actor_username"] == "audited-tech@coffeefix.local"
+    assert success_event["target_username"] == "audited-tech@coffeefix.local"
+    assert success_event["metadata"]["outcome"] == "succeeded"
+    assert inactive_event["metadata"]["outcome"] == "failed"
+    assert token_event["metadata"] == {"outcome": "failed", "reason": "inactive", "source": "staff_auth"}
+    audit_text = str(audit_events)
+    assert "temporary-pass-1" not in audit_text
+    assert "wrong-password" not in audit_text
+    assert str(success_response.json()["access_token"]) not in audit_text
+    assert "password_hash" not in audit_text
+
+
 def test_deactivated_persisted_staff_token_no_longer_authorizes_protected_routes() -> None:
     service_repository = ServiceRequestRepository.in_memory()
     staff_repository = SqliteStaffAccountRepository.in_memory()
@@ -365,3 +421,38 @@ def test_admin_staff_management_api_lifecycle_and_role_protection() -> None:
     assert reset_response.json()["temporary_password"]
     assert audit_response.json()["items"][0]["action"] == "staff.password_reset"
     assert non_admin_response.status_code == 403
+
+
+def test_forbidden_staff_role_records_safe_audit_event() -> None:
+    service_repository = ServiceRequestRepository.in_memory()
+    staff_repository = SqliteStaffAccountRepository.in_memory()
+    create_admin(staff_repository)
+    staff_repository.create_account(
+        CreateStaffAccountPayload(
+            username="dispatcher@coffeefix.local",
+            display_name="Dispatcher",
+            password="dispatcher-local",
+            roles=["dispatcher"],
+        ),
+        password_hash=hash_staff_password("dispatcher-local"),
+        actor="system",
+    )
+    dispatcher_login = asyncio.run(
+        login(service_repository, staff_repository, "dispatcher@coffeefix.local", "dispatcher-local")
+    )
+    dispatcher_token = str(dispatcher_login.json()["access_token"])
+
+    response = asyncio.run(get_json(service_repository, staff_repository, "/admin/staff", token=dispatcher_token))
+
+    assert response.status_code == 403
+    audit_event = staff_repository.list_audit_events()[0]
+    assert audit_event["actor_username"] == "dispatcher@coffeefix.local"
+    assert audit_event["target_username"] == "admin"
+    assert audit_event["action"] == "staff.role_forbidden"
+    assert audit_event["metadata"] == {
+        "outcome": "blocked",
+        "reason": "missing_role",
+        "role": "admin",
+        "source": "staff_auth",
+    }
+    assert dispatcher_token not in str(audit_event)

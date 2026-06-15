@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import json
 import hashlib
+import logging
 import math
 import os
 import re
+import time
 from collections.abc import Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from typing import Protocol
 
 from celery import shared_task
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingProvider(Protocol):
@@ -167,13 +171,55 @@ def embed_document_chunks(
     repository: KnowledgeChunkRepository,
     embedding_provider: EmbeddingProvider,
 ) -> dict[str, object]:
-    chunks = repository.list_chunks_missing_embeddings(document_id)
-    embeddings = embedding_provider.embed_texts([str(chunk["content"]) for chunk in chunks])
-    repository.save_chunk_embeddings(
-        document_id,
-        {
-            int(chunk["chunk_id"]): embedding
-            for chunk, embedding in zip(chunks, embeddings)
+    provider_name = _provider_name(embedding_provider)
+    target = f"document:{document_id}"
+    started_at = time.monotonic()
+    logger.info(
+        "Knowledge-base embedding started",
+        extra={
+            "serviceops_context": {
+                "action": "knowledge_base.embedding_started",
+                "target": target,
+                "outcome": "succeeded",
+                "provider": provider_name,
+            }
+        },
+    )
+    try:
+        chunks = repository.list_chunks_missing_embeddings(document_id)
+        embeddings = embedding_provider.embed_texts([str(chunk["content"]) for chunk in chunks])
+        repository.save_chunk_embeddings(
+            document_id,
+            {
+                int(chunk["chunk_id"]): embedding
+                for chunk, embedding in zip(chunks, embeddings)
+            },
+        )
+    except Exception:
+        logger.info(
+            "Knowledge-base embedding failed",
+            extra={
+                "serviceops_context": {
+                    "action": "knowledge_base.embedding_completed",
+                    "target": target,
+                    "outcome": "failed",
+                    "reason": "embedding_failed",
+                    "duration_ms": _elapsed_ms(started_at),
+                    "provider": provider_name,
+                }
+            },
+        )
+        raise
+    logger.info(
+        "Knowledge-base embedding completed",
+        extra={
+            "serviceops_context": {
+                "action": "knowledge_base.embedding_completed",
+                "target": target,
+                "outcome": "succeeded",
+                "duration_ms": _elapsed_ms(started_at),
+                "provider": provider_name,
+            }
         },
     )
     return {"document_id": document_id, "embedded_chunks": len(chunks)}
@@ -214,6 +260,19 @@ def _default_repository() -> KnowledgeChunkRepository:
 
 def _vector_literal(embedding: list[float]) -> str:
     return "[" + ",".join(str(value) for value in embedding) + "]"
+
+
+def _elapsed_ms(started_at: float) -> int:
+    return max(0, int((time.monotonic() - started_at) * 1000))
+
+
+def _provider_name(provider: EmbeddingProvider) -> str:
+    class_name = provider.__class__.__name__.lower()
+    if "openai" in class_name:
+        return "openai-compatible"
+    if "deterministic" in class_name:
+        return "deterministic"
+    return provider.__class__.__name__
 
 
 @shared_task(name="serviceops_worker.knowledge_base_tasks.embed_knowledge_document")

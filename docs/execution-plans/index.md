@@ -8,7 +8,7 @@ Before executing any phase, create a detailed implementation plan for that speci
 
 ## Active Phase
 
-- Phase 14: `phases/14-operational-hardening.md`. Use `detailed/14-operational-hardening-implementation.md` before executing the phase.
+- Phase 15: `phases/15-scheduling-depth.md`. Create a detailed implementation plan before executing the phase.
 
 The active phase points to the next phase ready for implementation planning or execution. `phases/` contains all phase slice maps, not only active work.
 
@@ -16,9 +16,9 @@ The active phase points to the next phase ready for implementation planning or e
 
 Detailed implementation plans are created just in time in `detailed/`.
 
-Current detailed plan: `detailed/14-operational-hardening-implementation.md`.
+Current detailed plan: none. Create the Phase 15 detailed implementation plan just in time before execution.
 
-Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`, `detailed/04-dispatcher-mvp-implementation.md`, `detailed/05-staff-access-and-roles-implementation.md`, `detailed/06-knowledge-base-rag-implementation.md`, `detailed/07-ai-agent-workflows-implementation.md`, `detailed/08-technician-and-inventory-implementation.md`, `detailed/09-staff-admin-and-user-management-implementation.md`, `detailed/10-deployment-and-operations-implementation.md`, `detailed/11-production-launch-readiness-implementation.md`, `detailed/12-notification-automation-implementation.md`, `detailed/13-live-ai-provider-and-knowledge-base-content-implementation.md`.
+Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`, `detailed/04-dispatcher-mvp-implementation.md`, `detailed/05-staff-access-and-roles-implementation.md`, `detailed/06-knowledge-base-rag-implementation.md`, `detailed/07-ai-agent-workflows-implementation.md`, `detailed/08-technician-and-inventory-implementation.md`, `detailed/09-staff-admin-and-user-management-implementation.md`, `detailed/10-deployment-and-operations-implementation.md`, `detailed/11-production-launch-readiness-implementation.md`, `detailed/12-notification-automation-implementation.md`, `detailed/13-live-ai-provider-and-knowledge-base-content-implementation.md`, `detailed/14-operational-hardening-implementation.md`.
 
 ## Phase Sequence
 

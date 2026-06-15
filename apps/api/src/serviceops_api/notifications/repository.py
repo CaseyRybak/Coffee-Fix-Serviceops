@@ -92,9 +92,9 @@ class SqliteNotificationRepository:
         provider_message_id: str | None = None,
         error: str | None = None,
         attempt_count: int = 1,
-    ) -> None:
+    ) -> bool:
         with self._connection:
-            self._connection.execute(
+            cursor = self._connection.execute(
                 """
                 UPDATE notification_delivery_attempts
                 SET
@@ -108,9 +108,10 @@ class SqliteNotificationRepository:
                 """,
                 (status, channel, provider_message_id, error, attempt_count, event_id),
             )
+        return cursor.rowcount == 1
 
-    def record_callback_result(self, payload: DeliveryResultPayload) -> None:
-        self.record_delivery_result(
+    def record_callback_result(self, payload: DeliveryResultPayload) -> bool:
+        return self.record_delivery_result(
             event_id=payload.event_id,
             status=payload.status,
             channel=payload.channel,
@@ -185,8 +186,8 @@ class PostgresNotificationRepository:
         provider_message_id: str | None = None,
         error: str | None = None,
         attempt_count: int = 1,
-    ) -> None:
-        self._connect().execute(
+    ) -> bool:
+        cursor = self._connect().execute(
             """
             UPDATE notification_delivery_attempts
             SET
@@ -201,9 +202,10 @@ class PostgresNotificationRepository:
             (status, channel, provider_message_id, error, attempt_count, event_id),
         )
         self._connect().commit()
+        return cursor.rowcount == 1
 
-    def record_callback_result(self, payload: DeliveryResultPayload) -> None:
-        self.record_delivery_result(
+    def record_callback_result(self, payload: DeliveryResultPayload) -> bool:
+        return self.record_delivery_result(
             event_id=payload.event_id,
             status=payload.status,
             channel=payload.channel,

@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Awaitable, Callable
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from serviceops_telegram_bot.config import BotSettings
+
+logger = logging.getLogger(__name__)
 
 
 PostJson = Callable[[str, dict[str, object], dict[str, str]], dict[str, object]]
@@ -44,11 +47,41 @@ class ServiceOpsClient:
         url = f"{self._api_base_url}/notifications/telegram/opt-ins/{token}/link"
         body = {"chat_id": chat_id, "username": username}
         headers = {"X-ServiceOps-Telegram-Bot-Secret": self._bot_api_secret}
-        if self._async_post_json is not None:
-            return await self._async_post_json(url, body, headers)
-        return await asyncio.to_thread(
-            self._post_json,
-            url,
-            body,
-            headers,
+        try:
+            if self._async_post_json is not None:
+                linked = await self._async_post_json(url, body, headers)
+            else:
+                linked = await asyncio.to_thread(
+                    self._post_json,
+                    url,
+                    body,
+                    headers,
+                )
+        except Exception:
+            logger.info(
+                "Telegram opt-in link failed",
+                extra={
+                    "serviceops_context": {
+                        "action": "telegram.opt_in_linked",
+                        "target": "telegram",
+                        "outcome": "failed",
+                        "reason": "api_request_failed",
+                        "provider": "telegram",
+                    }
+                },
+            )
+            raise
+        request_number = str(linked.get("request_number", ""))
+        logger.info(
+            "Telegram opt-in linked",
+            extra={
+                "serviceops_context": {
+                    "request_number": request_number,
+                    "action": "telegram.opt_in_linked",
+                    "target": request_number or "telegram",
+                    "outcome": "succeeded",
+                    "provider": "telegram",
+                }
+            },
         )
+        return linked
