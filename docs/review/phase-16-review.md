@@ -72,14 +72,15 @@ Re-review result: no remaining blocking issues found.
 ## Post-Review Update: 2026-06-16
 
 - The PostgreSQL row-locking follow-up is resolved for current reservation workflows: stock and reservation rows are locked before reserve/release/consume mutations, with regression coverage in `apps/api/tests/test_repository_selection.py`. SQLite remains intentionally lighter for local/test use.
-- Aeza VPS/Dokploy test deployment evidence now records API/web/PostgreSQL/Redis health, migrations, first-admin bootstrap, n8n callback, backup, restore drill, and worker Redis broker fix. Public launch is still blocked on domains/HTTPS, direct test-port closure, disposable staff-route smoke, Telegram runtime review after deploy, setup-secret rotation, and real database transfer smoke checks.
+- Aeza VPS/Dokploy test deployment evidence now records API/web/PostgreSQL/Redis health, migrations, first-admin bootstrap, n8n callback, backup, restore drill, and worker Redis broker fix.
+- Self-hosted n8n VPS evidence now records the production handoff from n8n Cloud to private Compose-network n8n URLs, request-created delivery on `CFX-20260616-000008`, and the Telegram one-active-polling rule after a local bot consumed a production opt-in update. Public launch is still blocked on domains/HTTPS, direct test-port closure, Dokploy admin access restriction, disposable staff-route smoke, setup-secret rotation, and real database transfer smoke checks.
 
 ## Suggested Follow-Up Slice
 
 Backlog grooming can choose the next approved slice. Good candidates:
 
 - Inventory consistency hardening: stricter SQLite/PostgreSQL constraint parity and clearer stock-movement delta semantics.
-- Operational launch evidence: public-domain HTTPS smoke checks, disposable staff-route smoke, Telegram runtime verification, repeated backup/restore evidence after real database transfer, and log trace captures.
+- Operational launch evidence: public-domain HTTPS smoke checks, disposable staff-route smoke, verification that local polling stays stopped or uses a separate development Telegram bot token, repeated backup/restore evidence after real database transfer, and log trace captures.
 - Billing/estimates slice if product priority moves from service execution to commercial closure.
 
 ## Documentation Updates

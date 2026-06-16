@@ -29,6 +29,18 @@ Never copy passwords, hashes, bearer tokens, Telegram opt-in tokens, webhook sec
 6. Search Telegram bot logs for `telegram.opt_in_linked` when customer notification linking is involved.
 7. Confirm the public status endpoint still excludes internal notes, staff data, AI suggestions, audit data, and notification metadata.
 
+## Telegram Opt-In Failures
+
+If a customer sees "failed to connect notifications" after opening the Telegram opt-in link:
+
+1. Confirm the affected `request_number` and recent opt-in API events.
+2. Check production `telegram-bot` logs for `telegram.opt_in_linked` or opt-in failures.
+3. Check local development containers for an accidentally running `telegram-bot` with the same bot token.
+4. Check for `TelegramConflictError` in either local or production bot logs.
+5. Verify the API receiving `POST /notifications/telegram/opt-ins/{token}/link` is the same environment that created the token.
+
+Operational rule for the current pet-project setup: one Telegram bot token means one active polling process. Production owns real customer `/start <token>` traffic; local notification smoke should simulate the protected link call unless production polling is intentionally paused.
+
 ## Docker And Dokploy Logs
 
 ```bash
@@ -39,6 +51,41 @@ docker compose -f docker-compose.production.yml logs --tail=500 n8n
 ```
 
 In Dokploy, use each service log view first. Export only the lines needed for the incident, then redact hostnames, account names, and operational notes when required by the incident owner.
+
+## Port Exposure Checks
+
+Use both host-listening checks and external reachability checks. A host can listen on a port while the firewall still blocks it from the internet.
+
+Host listeners:
+
+```bash
+ss -tulpen
+docker ps --format 'table {{.Names}}\t{{.Ports}}'
+ufw status verbose
+docker stack ls
+docker node ls
+docker service ls
+```
+
+External reachability from a separate machine:
+
+```bash
+nc -vz <vps-ip> 80
+nc -vz <vps-ip> 443
+nc -vz <vps-ip> 3000
+nc -vz <vps-ip> 3001
+nc -vz <vps-ip> 8000
+nc -vz <vps-ip> 2377
+nc -vz <vps-ip> 7946
+```
+
+Current expected interpretation for the single-node Dokploy VPS:
+
+- `80` and `443`: public reverse-proxy entrypoints.
+- `3000`: Dokploy admin surface; restrict to trusted IP/VPN before launch.
+- `3001` and `8000`: temporary direct web/API test ports; close after domain routing is ready.
+- `5678`: n8n must not be directly published; API should call `http://n8n:5678` on the Compose network.
+- `2377` and `7946`: Docker Swarm/internal networking listeners can exist because Dokploy initializes Swarm, but they should not be externally reachable and should not have public firewall allow rules in a single-node setup.
 
 ## jq Filters
 

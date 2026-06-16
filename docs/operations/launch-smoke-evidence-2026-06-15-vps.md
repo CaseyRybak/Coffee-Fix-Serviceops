@@ -2,6 +2,8 @@
 
 This record captures the first real Coffee Fix ServiceOps VPS/Dokploy test deployment on June 15, 2026. It is sanitized and must not contain passwords, API keys, Telegram tokens, webhook secrets, raw provider payloads, customer phone numbers, or Telegram chat ids.
 
+Update on June 16, 2026: the n8n Cloud notification path recorded here is historical. Production notification automation was moved to the self-hosted VPS n8n runtime; see `docs/operations/self-hosted-n8n-vps-evidence-2026-06-16.md`.
+
 ## Deployment Metadata
 
 - Date: 2026-06-15

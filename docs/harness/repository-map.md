@@ -84,6 +84,7 @@
 - `docs/operations/backup-restore.md`: PostgreSQL backup, restore, checksum, retention, and restore-drill procedure.
 - `docs/operations/launch-smoke-evidence.md`: first-launch evidence template for production smoke checks and go/no-go decisions.
 - `docs/operations/launch-smoke-evidence-2026-06-15-vps.md`: sanitized Aeza VPS/Dokploy test deployment evidence with smoke, n8n callback, backup, and restore-drill results.
+- `docs/operations/self-hosted-n8n-vps-evidence-2026-06-16.md`: sanitized handoff evidence for the self-hosted VPS n8n runtime, private Compose webhook URLs, Telegram polling ownership, and current port posture.
 - `docs/operations/smoke-tests.md`: manual and scripted deployment smoke-test checklist.
 - `docs/operations/operational-diagnostics.md`: structured-log fields, request tracing, log queries, read-only PostgreSQL checks, and evidence redaction rules.
 - `docs/operations/incident-response.md`: first-line incident checklist for degraded API, web, PostgreSQL, Redis, worker, Telegram, n8n, notifications, AI/RAG, and restore decisions.

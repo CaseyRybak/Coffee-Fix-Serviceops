@@ -29,6 +29,7 @@ This file preserves historical phase context that used to make `project_notes.md
 - 2026-06-15: Recorded first Aeza VPS/Dokploy test deployment evidence, including API/web/PostgreSQL/Redis health, migrations, first-admin bootstrap, n8n callback path, backup, restore drill, and worker Redis dependency fix.
 - 2026-06-16: Hardened production paths after Phase 16 with atomic PostgreSQL request-number generation, appointment overlap exclusion and deadlock handling, row locks for inventory stock/reservation mutations, safer notification delivery rowcount logging, production Telegram bot default startup, no direct n8n port publication, and expired staff-session redirects in the web app.
 - 2026-06-16: Completed documentation audit after Phase 16 and post-phase production hardening, updating current-state entry points, review artifacts, domain boundaries, and repository checks.
+- 2026-06-16: Moved production notification automation from the earlier n8n Cloud path to the self-hosted VPS n8n service, imported and activated repository workflow exports, verified request-created delivery on `CFX-20260616-000008`, and documented the one-active-polling rule while local and production share one Telegram bot token.
 
 ## Historical Decisions
 
@@ -62,4 +63,4 @@ This file preserves historical phase context that used to make `project_notes.md
 - Full technician profiles, durable availability calendar, automatic matching, route optimization, and customer self-scheduling.
 - Warehouses, suppliers, purchase orders, barcode scanning, billing totals, and warranty stock handling.
 - Provider latency/error dashboards and external log shipping.
-- Public-launch readiness after VPS test deployment: domains, HTTPS, closure of temporary direct test ports, disposable staff-route smoke, Telegram bot runtime review, secret rotation, and repeat smoke checks after real database transfer.
+- Public-launch readiness after VPS test deployment: domains, HTTPS, closure of temporary direct test ports, Dokploy admin access restriction, disposable staff-route smoke, secret rotation, and repeat smoke checks after real database transfer.

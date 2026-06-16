@@ -18,22 +18,25 @@ Backend API:
 ```bash
 SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET=<long random value>
 SERVICEOPS_N8N_CALLBACK_SECRET=<different long random value>
-SERVICEOPS_N8N_REQUEST_CREATED_WEBHOOK_URL=https://<n8n-host>/webhook/serviceops/request-created
-SERVICEOPS_N8N_STATUS_CHANGED_WEBHOOK_URL=https://<n8n-host>/webhook/serviceops/status-changed
-SERVICEOPS_N8N_CLARIFICATION_WEBHOOK_URL=https://<n8n-host>/webhook/serviceops/clarification-requested
-SERVICEOPS_N8N_CUSTOMER_ANSWERED_WEBHOOK_URL=https://<n8n-host>/webhook/serviceops/customer-answered
+SERVICEOPS_N8N_REQUEST_CREATED_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/request-created
+SERVICEOPS_N8N_STATUS_CHANGED_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/status-changed
+SERVICEOPS_N8N_CLARIFICATION_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/clarification-requested
+SERVICEOPS_N8N_CUSTOMER_ANSWERED_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/customer-answered
 SERVICEOPS_TELEGRAM_BOT_USERNAME=<bot username without @>
 SERVICEOPS_TELEGRAM_BOT_API_SECRET=<secret used by the bot when linking opt-in tokens>
 ```
 
+The production Compose deployment should use the private Docker service URL above for API-to-n8n webhook calls. Use public HTTPS n8n webhook URLs only when n8n is intentionally hosted outside the production Compose network.
+
 n8n runtime:
 
 ```bash
-SERVICEOPS_API_BASE_URL=https://<api-host>
+SERVICEOPS_API_BASE_URL=http://api:8000
 SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET=<same inbound webhook value>
 SERVICEOPS_N8N_CALLBACK_SECRET=<same callback value>
 SERVICEOPS_TELEGRAM_BOT_TOKEN=<bot token>
 SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID=<dispatcher operations chat id>
+N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 ```
 
 Telegram opt-in flow:
@@ -45,7 +48,7 @@ Telegram opt-in flow:
 
 ## Live Workflow Records
 
-Created through the n8n MCP API during Phase 12:
+Created through the n8n MCP API during Phase 12 and now imported into the self-hosted VPS n8n production runtime:
 
 - `ServiceOps - Request Created Dispatcher Alert`: `fbEwkH56MkvmDnsD`
 - `ServiceOps - Status Changed Customer Notification`: `0njpM50BqmqJeZE2`
@@ -53,6 +56,20 @@ Created through the n8n MCP API during Phase 12:
 - `ServiceOps - Customer Answered Dispatcher Alert`: `PVYG8clWqn9opv1l`
 
 Repository exports are stored in `docs/operations/n8n-workflows/`.
+
+The earlier n8n Cloud workflows are no longer the production path. Keep them only as historical setup context or remove them after secrets are rotated and the self-hosted path has passed the full launch smoke.
+
+## Production VPS Runtime
+
+The VPS production API calls n8n over the Compose network through `http://n8n:5678`. n8n callback nodes call the API through `SERVICEOPS_API_BASE_URL=http://api:8000`, and delivery-result callbacks use `POST /notifications/n8n/delivery-results`.
+
+The self-hosted n8n container should not publish `5678` directly to the internet. If the n8n UI must be reachable, route it through Dokploy/Traefik with HTTPS and access controls.
+
+Production evidence from June 16, 2026:
+
+- All four workflow exports listed above were imported, published, and active on the VPS n8n service.
+- `CFX-20260616-000008` verified the request-created path end-to-end: API event emission, self-hosted n8n execution, Telegram delivery, and backend delivery-result callback with final status `sent`.
+- Full dispatcher clarification smoke still needs production staff credentials; the local smoke covers the protected opt-in simulation plus clarification delivery path.
 
 ## Workflow: Request Created Dispatcher Alert
 
@@ -178,7 +195,7 @@ Allowed statuses: `queued`, `sent`, `failed`, `retried`.
 
 ## Import Or Restore
 
-The live n8n instance already contains the Phase 12 workflows listed above. To restore them in another n8n instance, import the JSON exports from `docs/operations/n8n-workflows/`, configure the environment variables, activate the workflows, then set backend webhook URL variables to the production paths.
+The live VPS n8n instance already contains the Phase 12 workflows listed above. To restore them in another n8n instance, import the JSON exports from `docs/operations/n8n-workflows/`, configure the environment variables, activate the workflows, then set backend webhook URL variables to the target runtime paths.
 
 ## Local n8n Runtime
 
@@ -200,6 +217,8 @@ SERVICEOPS_API_BASE_URL=http://api:8000
 ```
 
 The project may use the same Telegram bot and staff chat in local and production while it remains a pet project. Keep those values only in ignored environment files or deployment secrets, never in workflow exports or committed docs.
+
+Only one polling instance may use a Telegram bot token at a time. While production polling is active with the shared bot token, keep the local `telegram-bot` service stopped. Otherwise local polling can consume a production `/start <token>` message and make the opt-in link fail against the local API.
 
 To import the repository exports into local n8n:
 
@@ -237,7 +256,7 @@ docker compose restart n8n
 
 Use a clean destination path when re-importing. If `docker compose cp` copies a directory into an existing directory, n8n can accidentally import stale JSON from the parent path.
 
-Run the local notification smoke after `api`, `telegram-bot`, and `n8n` are up:
+Run the local notification smoke after `api` and `n8n` are up. Start `telegram-bot` locally only when production polling is intentionally stopped or when a separate development bot token is configured:
 
 ```bash
 set -a

@@ -36,11 +36,11 @@ SERVICEOPS_AI_PROVIDER=deterministic
 SERVICEOPS_EMBEDDING_PROVIDER=deterministic
 SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET=<long random value>
 SERVICEOPS_N8N_CALLBACK_SECRET=<different long random value>
-SERVICEOPS_N8N_REQUEST_CREATED_WEBHOOK_URL=https://n8n.serviceops.example.com/webhook/serviceops/request-created
-SERVICEOPS_N8N_STATUS_CHANGED_WEBHOOK_URL=https://n8n.serviceops.example.com/webhook/serviceops/status-changed
-SERVICEOPS_N8N_CLARIFICATION_WEBHOOK_URL=https://n8n.serviceops.example.com/webhook/serviceops/clarification-requested
-SERVICEOPS_N8N_CUSTOMER_ANSWERED_WEBHOOK_URL=https://n8n.serviceops.example.com/webhook/serviceops/customer-answered
-SERVICEOPS_API_BASE_URL=https://api.serviceops.example.com
+SERVICEOPS_N8N_REQUEST_CREATED_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/request-created
+SERVICEOPS_N8N_STATUS_CHANGED_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/status-changed
+SERVICEOPS_N8N_CLARIFICATION_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/clarification-requested
+SERVICEOPS_N8N_CUSTOMER_ANSWERED_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/customer-answered
+SERVICEOPS_API_BASE_URL=http://api:8000
 SERVICEOPS_TELEGRAM_BOT_TOKEN=<bot token>
 SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID=<dispatcher operations chat id>
 N8N_HOST=n8n.serviceops.example.com
@@ -49,8 +49,11 @@ N8N_WEBHOOK_URL=https://n8n.serviceops.example.com/
 N8N_BASIC_AUTH_USER=<admin user>
 N8N_BASIC_AUTH_PASSWORD=<strong password>
 N8N_ENCRYPTION_KEY=<long random value>
+N8N_BLOCK_ENV_ACCESS_IN_NODE=false
 SERVICEOPS_BACKUP_DIR=/var/backups/serviceops
 ```
+
+The production API and n8n services should call each other through private Compose service names. `N8N_WEBHOOK_URL` controls generated public n8n URLs for the UI/runtime, but the ServiceOps backend webhook targets should remain `http://n8n:5678/...` when n8n runs in the same Compose app.
 
 For live AI, set the OpenAI-compatible values from `docs/operations/ai-providers.md` in Dokploy. Do not commit provider API keys to `.env.example`, screenshots, smoke evidence, or workflow exports.
 
@@ -63,9 +66,21 @@ Do not use local development staff credentials, default passwords, or local URLs
 3. Configure persistent volumes for `postgres-data` and `n8n-data`.
 4. Route the web domain to service `web` port `80`.
 5. Route the API domain to service `api` port `8000`.
-6. Do not publish `5678` directly. If self-hosted n8n is intentionally enabled later, route the n8n domain through Dokploy/Traefik to service `n8n` port `5678` instead of exposing `http://IP:5678`.
+6. Do not publish `5678` directly. Self-hosted n8n runs in the production Compose app; route the n8n domain through Dokploy/Traefik to service `n8n` port `5678` only if the UI must be reachable.
 7. Keep PostgreSQL and Redis without public routes.
 8. Deploy the Compose app.
+
+## Public Port Posture
+
+Expected production posture:
+
+- Public web/API traffic should go through `80`/`443` after domains and HTTPS are configured.
+- n8n should not expose `5678` directly; API-to-n8n webhook calls use `http://n8n:5678` inside Docker.
+- PostgreSQL `5432` and Redis `6379` stay private.
+- Temporary direct IP test ports such as web `3001` and API `8000` must be closed after reverse-proxy routing is ready.
+- Dokploy `3000` is an administrative surface and should be restricted to trusted IP/VPN access before public launch.
+
+On the current single-node Dokploy host, Docker Swarm may leave `2377` and `7946` listening locally because Dokploy initializes Swarm for its own internal services. They are not required to be publicly reachable for the ServiceOps Compose app. Keep firewall default-deny inbound and do not add public allow rules for `2377` or `7946`.
 
 ## Migration
 
@@ -123,6 +138,8 @@ The command refuses to run when an active admin already exists. After the first 
 6. n8n.
 7. Telegram bot when a production token is configured.
 
+Only one `telegram-bot` polling process may use a Telegram bot token. If local and production intentionally share one bot token, stop the local `telegram-bot` service while production polling is active; otherwise a local bot can consume a production `/start <token>` update and make customer opt-in fail.
+
 ## Healthchecks
 
 ```bash
@@ -156,6 +173,8 @@ Minimum go/no-go evidence before enabling DNS or public traffic:
 7. Rollback target and latest verified backup were identified.
 
 Before public traffic, also complete the restore dry-run evidence in `docs/operations/backup-restore.md` and record request trace evidence with `docs/operations/operational-diagnostics.md`.
+
+Self-hosted n8n production evidence from June 16, 2026 is recorded in `docs/operations/self-hosted-n8n-vps-evidence-2026-06-16.md`. That evidence verifies the request-created Telegram path on `CFX-20260616-000008`; a full dispatcher clarification smoke still requires disposable production staff credentials.
 
 ## AI Provider Go/No-Go
 
