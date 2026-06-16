@@ -258,6 +258,7 @@ class DispatcherRequestDetail(BaseModel):
     created_at: str
     timeline: list[StatusEvent]
     clarification: ClarificationSnapshot | None
+    clarification_history: list[ClarificationSnapshot] = Field(default_factory=list)
     assignment: DispatcherAssignmentSnapshot
     appointment: DispatcherAppointmentSnapshot | None = None
     internal_notes: list[DispatcherInternalNote]

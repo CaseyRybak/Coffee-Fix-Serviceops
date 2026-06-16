@@ -122,6 +122,12 @@ interface PublicStatusSnapshot {
     answer: string | null;
     answered_at: string | null;
   } | null;
+  clarification_history?: Array<{
+    question_id: number;
+    question: string;
+    answer: string | null;
+    answered_at: string | null;
+  }>;
   telegram_opt_in: {
     enabled: boolean;
     link: string;
@@ -247,6 +253,7 @@ interface DispatcherRequestDetail {
   created_at: string;
   timeline: PublicStatusSnapshot["timeline"];
   clarification: PublicStatusSnapshot["clarification"];
+  clarification_history?: NonNullable<PublicStatusSnapshot["clarification"]>[];
   assignment: {
     technician_name: string | null;
     technician_phone: string | null;
@@ -725,6 +732,27 @@ export function buildStatusLookupPath(value: string): string {
     return `/service-requests/${encodeURIComponent(normalized)}/status`;
   }
   return `/status/${encodeURIComponent(cleaned)}`;
+}
+
+export function statusLookupValueFromPath(pathname: string): string | null {
+  const [, route, tokenOrNumber] = pathname.split("/");
+  if (route !== "status" || !tokenOrNumber) return null;
+  return decodeURIComponent(tokenOrNumber);
+}
+
+export function replaceStatusRoute(requestNumber: string): void {
+  if (typeof window === "undefined") return;
+  const nextPath = statusPathFromRequestNumber(requestNumber);
+  if (window.location.pathname !== nextPath) {
+    window.history.replaceState(null, "", nextPath);
+  }
+}
+
+export function replaceStatusLookupRoute(): void {
+  if (typeof window === "undefined") return;
+  if (window.location.pathname !== "/status") {
+    window.history.replaceState(null, "", "/status");
+  }
 }
 
 export function telegramOptInPathFromRequestNumber(requestNumber: string): string {
@@ -1507,6 +1535,7 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
       setLookup(body.request_number);
       setTelegram(body.customer.telegram ?? "");
       setChangingRequest(false);
+      replaceStatusRoute(body.request_number);
     } catch {
       setMessage("Не удалось открыть статус. Проверьте номер заявки и попробуйте еще раз.");
     } finally {
@@ -1517,11 +1546,10 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
   useEffect(() => {
     if (initialStatus) return;
     if (typeof window === "undefined") return;
-    const [, route, tokenOrNumber] = window.location.pathname.split("/");
-    if (route === "status" && tokenOrNumber) {
-      const decoded = decodeURIComponent(tokenOrNumber);
-      setLookup(decoded);
-      void loadStatus(decoded);
+    const statusLookup = statusLookupValueFromPath(window.location.pathname);
+    if (statusLookup) {
+      setLookup(statusLookup);
+      void loadStatus(statusLookup);
     }
   }, [initialStatus]);
 
@@ -1587,6 +1615,7 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
                 onClick={() => {
                   setLookup("");
                   setChangingRequest(true);
+                  replaceStatusLookupRoute();
                 }}
               >
                 Проверить другую заявку
@@ -1649,8 +1678,8 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
                   <Clock aria-hidden="true" />
                   <h2>История заявки</h2>
                 </div>
-                <div className="timeline">
-                  {status.timeline.map((event) => (
+                <div className="timeline status-visible-timeline">
+                  {status.timeline.slice(-2).map((event) => (
                     <article className="timeline-item" key={`${event.title}-${event.created_at}`}>
                       <span />
                       <div>
@@ -1662,6 +1691,24 @@ export function StatusPage({ initialStatus }: { initialStatus?: PublicStatusSnap
                     </article>
                   ))}
                 </div>
+                {status.timeline.length > 2 ? (
+                  <details className="status-hidden-events">
+                    <summary>Остальные события ({status.timeline.length - 2})</summary>
+                    <div className="timeline status-hidden-timeline">
+                      {status.timeline.slice(0, -2).map((event) => (
+                        <article className="timeline-item" key={`${event.title}-${event.created_at}-hidden`}>
+                          <span />
+                          <div>
+                            <small>{statusLabel(event.status)}</small>
+                            <h3>{event.title}</h3>
+                            <p>{event.description}</p>
+                            <time dateTime={event.created_at}>{formatCompactDateTime(event.created_at)}</time>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
               </section>
 
               <section className="status-panel clarification-panel">
@@ -2024,6 +2071,16 @@ export function DispatcherPage({
     setAppointmentName(candidate.display_name);
   }
 
+  function selectTechnicianCandidateByUsername(username: string) {
+    const candidate = technicianCandidates.items.find((item) => item.username === username);
+    if (candidate) {
+      selectTechnicianCandidate(candidate);
+      return;
+    }
+    setTechnicianName(username);
+    setAppointmentTechnician(username);
+  }
+
   const pendingAiSuggestions = detail?.ai_suggestions?.filter((suggestion) => suggestion.status === "pending") ?? [];
   const archivedAiSuggestions = detail?.ai_suggestions?.filter((suggestion) => suggestion.status !== "pending") ?? [];
   const visibleAiSuggestions = pendingAiSuggestions.length ? pendingAiSuggestions : detail?.ai_suggestions?.slice(0, 3) ?? [];
@@ -2032,6 +2089,7 @@ export function DispatcherPage({
   const hiddenTimelineCount = hiddenTimeline.length;
   const notificationFailures = detail?.notification_deliveries?.filter((delivery) => delivery.status === "failed") ?? [];
   const technicalLogCount = detail?.notification_deliveries?.length ?? 0;
+  const clarificationHistory = detail?.clarification_history ?? (detail?.clarification ? [detail.clarification] : []);
 
   return (
     <div className="app-page dispatcher-page">
@@ -2281,6 +2339,191 @@ export function DispatcherPage({
 
                 <div className="dispatcher-grid">
                   <section className="dispatcher-card">
+                    <h3>Обновить статус</h3>
+                    <p>Клиент увидит эти заголовок и описание в истории статуса.</p>
+                    <form className="dispatcher-form" onSubmit={submitStatus}>
+                      <select value={statusValue} onChange={(event) => setStatusValue(event.target.value as RequestStatus)}>
+                        {[
+                          "awaiting_assignment",
+                          "technician_assigned",
+                          "visit_scheduled",
+                          "diagnostics",
+                          "waiting_for_parts",
+                          "repair_in_progress",
+                          "completed",
+                          "closed",
+                          "cancelled",
+                        ].map((status) => (
+                          <option key={status} value={status}>
+                            {statusLabel(status as RequestStatus)}
+                          </option>
+                        ))}
+                      </select>
+                      <input value={statusTitle} onChange={(event) => setStatusTitle(event.target.value)} placeholder="Заголовок для клиента" required />
+                      <textarea value={statusDescription} onChange={(event) => setStatusDescription(event.target.value)} placeholder="Описание для клиента" required rows={2} />
+                      <button className="submit-button" type="submit">Обновить статус</button>
+                    </form>
+                  </section>
+
+                  <section className="dispatcher-card">
+                    <h3>Вопрос клиенту</h3>
+                    {detail.clarification ? (
+                      <p>
+                        {detail.clarification.question}
+                        {detail.clarification.answer ? ` Ответ: ${detail.clarification.answer}` : ""}
+                      </p>
+                    ) : (
+                      <p>Открытых уточнений нет.</p>
+                    )}
+                    <form className="dispatcher-form" onSubmit={submitQuestion}>
+                      <textarea value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Новый вопрос клиенту" required rows={3} />
+                      <button className="submit-button" type="submit">Задать вопрос клиенту</button>
+                    </form>
+                    <details className="customer-thread">
+                      <summary>Переписка с клиентом</summary>
+                      <div className="customer-thread-list">
+                        {clarificationHistory.length ? (
+                          clarificationHistory.map((item) => (
+                            <div className="customer-thread-pair" key={item.question_id}>
+                              <article className="customer-message staff-message">
+                                <strong>Вопрос сотрудника</strong>
+                                <p>{item.question}</p>
+                              </article>
+                              {item.answer ? (
+                                <article className="customer-message customer-message-answer">
+                                  <strong>Ответ клиента</strong>
+                                  <p>{item.answer}</p>
+                                  {item.answered_at ? (
+                                    <time dateTime={item.answered_at}>{formatCompactDateTime(item.answered_at)}</time>
+                                  ) : null}
+                                </article>
+                              ) : (
+                                <small>Ответ клиента еще не получен.</small>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <small>Переписки по уточнениям пока нет.</small>
+                        )}
+                      </div>
+                    </details>
+                  </section>
+
+                  <section className="dispatcher-card appointment-card visit-card">
+                    <div className="dispatcher-card-heading">
+                      <h3>Визит</h3>
+                      {detail.appointment ? <span>{appointmentStatusLabel(detail.appointment.status)}</span> : null}
+                    </div>
+                    <div className="visit-current">
+                      <div>
+                        <span>Мастер</span>
+                        <strong>
+                          {detail.assignment.technician_name || detail.appointment?.technician_identifier || "Не назначен"}
+                        </strong>
+                        <small>
+                          {detail.assignment.technician_phone || detail.appointment?.technician_identifier || "Выберите мастера и окно визита."}
+                        </small>
+                      </div>
+                      <div>
+                        <span>Окно</span>
+                        <strong>{detail.appointment?.window_label || detail.assignment.visit_window || "Не создано"}</strong>
+                        <small>
+                          {detail.appointment
+                            ? `${formatCompactDateTime(detail.appointment.starts_at)} - ${formatCompactDateTime(detail.appointment.ends_at)}`
+                            : detail.assignment.visit_window
+                              ? "Окно из назначения, без точного интервала расписания"
+                              : "Укажите дату и время ниже."}
+                        </small>
+                      </div>
+                    </div>
+                    <div className="visit-workspace">
+                      <div className="visit-panel">
+                        <strong>Мастер и первичное окно</strong>
+                        <form className="dispatcher-form" onSubmit={submitAssignment}>
+                          <label className="technician-picker">
+                            <span>Мастер</span>
+                            <select
+                              aria-label="Кандидат мастера"
+                              value={technicianName}
+                              onChange={(event) => selectTechnicianCandidateByUsername(event.target.value)}
+                            >
+                              <option value="">Выберите мастера из списка</option>
+                              {technicianCandidates.items.map((candidate) => (
+                                <option key={candidate.username} value={candidate.username}>
+                                  {candidate.display_name} · {candidate.username}
+                                  {candidate.phone ? ` · ${candidate.phone}` : ""}
+                                </option>
+                              ))}
+                            </select>
+                            {technicianCandidates.items.length ? (
+                              <small>
+                                {technicianName
+                                  ? technicianCandidates.items.find((candidate) => candidate.username === technicianName)?.phone ?? "Телефон не указан"
+                                  : "Список содержит активных сотрудников с ролью technician."}
+                              </small>
+                            ) : (
+                              <small>Активных сотрудников с ролью technician пока нет.</small>
+                            )}
+                          </label>
+                          <input value={technicianName} onChange={(event) => setTechnicianName(event.target.value)} placeholder="Логин мастера" required />
+                          <input value={technicianPhone} onChange={(event) => setTechnicianPhone(event.target.value)} placeholder="Телефон мастера" />
+                          <input value={technicianRegion} onChange={(event) => setTechnicianRegion(event.target.value)} placeholder="Регион" />
+                          <input value={visitWindow} onChange={(event) => setVisitWindow(event.target.value)} placeholder="Окно визита" />
+                          <button className="submit-button" type="submit">Назначить мастера</button>
+                        </form>
+                      </div>
+                      <div className="visit-panel">
+                        <strong>Точное расписание</strong>
+                        <form className="dispatcher-form compact-form" onSubmit={submitAppointment}>
+                          <input value={appointmentTechnician} onChange={(event) => setAppointmentTechnician(event.target.value)} placeholder="Логин мастера" required />
+                          <input value={appointmentName} onChange={(event) => setAppointmentName(event.target.value)} placeholder="Имя для расписания" />
+                          <input value={appointmentStart} onChange={(event) => setAppointmentStart(event.target.value)} aria-label="Начало визита" required type="datetime-local" />
+                          <input value={appointmentEnd} onChange={(event) => setAppointmentEnd(event.target.value)} aria-label="Конец визита" required type="datetime-local" />
+                          <input value={appointmentLabel} onChange={(event) => setAppointmentLabel(event.target.value)} placeholder="Метка окна" />
+                          <button className="submit-button" type="submit">{detail.appointment ? "Создать новое окно" : "Создать визит"}</button>
+                        </form>
+                        {detail.appointment ? (
+                          <>
+                            <form className="dispatcher-form compact-form" onSubmit={submitReschedule}>
+                              <input value={rescheduleStart} onChange={(event) => setRescheduleStart(event.target.value)} aria-label="Новое начало визита" required type="datetime-local" />
+                              <input value={rescheduleEnd} onChange={(event) => setRescheduleEnd(event.target.value)} aria-label="Новый конец визита" required type="datetime-local" />
+                              <input value={rescheduleLabel} onChange={(event) => setRescheduleLabel(event.target.value)} placeholder="Новая метка" />
+                              <input value={rescheduleReason} onChange={(event) => setRescheduleReason(event.target.value)} placeholder="Причина переноса" />
+                              <button className="submit-button" type="submit">Перенести визит</button>
+                            </form>
+                            <form className="dispatcher-form compact-form" onSubmit={submitCancelAppointment}>
+                              <input value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Причина отмены" />
+                              <button className="secondary-status-button" type="submit">Отменить визит</button>
+                            </form>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="dispatcher-card">
+                    <h3>Внутренние заметки</h3>
+                    <div className="internal-note-list">
+                      {detail.internal_notes.length ? (
+                        detail.internal_notes.map((note) => (
+                          <article key={`${note.created_at}-${note.note}`}>
+                            <p>{note.note}</p>
+                            <small>
+                              {note.actor} · <time dateTime={note.created_at}>{formatCompactDateTime(note.created_at)}</time>
+                            </small>
+                          </article>
+                        ))
+                      ) : (
+                        <p>Заметок пока нет.</p>
+                      )}
+                    </div>
+                    <form className="dispatcher-form" onSubmit={submitInternalNote}>
+                      <textarea value={internalNote} onChange={(event) => setInternalNote(event.target.value)} placeholder="Внутренняя заметка" required rows={3} />
+                      <button className="submit-button" type="submit">Сохранить заметку</button>
+                    </form>
+                  </section>
+
+                  <section className="dispatcher-card appointment-card history-card">
                     <div className="dispatcher-card-heading">
                       <h3>Последние события</h3>
                       <span>{detail.timeline.length}</span>
@@ -2334,155 +2577,6 @@ export function DispatcherPage({
                         </div>
                       </details>
                     ) : null}
-                  </section>
-
-                  <section className="dispatcher-card">
-                    <h3>Вопрос клиенту</h3>
-                    {detail.clarification ? (
-                      <p>
-                        {detail.clarification.question}
-                        {detail.clarification.answer ? ` Ответ: ${detail.clarification.answer}` : ""}
-                      </p>
-                    ) : (
-                      <p>Открытых уточнений нет.</p>
-                    )}
-                    <form className="dispatcher-form" onSubmit={submitQuestion}>
-                      <textarea value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Новый вопрос клиенту" required rows={3} />
-                      <button className="submit-button" type="submit">Задать вопрос клиенту</button>
-                    </form>
-                  </section>
-
-                  <section className="dispatcher-card">
-                    <h3>Обновить статус</h3>
-                    <p>Клиент увидит эти заголовок и описание в истории статуса.</p>
-                    <form className="dispatcher-form" onSubmit={submitStatus}>
-                      <select value={statusValue} onChange={(event) => setStatusValue(event.target.value as RequestStatus)}>
-                        {[
-                          "awaiting_assignment",
-                          "technician_assigned",
-                          "visit_scheduled",
-                          "diagnostics",
-                          "waiting_for_parts",
-                          "repair_in_progress",
-                          "completed",
-                          "closed",
-                          "cancelled",
-                        ].map((status) => (
-                          <option key={status} value={status}>
-                            {statusLabel(status as RequestStatus)}
-                          </option>
-                        ))}
-                      </select>
-                      <input value={statusTitle} onChange={(event) => setStatusTitle(event.target.value)} placeholder="Заголовок для клиента" required />
-                      <textarea value={statusDescription} onChange={(event) => setStatusDescription(event.target.value)} placeholder="Описание для клиента" required rows={2} />
-                      <button className="submit-button" type="submit">Обновить статус</button>
-                    </form>
-                  </section>
-
-                  <section className="dispatcher-card">
-                    <h3>Назначение</h3>
-                    <p>
-                      {detail.assignment.technician_name
-                        ? `${detail.assignment.technician_name}${detail.assignment.technician_phone ? ` · ${detail.assignment.technician_phone}` : ""}`
-                        : "Мастер еще не назначен."}
-                    </p>
-                    {detail.assignment.visit_window ? <p>{detail.assignment.visit_window}</p> : null}
-	                    <div className="technician-candidates" aria-label="Кандидаты мастеров">
-	                      <strong>Кандидаты мастеров</strong>
-	                      {technicianCandidates.items.length ? (
-	                        technicianCandidates.items.map((candidate) => (
-	                          <button
-	                            key={candidate.username}
-	                            type="button"
-	                            onClick={() => selectTechnicianCandidate(candidate)}
-	                          >
-	                            <span>{candidate.display_name}</span>
-	                            <small>
-	                              {candidate.username}
-	                              {candidate.phone ? ` · ${candidate.phone}` : ""}
-	                            </small>
-	                          </button>
-	                        ))
-	                      ) : (
-	                        <small>Активных сотрудников с ролью technician пока нет.</small>
-	                      )}
-	                    </div>
-                    <form className="dispatcher-form" onSubmit={submitAssignment}>
-                      <input value={technicianName} onChange={(event) => setTechnicianName(event.target.value)} placeholder="Логин мастера" required />
-                      <input value={technicianPhone} onChange={(event) => setTechnicianPhone(event.target.value)} placeholder="Телефон мастера" />
-                      <input value={technicianRegion} onChange={(event) => setTechnicianRegion(event.target.value)} placeholder="Регион" />
-                      <input value={visitWindow} onChange={(event) => setVisitWindow(event.target.value)} placeholder="Окно визита" />
-                      <button className="submit-button" type="submit">Назначить мастера</button>
-                    </form>
-                  </section>
-
-                  <section className="dispatcher-card appointment-card">
-                    <div className="dispatcher-card-heading">
-                      <h3>Расписание визита</h3>
-                      {detail.appointment ? <span>{appointmentStatusLabel(detail.appointment.status)}</span> : null}
-                    </div>
-                    {detail.appointment ? (
-                      <div className="appointment-current">
-                        <strong>{detail.appointment.window_label}</strong>
-                        <span>{detail.appointment.technician_identifier}</span>
-                        <small>
-                          {formatCompactDateTime(detail.appointment.starts_at)} - {formatCompactDateTime(detail.appointment.ends_at)}
-                        </small>
-                      </div>
-                    ) : detail.assignment.visit_window ? (
-                      <div className="appointment-current">
-                        <strong>{detail.assignment.visit_window}</strong>
-                        <span>{detail.assignment.technician_name || "Мастер назначен"}</span>
-                        <small>Окно из назначения, без точного интервала расписания</small>
-                      </div>
-                    ) : (
-                      <p>Структурированное окно визита еще не создано.</p>
-                    )}
-                    <form className="dispatcher-form compact-form" onSubmit={submitAppointment}>
-                      <input value={appointmentTechnician} onChange={(event) => setAppointmentTechnician(event.target.value)} placeholder="Логин мастера" required />
-                      <input value={appointmentName} onChange={(event) => setAppointmentName(event.target.value)} placeholder="Имя для расписания" />
-                      <input value={appointmentStart} onChange={(event) => setAppointmentStart(event.target.value)} aria-label="Начало визита" required type="datetime-local" />
-                      <input value={appointmentEnd} onChange={(event) => setAppointmentEnd(event.target.value)} aria-label="Конец визита" required type="datetime-local" />
-                      <input value={appointmentLabel} onChange={(event) => setAppointmentLabel(event.target.value)} placeholder="Метка окна" />
-                      <button className="submit-button" type="submit">{detail.appointment ? "Создать новое окно" : "Создать визит"}</button>
-                    </form>
-                    {detail.appointment ? (
-                      <>
-                        <form className="dispatcher-form compact-form" onSubmit={submitReschedule}>
-                          <input value={rescheduleStart} onChange={(event) => setRescheduleStart(event.target.value)} aria-label="Новое начало визита" required type="datetime-local" />
-                          <input value={rescheduleEnd} onChange={(event) => setRescheduleEnd(event.target.value)} aria-label="Новый конец визита" required type="datetime-local" />
-                          <input value={rescheduleLabel} onChange={(event) => setRescheduleLabel(event.target.value)} placeholder="Новая метка" />
-                          <input value={rescheduleReason} onChange={(event) => setRescheduleReason(event.target.value)} placeholder="Причина переноса" />
-                          <button className="submit-button" type="submit">Перенести визит</button>
-                        </form>
-                        <form className="dispatcher-form compact-form" onSubmit={submitCancelAppointment}>
-                          <input value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Причина отмены" />
-                          <button className="secondary-status-button" type="submit">Отменить визит</button>
-                        </form>
-                      </>
-                    ) : null}
-                  </section>
-
-                  <section className="dispatcher-card">
-                    <h3>Внутренние заметки</h3>
-                    <div className="internal-note-list">
-                      {detail.internal_notes.length ? (
-                        detail.internal_notes.map((note) => (
-                          <article key={`${note.created_at}-${note.note}`}>
-                            <p>{note.note}</p>
-                            <small>
-                              {note.actor} · <time dateTime={note.created_at}>{formatCompactDateTime(note.created_at)}</time>
-                            </small>
-                          </article>
-                        ))
-                      ) : (
-                        <p>Заметок пока нет.</p>
-                      )}
-                    </div>
-                    <form className="dispatcher-form" onSubmit={submitInternalNote}>
-                      <textarea value={internalNote} onChange={(event) => setInternalNote(event.target.value)} placeholder="Внутренняя заметка" required rows={3} />
-                      <button className="submit-button" type="submit">Сохранить заметку</button>
-                    </form>
                   </section>
                 </div>
               </section>

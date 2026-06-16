@@ -55,11 +55,14 @@ import {
   buildTelegramOptInPayload,
   resolveApiBaseUrl,
   resolveStaffLandingPath,
+  replaceStatusLookupRoute,
+  replaceStatusRoute,
   getStoredStaffSession,
   isStaffAuthFailureStatus,
   staffAuthHeaders,
   filterDispatcherItems,
   normalizeRequestNumber,
+  statusLookupValueFromPath,
   statusPathFromRequestNumber,
   telegramOptInPathFromRequestNumber,
   getNextFormStep,
@@ -114,6 +117,20 @@ describe("App", () => {
       answer: null,
       answered_at: null,
     },
+    clarification_history: [
+      {
+        question_id: 3,
+        question: "Когда появилась протечка?",
+        answer: "Сегодня утром.",
+        answered_at: "2026-06-05 10:18:00",
+      },
+      {
+        question_id: 4,
+        question: "Пришлите фото шильдика с моделью кофемашины.",
+        answer: null,
+        answered_at: null,
+      },
+    ],
     assignment: {
       technician_name: "Pavel Sokolov",
       technician_phone: "+7 999 222-33-44",
@@ -351,6 +368,10 @@ describe("App", () => {
   it("builds public status and notification API paths", () => {
     assert.equal(normalizeRequestNumber(" cfx-20260605-000001 "), "CFX-20260605-000001");
     assert.equal(statusPathFromRequestNumber("CFX-20260605-000001"), "/status/CFX-20260605-000001");
+    assert.equal(statusLookupValueFromPath("/status/CFX-20260605-000001"), "CFX-20260605-000001");
+    assert.equal(statusLookupValueFromPath("/status/status_aBc123"), "status_aBc123");
+    assert.equal(statusLookupValueFromPath("/status"), null);
+    assert.equal(statusLookupValueFromPath("/contacts"), null);
     assert.equal(
       buildStatusLookupPath(" cfx-20260605-000001 "),
       "/service-requests/CFX-20260605-000001/status",
@@ -367,6 +388,42 @@ describe("App", () => {
     assert.deepEqual(buildTelegramOptInPayload(" @anna_fix "), {
       telegram: "@anna_fix",
     });
+  });
+
+  it("keeps the looked-up public status route refreshable", () => {
+    const previousWindow = globalThis.window;
+    const calls: unknown[][] = [];
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        location: {
+          pathname: "/status",
+        },
+        history: {
+          replaceState: (...args: unknown[]) => calls.push(args),
+        },
+      },
+    });
+
+    try {
+      replaceStatusRoute(" cfx-20260605-000001 ");
+      assert.deepEqual(calls, [[null, "", "/status/CFX-20260605-000001"]]);
+
+      calls.length = 0;
+      Object.defineProperty(globalThis.window, "location", {
+        configurable: true,
+        value: {
+          pathname: "/status/CFX-20260605-000001",
+        },
+      });
+      replaceStatusRoute("CFX-20260605-000001");
+      assert.deepEqual(calls, []);
+
+      replaceStatusLookupRoute();
+      assert.deepEqual(calls, [[null, "", "/status"]]);
+    } finally {
+      Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
+    }
   });
 
   it("uses the API port fallback for local Vite development", () => {
@@ -788,10 +845,12 @@ describe("App", () => {
     assert.match(html, /Pavel Sokolov/);
     assert.match(html, /\+7 999 222-33-44/);
     assert.match(html, /Завтра 14:00-16:00/);
-    assert.match(html, /Кандидаты мастеров/);
+    assert.match(html, /Выберите мастера из списка/);
+    assert.match(html, /aria-label="Кандидат мастера"/);
     assert.match(html, /Dispatcher/);
     assert.match(html, /dispatcher@coffeefix.local/);
     assert.match(html, /\+7 999 111-22-33/);
+    assert.doesNotMatch(html, /class="technician-candidates"/);
     assert.doesNotMatch(html, /Sergey Morozov/);
     assert.match(html, /Клиент просит звонить после 12:00./);
     assert.match(html, /Обновить статус/);
@@ -799,7 +858,16 @@ describe("App", () => {
     assert.match(html, /Заголовок для клиента/);
     assert.match(html, /Описание для клиента/);
     assert.match(html, /Задать вопрос клиенту/);
+    assert.match(html, /Переписка с клиентом/);
+    assert.match(html, /Вопрос сотрудника/);
+    assert.match(html, /Когда появилась протечка/);
+    assert.match(html, /Ответ клиента/);
+    assert.match(html, /Сегодня утром/);
+    assert.match(html, />Визит</);
     assert.match(html, /Назначить мастера/);
+    assert.match(html, /Создать визит/);
+    assert.doesNotMatch(html, />Назначение</);
+    assert.doesNotMatch(html, />Расписание визита</);
     assert.match(html, /Сохранить заметку/);
     assert.match(html, /AI-подсказки/);
     assert.match(html, /Нажмите, чтобы открыть AI-ассистента/);
@@ -815,6 +883,20 @@ describe("App", () => {
     assert.match(html, /Остальные события \(1\)/);
     assert.match(html, /Технический лог/);
     assert.doesNotMatch(html, /class="notification-delivery-panel"/);
+
+    const aiIndex = html.indexOf("AI-подсказки");
+    const statusIndex = html.indexOf("Обновить статус");
+    const questionIndex = html.indexOf("Вопрос клиенту");
+    const visitIndex = html.indexOf(">Визит<");
+    const notesIndex = html.indexOf("Внутренние заметки");
+    const eventsIndex = html.indexOf("Последние события");
+
+    assert.ok(aiIndex > 0);
+    assert.ok(aiIndex < statusIndex);
+    assert.ok(statusIndex < questionIndex);
+    assert.ok(questionIndex < visitIndex);
+    assert.ok(visitIndex < notesIndex);
+    assert.ok(notesIndex < eventsIndex);
   });
 
   it("renders dispatcher schedule and appointment controls", () => {
@@ -873,6 +955,8 @@ describe("App", () => {
     assert.match(html, /Создать новое окно/);
     assert.match(html, /Перенести визит/);
     assert.match(html, /Отменить визит/);
+    assert.doesNotMatch(html, />Назначение</);
+    assert.doesNotMatch(html, />Расписание визита</);
     assert.match(html, /Логин мастера/);
     assert.doesNotMatch(html, /Начало ISO/);
     assert.doesNotMatch(html, /Конец ISO/);
@@ -1397,6 +1481,20 @@ describe("App", () => {
               actor: "dispatcher",
               created_at: "2026-06-05 10:05:00",
             },
+            {
+              status: "visit_scheduled",
+              title: "Визит запланирован",
+              description: "Диспетчер согласовал окно визита.",
+              actor: "dispatcher",
+              created_at: "2026-06-05 11:00:00",
+            },
+            {
+              status: "repair_in_progress",
+              title: "Ремонт в работе",
+              description: "Мастер начал ремонт.",
+              actor: "technician",
+              created_at: "2026-06-05 12:00:00",
+            },
           ],
           clarification: {
             question_id: 7,
@@ -1417,6 +1515,11 @@ describe("App", () => {
     assert.doesNotMatch(html, /placeholder="CFX-20260605-000001"/);
     assert.match(html, /Ждет уточнения/);
     assert.match(html, /Jura E8/);
+    assert.match(html, /class="timeline status-visible-timeline"/);
+    assert.match(html, /Визит запланирован/);
+    assert.match(html, /Ремонт в работе/);
+    assert.match(html, /Остальные события \(2\)/);
+    assert.match(html, /class="status-hidden-events"/);
     assert.match(html, /Нужно уточнить симптомы/);
     assert.match(html, /Вопрос диспетчера/);
     assert.match(html, /Пришлите, пожалуйста, код ошибки на дисплее./);

@@ -148,6 +148,38 @@ def test_asking_clarification_adds_visible_timeline_event() -> None:
     assert body["timeline"][-1]["actor"] == "dispatcher"
 
 
+def test_dispatcher_detail_returns_full_clarification_history() -> None:
+    repository = ServiceRequestRepository.in_memory()
+    request_number = asyncio.run(create_request(repository))
+    first_id = repository.ask_clarification(
+        request_number=request_number,
+        question="Когда появилась протечка?",
+    )
+    repository.record_customer_answer(request_number, first_id, "Сегодня утром.")
+    second_id = repository.ask_clarification(
+        request_number=request_number,
+        question="Есть ли ошибка на дисплее?",
+    )
+
+    detail = repository.get_dispatcher_request(request_number)
+
+    assert detail["clarification"]["question_id"] == second_id
+    assert detail["clarification_history"] == [
+        {
+            "question_id": first_id,
+            "question": "Когда появилась протечка?",
+            "answer": "Сегодня утром.",
+            "answered_at": detail["clarification_history"][0]["answered_at"],
+        },
+        {
+            "question_id": second_id,
+            "question": "Есть ли ошибка на дисплее?",
+            "answer": None,
+            "answered_at": None,
+        },
+    ]
+
+
 def test_telegram_opt_in_returns_token_and_link_contract() -> None:
     repository = ServiceRequestRepository.in_memory()
     request_number = asyncio.run(create_request(repository))

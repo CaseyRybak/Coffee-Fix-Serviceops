@@ -1133,6 +1133,15 @@ class ServiceRequestRepository:
             """,
             (request["id"],),
         ).fetchone()
+        clarification_history = self._connection.execute(
+            """
+            SELECT id, question, answer, answered_at
+            FROM clarification_questions
+            WHERE service_request_id = ?
+            ORDER BY id
+            """,
+            (request["id"],),
+        ).fetchall()
         notes = self._connection.execute(
             """
             SELECT note, actor, created_at
@@ -1178,6 +1187,15 @@ class ServiceRequestRepository:
                 "answer": clarification["answer"],
                 "answered_at": clarification["answered_at"],
             },
+            "clarification_history": [
+                {
+                    "question_id": item["id"],
+                    "question": item["question"],
+                    "answer": item["answer"],
+                    "answered_at": item["answered_at"],
+                }
+                for item in clarification_history
+            ],
             "assignment": {
                 "technician_name": request["assigned_technician_name"],
                 "technician_phone": request["assigned_technician_phone"],
@@ -2465,6 +2483,15 @@ class PostgresServiceRequestRepository:
             """,
             (request["id"],),
         ).fetchone()
+        clarification_history = self._connect().execute(
+            """
+            SELECT id, question, answer, answered_at
+            FROM clarification_questions
+            WHERE service_request_id = %s
+            ORDER BY id
+            """,
+            (request["id"],),
+        ).fetchall()
         notes = self._connect().execute(
             """
             SELECT note, actor, created_at
@@ -2512,6 +2539,17 @@ class PostgresServiceRequestRepository:
                 if clarification["answered_at"] is None
                 else self._format_timestamp(clarification["answered_at"]),
             },
+            "clarification_history": [
+                {
+                    "question_id": item["id"],
+                    "question": item["question"],
+                    "answer": item["answer"],
+                    "answered_at": None
+                    if item["answered_at"] is None
+                    else self._format_timestamp(item["answered_at"]),
+                }
+                for item in clarification_history
+            ],
             "assignment": {
                 "technician_name": request["assigned_technician_name"],
                 "technician_phone": request["assigned_technician_phone"],
