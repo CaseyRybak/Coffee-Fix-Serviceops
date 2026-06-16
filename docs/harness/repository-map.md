@@ -71,6 +71,7 @@
 - `docs/review/documentation-audit-2026-06-10.md`: documentation consistency and quality audit after Phase 13.
 - `docs/review/documentation-audit-2026-06-15.md`: documentation readiness audit before Phase 14 implementation.
 - `docs/review/documentation-audit-2026-06-15-current-state.md`: current-state documentation audit after Phase 14 and AI/RAG fallback hardening.
+- `docs/review/documentation-audit-2026-06-16.md`: current-state documentation audit after Phase 16 and post-phase production hardening.
 
 ## Workflow Skills
 
@@ -94,13 +95,13 @@
 
 - `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, Telegram opt-in/linking contracts, notification callbacks, dispatcher routes, technician routes, inventory routes, staff admin routes, knowledge-base RAG routes, AI suggestion routes, sqlite test persistence, and PostgreSQL Compose persistence.
 - `apps/api/src/serviceops_api/ai_agents`: AI suggestion models, prompt assembly with RAG relevance filtering, deterministic and OpenAI-compatible providers, knowledge-gap fallback behavior, sqlite/PostgreSQL repositories, dispatcher use cases, and protected routes.
-- `apps/api/src/serviceops_api/service_requests`: service request intake/status/dispatcher API, use cases, models, sqlite repository, PostgreSQL repository, and repository factory.
+- `apps/api/src/serviceops_api/service_requests`: service request intake/status/dispatcher API, use cases, models, sqlite repository, PostgreSQL repository with request-number sequencing and appointment conflict handling, and repository factory.
 - `apps/api/src/serviceops_api/technicians`: technician assigned-visit models, protected routes, and workflow use cases for diagnosis, repair result, and parts used.
-- `apps/api/src/serviceops_api/inventory`: parts catalog models, sqlite/PostgreSQL repositories, inventory use cases, protected inventory routes, and stock decrement behavior.
+- `apps/api/src/serviceops_api/inventory`: parts catalog models, sqlite/PostgreSQL repositories, inventory use cases, protected inventory routes, stock decrement behavior, reservations, compatibility records, and PostgreSQL row-locking guards for stock/reservation mutations.
 - `apps/api/src/serviceops_api/staff_management`: persisted staff account models, sqlite/PostgreSQL repositories, admin account lifecycle use cases, local persisted staff seed command, audit records, and protected admin routes.
 - `apps/api/src/serviceops_api/operations`: migration and first-admin bootstrap commands for production operations.
 - `apps/api/src/serviceops_api/knowledge_base`: knowledge document models, chunking, deterministic and OpenAI-compatible embeddings, sqlite/PostgreSQL repositories, ingestion and retrieval use cases, API routes, curated seed repair documents, and RAG evaluation fixtures.
-- `apps/web`: React/Vite public intake form, request-number success state, public status page, dispatcher workspace, dispatcher AI suggestion panel, technician workspace, inventory workspace, and admin staff-management workspace.
+- `apps/web`: React/Vite public intake form, request-number success state, public status page, dispatcher workspace, dispatcher AI suggestion panel, technician workspace, inventory workspace, admin staff-management workspace, and expired staff-session redirects.
 - `apps/worker`: Celery worker shell and knowledge-base embedding task boundary with deterministic/live-compatible provider selection.
 - `apps/telegram-bot`: aiogram bot for `/start <token>` Telegram opt-in linking.
 - `packages/shared-kernel`: shared domain primitives.
@@ -111,7 +112,7 @@
 
 - `.env.example`: local environment template.
 - `docker-compose.yml`: localhost-only local PostgreSQL, Redis, API using PostgreSQL persistence, web on port 3000, worker, and optional Telegram bot profile.
-- `docker-compose.production.yml`: production-oriented API, web, worker, Telegram bot, PostgreSQL, Redis, and n8n Compose definition.
+- `docker-compose.production.yml`: production-oriented API, web, worker, Telegram bot, PostgreSQL, Redis, and n8n Compose definition; n8n is routed through Dokploy/reverse proxy instead of direct port publication.
 - `apps/api/Dockerfile`: API container definition.
 - `apps/web/Dockerfile`: web container definition.
 - `apps/worker/Dockerfile`: worker container definition.

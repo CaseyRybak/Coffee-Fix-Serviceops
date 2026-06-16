@@ -17,7 +17,8 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 16:
 - Operational hardening implementation artifacts: structured safe operational log contexts for API, worker, and Telegram bot; staff-auth audit expansion; request, dispatcher, notification, AI, embedding, and Telegram opt-in trace logs; restore dry-run procedure; operational diagnostics guide; incident response checklist; and launch evidence updates.
 - Scheduling depth artifacts: structured appointment window persistence, dispatcher create/reschedule/cancel scheduling APIs, technician overlap capacity checks, dispatcher and technician schedule views, technician-visible appointment timing, customer-safe public appointment snapshots, and request timeline events for scheduling changes.
 - Inventory reservation and catalog-control artifacts: request-linked part reservations, reservation release/adjustment, stock movement audit records, available/reserved/on-hand stock visibility, low-stock thresholds, dispatcher read-only low-stock visibility, technician consumption of reserved parts, structured factual part keys, duplicate catalog protection, and exact-model/series/generic-group compatibility records.
-- First real Aeza VPS/Dokploy test deployment evidence: Docker/Dokploy installed, `production` branch deployed, API/web/PostgreSQL/Redis healthy, migrations and first-admin bootstrap completed, n8n Cloud notification path verified through Telegram and backend delivery callback, PostgreSQL backup/restore drill recorded, and worker Redis broker dependency fixed/redeployed at `f59989c`.
+- Post-Phase-16 production hardening: atomic PostgreSQL request-number sequence, PostgreSQL appointment overlap exclusion, scheduling deadlock-to-conflict handling, row locks for stock/reservation mutations, safer notification delivery rowcount logging, default production Telegram bot service, no direct n8n port publication, and frontend redirect for expired staff sessions.
+- First real Aeza VPS/Dokploy test deployment evidence: Docker/Dokploy installed, `production` branch deployed, API/web/PostgreSQL/Redis healthy, migrations and first-admin bootstrap completed, n8n Cloud notification path verified through Telegram and backend delivery callback, PostgreSQL backup/restore drill recorded, and worker Redis broker dependency fixed/redeployed.
 
 ## Active Focus
 
@@ -29,7 +30,7 @@ Choose the next approved implementation phase and create its detailed implementa
 
 1. Define the next approved phase or backlog slice after inventory reservations.
 2. Before public launch, configure domains and HTTPS for web/API/Dokploy, then close temporary direct test ports that should not remain public.
-3. Rerun staff-route smoke with disposable staff credentials, review Telegram bot opt-in runtime if the optional bot profile is part of launch, and repeat deployment smoke checks after the real database transfer.
+3. Rerun staff-route smoke with disposable staff credentials, review Telegram bot opt-in runtime after each production deploy, and repeat deployment smoke checks after the real database transfer.
 4. Rotate setup-exposed secrets such as the n8n MCP API key before public launch.
 5. Keep repository docs, tests, production Compose config, and operations scripts passing after changes.
 
@@ -44,6 +45,7 @@ Choose the next approved implementation phase and create its detailed implementa
 - Documentation audit after Phase 13: `docs/review/documentation-audit-2026-06-10.md`
 - Documentation audit before Phase 14: `docs/review/documentation-audit-2026-06-15.md`
 - Documentation audit after Phase 14: `docs/review/documentation-audit-2026-06-15-current-state.md`
+- Documentation audit after Phase 16 and production hardening: `docs/review/documentation-audit-2026-06-16.md`
 - Aeza VPS launch smoke evidence: `docs/operations/launch-smoke-evidence-2026-06-15-vps.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`
 - Phase 10 review: `docs/review/phase-10-review.md`
@@ -79,6 +81,9 @@ Choose the next approved implementation phase and create its detailed implementa
 - Staff workspaces are role-protected; public navigation still does not expose staff login, dispatcher, admin, technician, or inventory routes.
 - Production deployment uses `docker-compose.production.yml`; local Compose remains localhost-only.
 - PostgreSQL and Redis stay private in production; web, API, and n8n are routed through Dokploy or the reverse proxy.
+- Production PostgreSQL request numbers use `service_request_number_seq`; sqlite local/test persistence keeps lightweight local counters.
+- PostgreSQL appointment capacity is enforced by an exclusion constraint, and scheduling conflicts/deadlocks are surfaced as dispatcher-safe conflicts.
+- PostgreSQL inventory reserve/release/consume paths lock stock and reservation rows before mutation.
 - n8n workflow records are operational artifacts. Phase 12 created live n8n workflows and repository exports; backend webhook emission and delivery-result persistence are implemented.
 - Production staff bootstrap uses `python -m serviceops_api.operations.bootstrap_admin`; local seed users remain disabled outside local/dev/test.
 - AI and embedding providers default to deterministic mode for local development and tests; OpenAI-compatible live adapters are configurable for production through secret-backed environment variables.

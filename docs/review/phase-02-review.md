@@ -57,6 +57,10 @@ Independent reviewer for Phase 02 service request intake, following `docs/review
 - Suggested follow-up slice: replace local sqlite persistence with managed migration execution when the deployment/runtime phase introduces database migration tooling.
 - Documentation updates needed: none.
 
+## Post-Review Update: 2026-06-16
+
+- The production PostgreSQL request-number concurrency risk is resolved by migration `0011_request_number_sequence.sql` and `PostgresServiceRequestRepository.next_sequence()`, which uses `nextval('service_request_number_seq')` instead of counting existing rows. Sqlite local/test persistence remains lightweight and is not the production allocator.
+
 ## Final Recommendation
 
 Proceed to Phase 03 planning. Phase 02 satisfies the required intake API, persistence, request number, public form, success state, validation coverage, and project status updates.

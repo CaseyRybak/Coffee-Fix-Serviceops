@@ -15,7 +15,7 @@ This domain tracks parts and consumables relevant to coffee machine repair.
 
 AI parts suggestions are inventory concepts only. They can name likely parts, explain compatibility assumptions, and help a dispatcher prepare, but they do not check live stock, create reservations, consume reservations, or modify a parts catalog.
 
-Catalog and stock count arrive through the inventory workflow. Structured compatibility records and request-linked reservations are owned by the later Phase 16 inventory-reservations slice.
+Catalog and stock count arrive through the inventory workflow. Structured compatibility records and request-linked reservations were introduced by the Phase 16 inventory-reservations slice.
 
 ## Phase 08 Inventory Basics
 
@@ -49,6 +49,7 @@ Reservation rules:
 - Reservation adjustment changes the active reserved quantity and records an audit movement.
 - Reservation release restores available stock and records an audit movement.
 - Technician parts usage consumes active reservations for the same request and part before consuming unreserved available stock.
+- PostgreSQL reserve/release/consume paths lock the relevant stock and reservation rows before mutation so concurrent operators do not oversell available stock.
 
 Stock visibility:
 

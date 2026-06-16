@@ -33,6 +33,7 @@ Capacity rule:
 
 - One technician can have only one active `scheduled` appointment for overlapping time windows.
 - Cancelled and historical rescheduled rows do not block capacity.
+- PostgreSQL enforces active appointment overlap with an exclusion constraint. Application checks still return early for normal conflicts, and PostgreSQL exclusion/unique/deadlock errors are mapped to dispatcher-safe scheduling conflicts.
 
 Scheduling status rules:
 

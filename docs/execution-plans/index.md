@@ -8,7 +8,7 @@ Before executing any phase, create a detailed implementation plan for that speci
 
 ## Active Phase
 
-- Backlog grooming: define the next approved phase or implementation slice after Phase 16.
+- Backlog grooming: define the next approved phase or implementation slice after Phase 16 and the post-phase production hardening fixes.
 
 The active phase points to the next phase ready for implementation planning or execution. `phases/` contains all phase slice maps, not only active work.
 

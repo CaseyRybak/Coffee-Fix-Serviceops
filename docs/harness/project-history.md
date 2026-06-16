@@ -27,6 +27,8 @@ This file preserves historical phase context that used to make `project_notes.md
 - 2026-06-15: Completed Phase 15 scheduling depth with structured appointments, dispatcher create/reschedule/cancel APIs, technician schedule visibility, customer-safe appointment snapshots, and scheduling review fixes.
 - 2026-06-15: Completed Phase 16 inventory reservations with request-linked reservations, stock movement audit records, low-stock visibility, part compatibility records, and technician reserved-parts consumption.
 - 2026-06-15: Recorded first Aeza VPS/Dokploy test deployment evidence, including API/web/PostgreSQL/Redis health, migrations, first-admin bootstrap, n8n callback path, backup, restore drill, and worker Redis dependency fix.
+- 2026-06-16: Hardened production paths after Phase 16 with atomic PostgreSQL request-number generation, appointment overlap exclusion and deadlock handling, row locks for inventory stock/reservation mutations, safer notification delivery rowcount logging, production Telegram bot default startup, no direct n8n port publication, and expired staff-session redirects in the web app.
+- 2026-06-16: Completed documentation audit after Phase 16 and post-phase production hardening, updating current-state entry points, review artifacts, domain boundaries, and repository checks.
 
 ## Historical Decisions
 
@@ -51,12 +53,13 @@ This file preserves historical phase context that used to make `project_notes.md
 - n8n can automate delivery and operational routing but must not own service-request state, staff identity, customer answers, inventory counts, or repair lifecycle transitions.
 - Production backups use PostgreSQL custom-format dumps with checksum files, and restore drills should run against a non-production database.
 - AI and embedding providers default to deterministic local/test mode; OpenAI-compatible live providers are enabled only through secret-backed environment variables.
+- PostgreSQL production paths use database-level concurrency guards where practical: request-number sequencing, appointment overlap exclusion, and row locks for stock/reservation mutations.
 
 ## Deferred Work Ledger
 
 - Binary attachment storage.
 - Full client accounts.
-- Full technician profiles, availability calendar, automatic matching, and rescheduling rules.
+- Full technician profiles, durable availability calendar, automatic matching, route optimization, and customer self-scheduling.
 - Warehouses, suppliers, purchase orders, barcode scanning, billing totals, and warranty stock handling.
 - Provider latency/error dashboards and external log shipping.
 - Public-launch readiness after VPS test deployment: domains, HTTPS, closure of temporary direct test ports, disposable staff-route smoke, Telegram bot runtime review, secret rotation, and repeat smoke checks after real database transfer.

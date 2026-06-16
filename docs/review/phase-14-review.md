@@ -78,12 +78,16 @@ Re-review result: no remaining blocking issues.
 - Dispatcher operational logs now include the authenticated username, but persisted request timeline/internal-note actor values still use the role label `dispatcher`. Per-user durable action history can be expanded in a later audit slice if needed.
 - Shared observability helpers remain duplicated across API, worker, and Telegram bot. Consolidation can wait until the logging contract settles further.
 
+## Post-Review Update: 2026-06-16
+
+- The notification delivery rowcount follow-up is resolved: `NotificationPublisher._publish()` now treats a missing delivery-attempt row as `outcome=skipped` with `reason=delivery_attempt_not_found`, with regression coverage in `apps/api/tests/test_notification_automation.py`.
+- Phase 15 scheduling depth and Phase 16 inventory reservations are now implemented and reviewed; they are no longer deferred active-phase work.
+
 ## Suggested Follow-Up Slice
 
-Keep Phase 15 scheduling depth and Phase 16 inventory reservations deferred. Suggested later operational follow-ups:
+Suggested later operational follow-ups still open after the 2026-06-16 update:
 
 - Centralize safe logging helpers in a shared package.
-- Add stricter delivery-record rowcount handling for unexpected notification persistence misses.
 - Expand per-user durable action history beyond staff auth/admin audit events.
 
 ## Documentation Updates

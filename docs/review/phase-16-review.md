@@ -69,12 +69,17 @@ Re-review result: no remaining blocking issues found.
 - Frontend tests cover render/path behavior for inventory reservations and compatibility; browser-level interaction coverage for reserve/release form flows can be added later.
 - Real production smoke evidence, restore dry-run evidence, and live provider/n8n/Telegram configuration remain launch-readiness work, not Phase 16 scope.
 
+## Post-Review Update: 2026-06-16
+
+- The PostgreSQL row-locking follow-up is resolved for current reservation workflows: stock and reservation rows are locked before reserve/release/consume mutations, with regression coverage in `apps/api/tests/test_repository_selection.py`. SQLite remains intentionally lighter for local/test use.
+- Aeza VPS/Dokploy test deployment evidence now records API/web/PostgreSQL/Redis health, migrations, first-admin bootstrap, n8n callback, backup, restore drill, and worker Redis broker fix. Public launch is still blocked on domains/HTTPS, direct test-port closure, disposable staff-route smoke, Telegram runtime review after deploy, setup-secret rotation, and real database transfer smoke checks.
+
 ## Suggested Follow-Up Slice
 
 Backlog grooming can choose the next approved slice. Good candidates:
 
-- Inventory consistency hardening: PostgreSQL row locking, stricter DB constraints, and clearer stock-movement delta semantics.
-- Operational launch evidence: real Dokploy/VPS smoke checks, restore dry-run evidence, and log trace captures.
+- Inventory consistency hardening: stricter SQLite/PostgreSQL constraint parity and clearer stock-movement delta semantics.
+- Operational launch evidence: public-domain HTTPS smoke checks, disposable staff-route smoke, Telegram runtime verification, repeated backup/restore evidence after real database transfer, and log trace captures.
 - Billing/estimates slice if product priority moves from service execution to commercial closure.
 
 ## Documentation Updates

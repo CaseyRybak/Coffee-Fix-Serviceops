@@ -62,11 +62,14 @@ Regression coverage added:
 - Frontend interaction tests can be expanded to cover candidate click -> assignment payload -> technician/public visibility.
 - Appointment creation remains a structured scheduling action requiring start/end datetime. Legacy `Назначение` remains compatibility metadata plus customer-safe window fallback.
 
+## Post-Review Update: 2026-06-16
+
+- The PostgreSQL overlap-protection follow-up is resolved: migration `0007_scheduling_appointments.sql` now adds `request_appointments_no_overlap` with `EXCLUDE USING gist`, and the PostgreSQL repository maps exclusion/unique/deadlock errors to scheduling conflicts. SQLite remains intentionally lighter and still relies on API/application validation for normal routes.
+
 ## Suggested Follow-Up Slice
 
 Scheduling hardening follow-up:
 
-- Add database-level or transaction-safe capacity enforcement for PostgreSQL.
 - Bring SQLite test constraints closer to PostgreSQL where practical.
 - Add focused frontend interaction tests for candidate selection and scheduling form payloads.
 - Clarify create-vs-reschedule UX further if dispatchers need a single guided flow.

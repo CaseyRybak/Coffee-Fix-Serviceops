@@ -86,6 +86,7 @@ REQUIRED_FILES = [
     "docs/review/documentation-audit-2026-06-10.md",
     "docs/review/documentation-audit-2026-06-15.md",
     "docs/review/documentation-audit-2026-06-15-current-state.md",
+    "docs/review/documentation-audit-2026-06-16.md",
     ".env.example",
     "docker-compose.yml",
     "apps/api/Dockerfile",
@@ -380,12 +381,17 @@ def main() -> None:
     require_text(".env.example", "N8N_WEBHOOK_URL")
     require_text(".env.example", "SERVICEOPS_BACKUP_DIR")
     require_text("project_notes.md", "current operating dashboard")
-    require_text("project_notes.md", "documentation-audit-2026-06-15-current-state.md")
+    require_text("project_notes.md", "documentation-audit-2026-06-16.md")
     require_text("docs/harness/project-history.md", "Deferred Work Ledger")
+    require_text("docs/harness/project-history.md", "Hardened production paths after Phase 16")
     require_text("docs/harness/repository-map.md", "compact current operating dashboard")
+    require_text("docs/harness/repository-map.md", "documentation-audit-2026-06-16.md")
     require_text("docs/operations/ai-providers.md", "RAG Coverage And Knowledge Gaps")
     require_text("domains/ai-agents/domain.md", "Current RAG Fallback Behavior")
     require_text("domains/knowledge-base/domain.md", "Current Retrieval-To-Prompt Boundary")
+    require_text("domains/service-requests/domain.md", "service_request_number_seq")
+    require_text("domains/scheduling/domain.md", "exclusion constraint")
+    require_text("domains/inventory/domain.md", "lock the relevant stock and reservation rows")
     require_text("docs/operations/deployment-runbook.md", "serviceops_api.operations.bootstrap_admin")
     require_text("docs/operations/launch-smoke-evidence.md", "Go/No-Go")
 
