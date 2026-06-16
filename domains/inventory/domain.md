@@ -13,9 +13,9 @@ This domain tracks parts and consumables relevant to coffee machine repair.
 
 ## Phase 07 Parts Suggestion Boundary
 
-AI parts suggestions are inventory concepts only. They can name likely parts, explain compatibility assumptions, and help a dispatcher prepare, but they do not check live stock, create reservations, or modify a parts catalog.
+AI parts suggestions are inventory concepts only. They can name likely parts, explain compatibility assumptions, and help a dispatcher prepare, but they do not check live stock, create reservations, consume reservations, or modify a parts catalog.
 
-Catalog, stock count, compatibility records, and reservations remain Phase 08 scope.
+Catalog and stock count arrive through the inventory workflow. Structured compatibility records and request-linked reservations are owned by the later Phase 16 inventory-reservations slice.
 
 ## Phase 08 Inventory Basics
 

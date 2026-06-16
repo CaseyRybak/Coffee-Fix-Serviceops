@@ -48,6 +48,8 @@
 - `docs/execution-plans/detailed/12-notification-automation-implementation.md`: completed detailed plan for backend-to-n8n events, delivery persistence, workflow exports, and staff delivery visibility.
 - `docs/execution-plans/detailed/13-live-ai-provider-and-knowledge-base-content-implementation.md`: completed detailed plan for OpenAI-compatible providers, curated repair knowledge, and RAG evaluation.
 - `docs/execution-plans/detailed/14-operational-hardening-implementation.md`: completed detailed plan for observability, audit expansion, restore dry-runs, incident response, and diagnostics.
+- `docs/execution-plans/detailed/15-scheduling-depth-implementation.md`: completed detailed plan for structured appointment windows, dispatcher scheduling, technician schedule visibility, and public-safe appointment snapshots.
+- `docs/execution-plans/detailed/16-inventory-reservations-implementation.md`: completed detailed plan for part reservations, stock movements, compatibility records, low-stock visibility, and technician reserved-parts consumption.
 - `docs/execution-plans/completed/`: reserved archive directory for completed phase plans if the project later moves them out of `detailed/`.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
@@ -63,6 +65,8 @@
 - `docs/review/phase-12-review.md`: Phase 12 review artifact for notification automation.
 - `docs/review/phase-13-review.md`: Phase 13 review artifact for live provider adapters and curated knowledge-base content.
 - `docs/review/phase-14-review.md`: Phase 14 review artifact for operational hardening.
+- `docs/review/phase-15-review.md`: Phase 15 review artifact for scheduling depth.
+- `docs/review/phase-16-review.md`: Phase 16 review artifact for inventory reservations.
 - `docs/review/documentation-audit-2026-06-07.md`: documentation consistency and quality audit after Phase 10.
 - `docs/review/documentation-audit-2026-06-10.md`: documentation consistency and quality audit after Phase 13.
 - `docs/review/documentation-audit-2026-06-15.md`: documentation readiness audit before Phase 14 implementation.

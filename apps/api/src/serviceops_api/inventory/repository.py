@@ -943,15 +943,19 @@ class PostgresInventoryRepository:
         actor: str,
     ) -> dict[str, object]:
         part = self._get_part(part_id)
-        stock = self.get_stock_count(part_id)
-        current_quantity = int(stock["quantity_on_hand"])
-        usable_quantity = int(stock["available_quantity"]) + self._active_reserved_quantity(part_id, request_number)
-        if usable_quantity < quantity or current_quantity < quantity:
-            raise InsufficientStockError("Insufficient stock for requested parts usage")
-        stock_after_use = current_quantity - quantity
         connection = self._connect()
         with connection.transaction():
-            self._consume_reservations(request_number, part_id, quantity)
+            stock = self._get_stock_count_for_update(connection, part_id)
+            current_quantity = int(stock["quantity_on_hand"])
+            usable_quantity = int(stock["available_quantity"]) + self._active_reserved_quantity_for_update(
+                connection,
+                part_id,
+                request_number,
+            )
+            if usable_quantity < quantity or current_quantity < quantity:
+                raise InsufficientStockError("Insufficient stock for requested parts usage")
+            stock_after_use = current_quantity - quantity
+            self._consume_reservations(connection, request_number, part_id, quantity)
             row = connection.execute(
                 """
                 INSERT INTO request_parts_used (request_number, part_id, quantity, stock_after_use, note, actor)
@@ -1018,11 +1022,12 @@ class PostgresInventoryRepository:
         actor: str,
     ) -> dict[str, object]:
         self._get_part(part_id)
-        stock = self.get_stock_count(part_id)
-        if int(stock["available_quantity"]) < quantity:
-            raise InsufficientStockError("Insufficient available stock for reservation")
-        with self._connect().transaction():
-            row = self._connect().execute(
+        connection = self._connect()
+        with connection.transaction():
+            stock = self._get_stock_count_for_update(connection, part_id)
+            if int(stock["available_quantity"]) < quantity:
+                raise InsufficientStockError("Insufficient available stock for reservation")
+            row = connection.execute(
                 """
                 INSERT INTO part_reservations (request_number, appointment_id, part_id, quantity, status, note, actor)
                 VALUES (%s, %s, %s, %s, 'active', %s, %s)
@@ -1037,17 +1042,19 @@ class PostgresInventoryRepository:
         return self._get_reservation(reservation_id)
 
     def adjust_reservation(self, reservation_id: int, quantity: int, note: str | None, actor: str) -> dict[str, object]:
-        current = self._get_reservation(reservation_id)
-        if current["status"] != "active":
-            raise KeyError(str(reservation_id))
-        old_quantity = int(current["quantity"])
-        part_id = int(current["part_id"])
-        delta = quantity - old_quantity
-        stock = self.get_stock_count(part_id)
-        if delta > 0 and int(stock["available_quantity"]) < delta:
-            raise InsufficientStockError("Insufficient available stock for reservation adjustment")
-        with self._connect().transaction():
-            self._connect().execute(
+        reservation = self._get_reservation(reservation_id)
+        part_id = int(reservation["part_id"])
+        connection = self._connect()
+        with connection.transaction():
+            stock = self._get_stock_count_for_update(connection, part_id)
+            current = self._get_reservation_for_update(connection, reservation_id)
+            if current["status"] != "active":
+                raise KeyError(str(reservation_id))
+            old_quantity = int(current["quantity"])
+            delta = quantity - old_quantity
+            if delta > 0 and int(stock["available_quantity"]) < delta:
+                raise InsufficientStockError("Insufficient available stock for reservation adjustment")
+            connection.execute(
                 """
                 UPDATE part_reservations
                 SET quantity = %s, note = COALESCE(%s, note), actor = %s, updated_at = now()
@@ -1059,11 +1066,12 @@ class PostgresInventoryRepository:
         return self._get_reservation(reservation_id)
 
     def release_reservation(self, reservation_id: int, note: str | None, actor: str) -> dict[str, object]:
-        current = self._get_reservation(reservation_id)
-        if current["status"] != "active":
-            raise KeyError(str(reservation_id))
-        with self._connect().transaction():
-            self._connect().execute(
+        connection = self._connect()
+        with connection.transaction():
+            current = self._get_reservation_for_update(connection, reservation_id)
+            if current["status"] != "active":
+                raise KeyError(str(reservation_id))
+            connection.execute(
                 """
                 UPDATE part_reservations
                 SET status = 'released', note = COALESCE(%s, note), actor = %s, updated_at = now()
@@ -1294,6 +1302,25 @@ class PostgresInventoryRepository:
             raise KeyError(str(reservation_id))
         return self._reservation_row(row)
 
+    def _get_reservation_for_update(
+        self,
+        connection: psycopg.Connection[dict[str, Any]],
+        reservation_id: int,
+    ) -> dict[str, object]:
+        row = connection.execute(
+            """
+            SELECT pr.*, pc.sku, pc.name AS part_name
+            FROM part_reservations pr
+            JOIN parts_catalog pc ON pc.id = pr.part_id
+            WHERE pr.id = %s
+            FOR UPDATE OF pr
+            """,
+            (reservation_id,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(str(reservation_id))
+        return self._reservation_row(row)
+
     def _active_reserved_quantity(self, part_id: int, request_number: str | None = None) -> int:
         request_filter = "" if request_number is None else "AND request_number = %s"
         params: tuple[object, ...] = (part_id,) if request_number is None else (part_id, request_number)
@@ -1307,14 +1334,78 @@ class PostgresInventoryRepository:
         ).fetchone()
         return 0 if row is None else int(row["reserved_quantity"])
 
-    def _consume_reservations(self, request_number: str, part_id: int, quantity: int) -> None:
+    def _active_reserved_quantity_for_update(
+        self,
+        connection: psycopg.Connection[dict[str, Any]],
+        part_id: int,
+        request_number: str | None = None,
+    ) -> int:
+        request_filter = "" if request_number is None else "AND request_number = %s"
+        params: tuple[object, ...] = (part_id,) if request_number is None else (part_id, request_number)
+        rows = connection.execute(
+            f"""
+            SELECT quantity
+            FROM part_reservations
+            WHERE part_id = %s AND status = 'active' {request_filter}
+            FOR UPDATE
+            """,
+            params,
+        ).fetchall()
+        return sum(int(row["quantity"]) for row in rows)
+
+    def _get_stock_count_for_update(
+        self,
+        connection: psycopg.Connection[dict[str, Any]],
+        part_id: int,
+    ) -> dict[str, object]:
+        row = connection.execute(
+            """
+            SELECT part_id, quantity_on_hand, low_stock_threshold, updated_at
+            FROM stock_counts
+            WHERE part_id = %s
+            FOR UPDATE
+            """,
+            (part_id,),
+        ).fetchone()
+        reserved = self._active_reserved_quantity_for_update(connection, part_id)
+        if row is None:
+            return {
+                "part_id": part_id,
+                "quantity_on_hand": 0,
+                "reserved_quantity": reserved,
+                "available_quantity": 0,
+                "low_stock_threshold": None,
+                "is_low_stock": False,
+                "updated_at": "",
+            }
+        quantity_on_hand = int(row["quantity_on_hand"])
+        threshold = row["low_stock_threshold"]
+        available = max(quantity_on_hand - reserved, 0)
+        return {
+            "part_id": row["part_id"],
+            "quantity_on_hand": quantity_on_hand,
+            "reserved_quantity": reserved,
+            "available_quantity": available,
+            "low_stock_threshold": threshold,
+            "is_low_stock": threshold is not None and available <= int(threshold),
+            "updated_at": self._format_timestamp(row["updated_at"]),
+        }
+
+    def _consume_reservations(
+        self,
+        connection: psycopg.Connection[dict[str, Any]],
+        request_number: str,
+        part_id: int,
+        quantity: int,
+    ) -> None:
         remaining = quantity
-        rows = self._connect().execute(
+        rows = connection.execute(
             """
             SELECT id, quantity
             FROM part_reservations
             WHERE request_number = %s AND part_id = %s AND status = 'active'
             ORDER BY id
+            FOR UPDATE
             """,
             (request_number, part_id),
         ).fetchall()
@@ -1324,13 +1415,13 @@ class PostgresInventoryRepository:
             reservation_quantity = int(row["quantity"])
             reservation_id = int(row["id"])
             if reservation_quantity <= remaining:
-                self._connect().execute(
+                connection.execute(
                     "UPDATE part_reservations SET status = 'consumed', updated_at = now() WHERE id = %s",
                     (reservation_id,),
                 )
                 remaining -= reservation_quantity
             else:
-                self._connect().execute(
+                connection.execute(
                     "UPDATE part_reservations SET quantity = %s, updated_at = now() WHERE id = %s",
                     (reservation_quantity - remaining, reservation_id),
                 )

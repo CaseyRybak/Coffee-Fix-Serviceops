@@ -216,3 +216,39 @@ def test_postgres_repository_uses_autocommit_connections(monkeypatch) -> None:
         raise AssertionError("expected fake connection to stop the test")
 
     assert calls == [{"row_factory": dict_row, "autocommit": True}]
+
+
+def test_postgres_service_request_repository_uses_sequence_for_request_numbers(monkeypatch) -> None:
+    executed_sql: list[str] = []
+
+    class FakeConnection:
+        closed = False
+
+        def execute(self, sql: str, params=None):
+            executed_sql.append(sql)
+            return self
+
+        def fetchone(self):
+            return {"next_sequence": 42}
+
+    repository = PostgresServiceRequestRepository(
+        "postgresql+psycopg://serviceops:serviceops@postgres:5432/serviceops",
+        initialize=False,
+    )
+    monkeypatch.setattr(repository, "_connect", lambda: FakeConnection())
+
+    assert repository.next_sequence() == 42
+    assert any("nextval('service_request_number_seq')" in sql for sql in executed_sql)
+    assert not any("COUNT(*)" in sql for sql in executed_sql)
+
+
+def test_postgres_inventory_repository_uses_row_locks_for_stock_and_reservations() -> None:
+    import inspect
+
+    from serviceops_api.inventory.repository import PostgresInventoryRepository
+
+    source = inspect.getsource(PostgresInventoryRepository)
+
+    assert "FOR UPDATE" in source
+    assert "FROM stock_counts" in source
+    assert "FROM part_reservations" in source

@@ -65,6 +65,28 @@ class DuplicateNotificationStore:
         raise AssertionError("not used by publisher")
 
 
+class MissingDeliveryUpdateStore:
+    def next_sequence(self, request_number: str) -> int:
+        return 1
+
+    def create_queued_attempt(self, event: NotificationEvent) -> bool:
+        return True
+
+    def record_delivery_result(
+        self,
+        event_id: str,
+        status: str,
+        channel: str | None = None,
+        provider_message_id: str | None = None,
+        error: str | None = None,
+        attempt_count: int = 1,
+    ) -> bool:
+        return False
+
+    def record_callback_result(self, payload: DeliveryResultPayload) -> None:
+        raise AssertionError("not used by publisher")
+
+
 async def post_json(
     service_repository: ServiceRequestRepository,
     notification_repository: SqliteNotificationRepository,
@@ -229,6 +251,34 @@ def test_notification_publisher_logs_failed_and_duplicate_outcomes(caplog) -> No
         "target": f"{request_number}:service_request.created:1",
         "outcome": "skipped",
         "provider": "n8n",
+    }
+
+
+def test_notification_publisher_logs_missing_delivery_update_as_skipped(caplog) -> None:
+    service_repository = ServiceRequestRepository.in_memory()
+    notification_repository = SqliteNotificationRepository.in_memory()
+    request_number = asyncio.run(create_request(service_repository, notification_repository, RecordingN8nClient()))
+    publisher = NotificationPublisher(
+        MissingDeliveryUpdateStore(),
+        RecordingN8nClient(),
+        service_repository,
+    )
+    caplog.clear()
+
+    with caplog.at_level(logging.INFO, logger="serviceops_api.notifications.use_cases"):
+        publisher.publish_request_created(request_number)
+
+    contexts = [record.serviceops_context for record in caplog.records if hasattr(record, "serviceops_context")]
+    delivery_context = next(context for context in contexts if context["action"] == "notification.delivery_recorded")
+    assert delivery_context == {
+        "request_number": request_number,
+        "event_id": f"{request_number}:service_request.created:1",
+        "event_type": "service_request.created",
+        "action": "notification.delivery_recorded",
+        "target": f"{request_number}:service_request.created:1",
+        "outcome": "skipped",
+        "provider": "n8n",
+        "reason": "delivery_attempt_not_found",
     }
 
 

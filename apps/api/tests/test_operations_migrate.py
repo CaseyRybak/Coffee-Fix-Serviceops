@@ -24,6 +24,36 @@ def test_knowledge_base_pgvector_migration_uses_live_embedding_dimensions() -> N
     assert "embedding vector(12)" not in migration_sql
 
 
+def test_request_number_sequence_migration_is_transaction_safe() -> None:
+    migration_sql = (
+        __import__("pathlib").Path(__file__).resolve().parents[1]
+        / "src"
+        / "serviceops_api"
+        / "migrations"
+        / "0011_request_number_sequence.sql"
+    ).read_text(encoding="utf-8")
+
+    assert "CREATE SEQUENCE IF NOT EXISTS service_request_number_seq" in migration_sql
+    assert "setval('service_request_number_seq'" in migration_sql
+    assert "substring(request_number from" in migration_sql
+
+
+def test_scheduling_migration_enforces_postgres_overlap_constraint() -> None:
+    migration_sql = (
+        __import__("pathlib").Path(__file__).resolve().parents[1]
+        / "src"
+        / "serviceops_api"
+        / "migrations"
+        / "0007_scheduling_appointments.sql"
+    ).read_text(encoding="utf-8")
+
+    assert "CREATE EXTENSION IF NOT EXISTS btree_gist" in migration_sql
+    assert "EXCLUDE USING gist" in migration_sql
+    assert "technician_identifier WITH =" in migration_sql
+    assert "tstzrange(starts_at, ends_at, '[)') WITH &&" in migration_sql
+    assert "WHERE (status = 'scheduled')" in migration_sql
+
+
 def test_run_migrations_initializes_all_postgres_repositories(monkeypatch) -> None:
     from serviceops_api.operations import migrate
 

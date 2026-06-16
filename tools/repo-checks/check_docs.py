@@ -140,6 +140,7 @@ REQUIRED_FILES = [
     "apps/api/src/serviceops_api/migrations/0008_inventory_reservations.sql",
     "apps/api/src/serviceops_api/migrations/0009_part_compatibility.sql",
     "apps/api/src/serviceops_api/migrations/0010_inventory_russian_catalog.sql",
+    "apps/api/src/serviceops_api/migrations/0011_request_number_sequence.sql",
     "apps/api/tests/test_health.py",
     "apps/api/tests/test_ai_agent_prompting.py",
     "apps/api/tests/test_ai_agent_suggestions.py",

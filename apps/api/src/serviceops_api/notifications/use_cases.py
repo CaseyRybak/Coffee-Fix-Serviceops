@@ -152,13 +152,15 @@ class NotificationPublisher:
         result = self._n8n_client.deliver(event_to_dict(event))
         status = result.get("status", "failed")
         outcome = "succeeded" if status in {"sent", "queued"} else "failed"
-        self._notification_store.record_delivery_result(
+        recorded = self._notification_store.record_delivery_result(
             event_id=event.event_id,
             status=status,
             provider_message_id=result.get("provider_message_id") or None,
             error=result.get("error") or None,
             attempt_count=1,
         )
+        if not recorded:
+            outcome = "skipped"
         context: dict[str, object] = {
             "request_number": request_number,
             "event_id": event.event_id,
@@ -170,6 +172,8 @@ class NotificationPublisher:
         }
         if result.get("error"):
             context["reason"] = "delivery_failed"
+        if not recorded:
+            context["reason"] = "delivery_attempt_not_found"
         logger.info("Notification delivery recorded", extra={"serviceops_context": context})
 
 

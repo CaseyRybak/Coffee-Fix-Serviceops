@@ -16,6 +16,7 @@ MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations"
 MIGRATION_PATH = MIGRATIONS_DIR / "0001_service_request_intake.sql"
 TECHNICIAN_INVENTORY_MIGRATION_PATH = MIGRATIONS_DIR / "0004_technician_inventory.sql"
 SCHEDULING_MIGRATION_PATH = MIGRATIONS_DIR / "0007_scheduling_appointments.sql"
+REQUEST_NUMBER_SEQUENCE_MIGRATION_PATH = MIGRATIONS_DIR / "0011_request_number_sequence.sql"
 SCHEDULING_ALLOWED_STATUSES = {"new", "needs_clarification", "awaiting_assignment", "technician_assigned", "visit_scheduled"}
 RESCHEDULE_ALLOWED_STATUSES = SCHEDULING_ALLOWED_STATUSES | {"diagnostics", "waiting_for_parts", "repair_in_progress"}
 WORK_STARTED_STATUSES = {"diagnostics", "waiting_for_parts", "repair_in_progress"}
@@ -1477,6 +1478,8 @@ class PostgresServiceRequestRepository:
 
     def initialize(self) -> None:
         self._connect().execute(MIGRATION_PATH.read_text(encoding="utf-8"))
+        if REQUEST_NUMBER_SEQUENCE_MIGRATION_PATH.exists():
+            self._connect().execute(REQUEST_NUMBER_SEQUENCE_MIGRATION_PATH.read_text(encoding="utf-8"))
         if TECHNICIAN_INVENTORY_MIGRATION_PATH.exists():
             self._connect().execute(TECHNICIAN_INVENTORY_MIGRATION_PATH.read_text(encoding="utf-8"))
         if SCHEDULING_MIGRATION_PATH.exists():
@@ -1484,10 +1487,10 @@ class PostgresServiceRequestRepository:
         self._connect().commit()
 
     def next_sequence(self) -> int:
-        row = self._connect().execute("SELECT COUNT(*) AS count FROM service_requests").fetchone()
+        row = self._connect().execute("SELECT nextval('service_request_number_seq') AS next_sequence").fetchone()
         if row is None:
             return 1
-        return int(row["count"]) + 1
+        return int(row["next_sequence"])
 
     def save(self, record: ServiceRequestRecord) -> None:
         connection = self._connect()
@@ -1963,52 +1966,55 @@ class PostgresServiceRequestRepository:
         if self._has_appointment_overlap(technician_identifier, starts_at, ends_at):
             raise SchedulingConflictError("Technician already has an appointment in this window")
 
-        with self._connect().transaction():
-            self._connect().execute(
-                """
-                UPDATE request_appointments
-                SET status = 'rescheduled',
-                    reschedule_reason = COALESCE(reschedule_reason, 'Superseded by a new appointment'),
-                    updated_at = now()
-                WHERE service_request_id = %s AND status = 'scheduled'
-                """,
-                (request["id"],),
-            )
-            row = self._connect().execute(
-                """
-                INSERT INTO request_appointments (
-                    service_request_id, technician_identifier, technician_name, starts_at, ends_at,
-                    window_label, status
+        try:
+            with self._connect().transaction():
+                self._connect().execute(
+                    """
+                    UPDATE request_appointments
+                    SET status = 'rescheduled',
+                        reschedule_reason = COALESCE(reschedule_reason, 'Superseded by a new appointment'),
+                        updated_at = now()
+                    WHERE service_request_id = %s AND status = 'scheduled'
+                    """,
+                    (request["id"],),
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, 'scheduled')
-                RETURNING id
-                """,
-                (request["id"], technician_identifier, resolved_name, starts_at, ends_at, resolved_label),
-            ).fetchone()
-            if row is None:
-                raise RuntimeError("appointment insert did not return an id")
-            appointment_id = int(row["id"])
-            self._connect().execute(
-                """
-                UPDATE service_requests
-                SET status = 'visit_scheduled',
-                    assigned_technician_name = %s,
-                    assigned_technician_phone = NULL,
-                    assigned_technician_region = NULL,
-                    visit_window = %s
-                WHERE id = %s
-                """,
-                (technician_identifier, resolved_label, request["id"]),
-            )
-            self._connect().execute(
-                """
-                INSERT INTO status_events (
-                    service_request_id, status, title, description, actor
+                row = self._connect().execute(
+                    """
+                    INSERT INTO request_appointments (
+                        service_request_id, technician_identifier, technician_name, starts_at, ends_at,
+                        window_label, status
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, 'scheduled')
+                    RETURNING id
+                    """,
+                    (request["id"], technician_identifier, resolved_name, starts_at, ends_at, resolved_label),
+                ).fetchone()
+                if row is None:
+                    raise RuntimeError("appointment insert did not return an id")
+                appointment_id = int(row["id"])
+                self._connect().execute(
+                    """
+                    UPDATE service_requests
+                    SET status = 'visit_scheduled',
+                        assigned_technician_name = %s,
+                        assigned_technician_phone = NULL,
+                        assigned_technician_region = NULL,
+                        visit_window = %s
+                    WHERE id = %s
+                    """,
+                    (technician_identifier, resolved_label, request["id"]),
                 )
-                VALUES (%s, 'visit_scheduled', 'Визит запланирован', 'Диспетчер согласовал окно визита мастера.', %s)
-                """,
-                (request["id"], actor),
-            )
+                self._connect().execute(
+                    """
+                    INSERT INTO status_events (
+                        service_request_id, status, title, description, actor
+                    )
+                    VALUES (%s, 'visit_scheduled', 'Визит запланирован', 'Диспетчер согласовал окно визита мастера.', %s)
+                    """,
+                    (request["id"], actor),
+                )
+        except (psycopg.errors.ExclusionViolation, psycopg.errors.UniqueViolation) as exc:
+            raise SchedulingConflictError("Technician already has an appointment in this window") from exc
         return self._appointment_response(request_number, "visit_scheduled", appointment_id, "Appointment scheduled")
 
     def reschedule_appointment(
@@ -2032,56 +2038,59 @@ class PostgresServiceRequestRepository:
         resolved_label = self._resolve_window_label(starts_at, ends_at, window_label)
         status_after = request["status"] if request["status"] in WORK_STARTED_STATUSES else "visit_scheduled"
 
-        with self._connect().transaction():
-            self._connect().execute(
-                """
-                UPDATE request_appointments
-                SET status = 'rescheduled',
-                    reschedule_reason = %s,
-                    updated_at = now()
-                WHERE id = %s
-                """,
-                (reason, appointment_id),
-            )
-            row = self._connect().execute(
-                """
-                INSERT INTO request_appointments (
-                    service_request_id, technician_identifier, technician_name, starts_at, ends_at,
-                    window_label, status
+        try:
+            with self._connect().transaction():
+                self._connect().execute(
+                    """
+                    UPDATE request_appointments
+                    SET status = 'rescheduled',
+                        reschedule_reason = %s,
+                        updated_at = now()
+                    WHERE id = %s
+                    """,
+                    (reason, appointment_id),
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, 'scheduled')
-                RETURNING id
-                """,
-                (
-                    request["id"],
-                    current["technician_identifier"],
-                    current["technician_name"],
-                    starts_at,
-                    ends_at,
-                    resolved_label,
-                ),
-            ).fetchone()
-            if row is None:
-                raise RuntimeError("appointment insert did not return an id")
-            new_appointment_id = int(row["id"])
-            self._connect().execute(
-                """
-                UPDATE service_requests
-                SET status = %s,
-                    visit_window = %s
-                WHERE id = %s
-                """,
-                (status_after, resolved_label, request["id"]),
-            )
-            self._connect().execute(
-                """
-                INSERT INTO status_events (
-                    service_request_id, status, title, description, actor
+                row = self._connect().execute(
+                    """
+                    INSERT INTO request_appointments (
+                        service_request_id, technician_identifier, technician_name, starts_at, ends_at,
+                        window_label, status
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, 'scheduled')
+                    RETURNING id
+                    """,
+                    (
+                        request["id"],
+                        current["technician_identifier"],
+                        current["technician_name"],
+                        starts_at,
+                        ends_at,
+                        resolved_label,
+                    ),
+                ).fetchone()
+                if row is None:
+                    raise RuntimeError("appointment insert did not return an id")
+                new_appointment_id = int(row["id"])
+                self._connect().execute(
+                    """
+                    UPDATE service_requests
+                    SET status = %s,
+                        visit_window = %s
+                    WHERE id = %s
+                    """,
+                    (status_after, resolved_label, request["id"]),
                 )
-                VALUES (%s, %s, 'Визит перенесен', 'Диспетчер обновил согласованное окно визита.', %s)
-                """,
-                (request["id"], status_after, actor),
-            )
+                self._connect().execute(
+                    """
+                    INSERT INTO status_events (
+                        service_request_id, status, title, description, actor
+                    )
+                    VALUES (%s, %s, 'Визит перенесен', 'Диспетчер обновил согласованное окно визита.', %s)
+                    """,
+                    (request["id"], status_after, actor),
+                )
+        except (psycopg.errors.ExclusionViolation, psycopg.errors.UniqueViolation) as exc:
+            raise SchedulingConflictError("Technician already has an appointment in this window") from exc
         return self._appointment_response(request_number, status_after, new_appointment_id, "Appointment rescheduled")
 
     def cancel_appointment(
