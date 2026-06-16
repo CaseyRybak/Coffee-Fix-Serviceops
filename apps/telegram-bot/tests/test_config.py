@@ -7,6 +7,12 @@ def test_bot_is_disabled_without_token() -> None:
     assert settings.is_enabled is False
 
 
+def test_bot_is_disabled_with_placeholder_token() -> None:
+    settings = BotSettings(telegram_bot_token="change-me")
+
+    assert settings.is_enabled is False
+
+
 def test_bot_is_enabled_with_token() -> None:
     settings = BotSettings(telegram_bot_token="test-token")
 

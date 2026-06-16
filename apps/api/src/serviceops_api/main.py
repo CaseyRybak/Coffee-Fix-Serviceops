@@ -122,6 +122,7 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Coffee Fix ServiceOps API")
     settings = get_settings()
+    settings.validate_runtime()
     configure_logging(settings.service_name, settings.environment)
     app.add_middleware(
         CORSMiddleware,
@@ -208,6 +209,8 @@ def create_app(
         create_knowledge_base_router(
             IngestKnowledgeDocument(knowledge_repository, embedding_provider),
             retrieve_knowledge,
+            write_dependency=require_staff_role("admin", authenticator),
+            read_dependency=require_staff_any_role({"admin", "dispatcher"}, authenticator),
         )
     )
     app.include_router(

@@ -3,10 +3,10 @@
 ## Compose Config
 
 ```bash
-docker compose -f docker-compose.production.yml --env-file .env.example config
+docker compose -f docker-compose.production.yml --env-file .env.example config --quiet
 ```
 
-For a real environment, run the same command with the production env file or Dokploy-rendered environment.
+For a real environment, run the same command with the production env file or Dokploy-rendered environment. Keep `--quiet` enabled so substituted secrets are not printed during validation.
 
 ## Scripted Check
 

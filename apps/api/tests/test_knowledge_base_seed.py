@@ -78,10 +78,22 @@ def test_seed_document_can_be_retrieved_by_repair_question() -> None:
         )
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            await client.post("/knowledge-base/documents", json=REPAIR_KNOWLEDGE_SEED_DOCUMENTS[0].model_dump())
+            login = await client.post(
+                "/staff/login",
+                json={"username": "admin@coffeefix.local", "password": "admin-local"},
+            )
+            assert login.status_code == 200
+            token = login.json()["access_token"]
+            headers = {"Authorization": f"Bearer {token}"}
+            await client.post(
+                "/knowledge-base/documents",
+                json=REPAIR_KNOWLEDGE_SEED_DOCUMENTS[0].model_dump(),
+                headers=headers,
+            )
             return await client.post(
                 "/knowledge-base/retrieval",
                 json={"query": "E61 overheating pressure", "limit": 1},
+                headers=headers,
             )
 
     response = asyncio.run(scenario())

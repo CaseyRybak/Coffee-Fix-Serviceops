@@ -18,4 +18,5 @@ class BotSettings(BaseSettings):
 
     @property
     def is_enabled(self) -> bool:
-        return bool(self.telegram_bot_token.strip())
+        token = self.telegram_bot_token.strip()
+        return bool(token) and token.lower() != "change-me"

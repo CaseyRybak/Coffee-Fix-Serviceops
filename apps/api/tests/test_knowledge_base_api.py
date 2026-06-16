@@ -27,15 +27,24 @@ def create_test_app():
     return app
 
 
-async def post_json(path: str, body: dict[str, object]) -> httpx.Response:
+async def post_json(path: str, body: dict[str, object], token: str | None = None) -> httpx.Response:
     app = create_test_app()
     transport = httpx.ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {token}"} if token else None
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        return await client.post(path, json=body)
+        return await client.post(path, json=body, headers=headers)
+
+
+async def staff_token(username: str, password: str) -> str:
+    response = await post_json("/staff/login", {"username": username, "password": password})
+    assert response.status_code == 200
+    return str(response.json()["access_token"])
 
 
 def test_ingests_text_document_with_embedded_chunks() -> None:
-    response = asyncio.run(post_json("/knowledge-base/documents", DOCUMENT_PAYLOAD))
+    token = asyncio.run(staff_token("admin@coffeefix.local", "admin-local"))
+
+    response = asyncio.run(post_json("/knowledge-base/documents", DOCUMENT_PAYLOAD, token=token))
 
     assert response.status_code == 201
     body = response.json()
@@ -50,8 +59,11 @@ def test_retrieves_relevant_chunks_with_source_metadata() -> None:
     async def scenario() -> tuple[httpx.Response, dict[str, object], dict[str, object]]:
         app = create_test_app()
         transport = httpx.ASGITransport(app=app)
+        admin_token = await staff_token("admin@coffeefix.local", "admin-local")
+        dispatcher_token = await staff_token("dispatcher@coffeefix.local", "dispatcher-local")
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-            e61_response = await client.post("/knowledge-base/documents", json=DOCUMENT_PAYLOAD)
+            headers = {"Authorization": f"Bearer {admin_token}"}
+            e61_response = await client.post("/knowledge-base/documents", json=DOCUMENT_PAYLOAD, headers=headers)
             grinder_response = await client.post(
                 "/knowledge-base/documents",
                 json={
@@ -62,10 +74,12 @@ def test_retrieves_relevant_chunks_with_source_metadata() -> None:
                         "Inspect carrier wobble, clean retained grounds, and recalibrate the grind setting."
                     ),
                 },
+                headers=headers,
             )
             retrieval_response = await client.post(
                 "/knowledge-base/retrieval",
                 json={"query": "why is my E61 group overheating after descaling", "limit": 1},
+                headers={"Authorization": f"Bearer {dispatcher_token}"},
             )
         return retrieval_response, e61_response.json(), grinder_response.json()
 
@@ -86,3 +100,24 @@ def test_retrieves_relevant_chunks_with_source_metadata() -> None:
     assert result["end_char"] > result["start_char"]
     assert "thermosiphon" in result["content"]
     assert result["score"] > 0
+
+
+def test_knowledge_base_routes_require_staff_roles() -> None:
+    admin_token = asyncio.run(staff_token("admin@coffeefix.local", "admin-local"))
+    dispatcher_token = asyncio.run(staff_token("dispatcher@coffeefix.local", "dispatcher-local"))
+
+    unauthenticated_ingest = asyncio.run(post_json("/knowledge-base/documents", DOCUMENT_PAYLOAD))
+    dispatcher_ingest = asyncio.run(post_json("/knowledge-base/documents", DOCUMENT_PAYLOAD, token=dispatcher_token))
+    admin_ingest = asyncio.run(post_json("/knowledge-base/documents", DOCUMENT_PAYLOAD, token=admin_token))
+    unauthenticated_retrieval = asyncio.run(
+        post_json("/knowledge-base/retrieval", {"query": "E61 overheating", "limit": 1})
+    )
+    dispatcher_retrieval = asyncio.run(
+        post_json("/knowledge-base/retrieval", {"query": "E61 overheating", "limit": 1}, token=dispatcher_token)
+    )
+
+    assert unauthenticated_ingest.status_code == 401
+    assert dispatcher_ingest.status_code == 403
+    assert admin_ingest.status_code == 201
+    assert unauthenticated_retrieval.status_code == 401
+    assert dispatcher_retrieval.status_code == 200

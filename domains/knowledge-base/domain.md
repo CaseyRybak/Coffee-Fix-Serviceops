@@ -20,6 +20,8 @@ Embeddings are generated behind an embedding-provider port. Tests and local deve
 
 The worker owns a Celery task boundary for embedding documents. The task uses repository and embedding-provider protocols so provider calls remain isolated and can be replaced by an OpenAI-compatible adapter in a later slice.
 
+The HTTP knowledge-base API is staff-only. Document ingestion requires an `admin` staff token, and source-backed retrieval requires either `admin` or `dispatcher`; public client flows do not expose document ingestion, source chunks, embeddings, or retrieval metadata.
+
 Phase 06 does not generate diagnostic answers, dispatcher suggestions, customer replies, or agent workflow decisions. Those AI workflow behaviors belong to Phase 07 and should consume retrieval results with source metadata.
 
 ## Phase 07 Usage

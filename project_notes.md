@@ -66,7 +66,7 @@ Choose the next approved implementation phase and create its detailed implementa
 - `npm run web:test`
 - `npm run web:lint`
 - `npm run web:build`
-- `docker compose -f docker-compose.production.yml --env-file .env.example config`
+- `docker compose -f docker-compose.production.yml --env-file .env.example config --quiet`
 - `bash -n tools/operations/postgres_backup.sh`
 - `bash -n tools/operations/postgres_restore.sh`
 - `bash -n tools/operations/smoke_test.sh`

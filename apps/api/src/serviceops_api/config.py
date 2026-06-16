@@ -50,6 +50,24 @@ class Settings(BaseSettings):
     def staff_dev_roles_list(self) -> list[str]:
         return [role.strip() for role in self.staff_dev_roles.split(",") if role.strip()]
 
+    def validate_runtime(self) -> None:
+        if self.environment.strip().lower() not in {"production", "prod"}:
+            return
+
+        errors: list[str] = []
+        if not self.database_url.startswith(("postgresql://", "postgresql+psycopg://")):
+            errors.append("SERVICEOPS_DATABASE_URL must use PostgreSQL in production")
+        if _is_placeholder_secret(self.staff_auth_secret):
+            errors.append("SERVICEOPS_STAFF_AUTH_SECRET must be set to a non-placeholder value")
+        if _is_placeholder_secret(self.n8n_webhook_shared_secret):
+            errors.append("SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET must be set to a non-placeholder value")
+        if _is_placeholder_secret(self.n8n_callback_secret):
+            errors.append("SERVICEOPS_N8N_CALLBACK_SECRET must be set to a non-placeholder value")
+        if _is_placeholder_secret(self.telegram_bot_api_secret):
+            errors.append("SERVICEOPS_TELEGRAM_BOT_API_SECRET must be set to a non-placeholder value")
+        if errors:
+            raise ValueError("; ".join(errors))
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_prefix="SERVICEOPS_",
@@ -60,3 +78,13 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def _is_placeholder_secret(value: str) -> bool:
+    normalized = value.strip().lower()
+    return normalized in {
+        "",
+        "change-me",
+        "local-dev-staff-auth-secret-change-me",
+        "local-dev-telegram-bot-api-secret-change-me",
+    }
