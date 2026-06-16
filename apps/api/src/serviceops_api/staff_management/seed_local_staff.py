@@ -13,7 +13,9 @@ LOCAL_SEED_ENVIRONMENTS = {"local", "development", "dev", "test"}
 
 class LocalStaffSeedAccount(NamedTuple):
     username: str
-    display_name: str
+    first_name: str
+    last_name: str
+    phone: str
     password: str
     roles: list[str]
 
@@ -21,19 +23,25 @@ class LocalStaffSeedAccount(NamedTuple):
 LOCAL_STAFF_SEED_ACCOUNTS: tuple[LocalStaffSeedAccount, ...] = (
     LocalStaffSeedAccount(
         username="dispatcher@coffeefix.local",
-        display_name="Dispatcher",
+        first_name="Coffee Fix",
+        last_name="Dispatcher",
+        phone="+7 999 000-10-01",
         password="dispatcher-local",
         roles=["dispatcher"],
     ),
     LocalStaffSeedAccount(
         username="technician@coffeefix.local",
-        display_name="Technician",
+        first_name="Coffee Fix",
+        last_name="Technician",
+        phone="+7 999 000-10-02",
         password="technician-local",
         roles=["technician"],
     ),
     LocalStaffSeedAccount(
         username="inventory@coffeefix.local",
-        display_name="Inventory",
+        first_name="Coffee Fix",
+        last_name="Inventory",
+        phone="+7 999 000-10-03",
         password="inventory-local",
         roles=["inventory"],
     ),
@@ -52,7 +60,9 @@ def seed_local_staff_accounts(repository: StaffAccountStore, settings: Settings)
             continue
         payload = CreateStaffAccountPayload(
             username=account.username,
-            display_name=account.display_name,
+            first_name=account.first_name,
+            last_name=account.last_name,
+            phone=account.phone,
             password=account.password,
             roles=account.roles,
         )

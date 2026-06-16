@@ -33,6 +33,7 @@ import {
   Thermometer,
   Wrench,
   X,
+  type LucideIcon,
 } from "lucide-react";
 
 type ClientType = "private" | "office" | "coffee_shop" | "restaurant" | "other";
@@ -191,6 +192,9 @@ interface StaffSession {
 interface StaffAccountItem {
   username: string;
   display_name: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
   roles: StaffRole[];
   active: boolean;
   created_at: string;
@@ -211,6 +215,16 @@ interface StaffAuditEvent {
 
 interface StaffAuditListResponse {
   items: StaffAuditEvent[];
+}
+
+interface TechnicianCandidate {
+  username: string;
+  display_name: string;
+  phone: string;
+}
+
+interface TechnicianCandidateListResponse {
+  items: TechnicianCandidate[];
 }
 
 interface DispatcherRequestDetail {
@@ -584,31 +598,45 @@ const footerClientLinks = [
   { label: "Оплата и документы", href: "#trust" },
 ];
 
-const technicianCandidates = [
+const staffSessionStorageKey = "serviceops.staffSession";
+const staffWorkspacePath = "/staff/workspace";
+
+const staffWorkspaceCards: Array<{
+  role: StaffRole;
+  href: string;
+  title: string;
+  copy: string;
+  Icon: LucideIcon;
+}> = [
   {
-    name: "Sergey Morozov",
-    username: "technician@coffeefix.local",
-    phone: "+7 999 310-22-11",
-    region: "ЦАО",
-    skills: "Jura, Saeco",
+    role: "dispatcher",
+    href: "/dispatcher",
+    title: "Диспетчерская",
+    copy: "Заявки, уточнения, статусы, расписание и назначение мастеров.",
+    Icon: ClipboardList,
   },
   {
-    name: "Pavel Sokolov",
-    username: "pavel@coffeefix.local",
-    phone: "+7 999 222-33-44",
-    region: "СЗАО",
-    skills: "DeLonghi, Philips",
+    role: "technician",
+    href: "/technician",
+    title: "Кабинет мастера",
+    copy: "Назначенные выезды, диагностика, результат ремонта и использованные детали.",
+    Icon: Wrench,
   },
   {
-    name: "Marina Volkova",
-    username: "marina@coffeefix.local",
-    phone: "+7 999 450-18-07",
-    region: "ЮЗАО",
-    skills: "WMF, Nuova Simonelli",
+    role: "inventory",
+    href: "/inventory",
+    title: "Склад",
+    copy: "Каталог запчастей, остатки, совместимость, резервы и движения.",
+    Icon: Package,
+  },
+  {
+    role: "admin",
+    href: "/admin",
+    title: "Администрирование",
+    copy: "Учетные записи сотрудников, роли, доступы и аудит действий.",
+    Icon: Shield,
   },
 ];
-
-const staffSessionStorageKey = "serviceops.staffSession";
 
 export function getNextFormStep(step: FormStep): FormStep {
   return step < 3 ? ((step + 1) as FormStep) : 3;
@@ -721,6 +749,10 @@ export function buildDispatcherListPath(): string {
 
 export function buildDispatcherSchedulePath(): string {
   return "/dispatcher/schedule";
+}
+
+export function buildDispatcherTechnicianCandidatesPath(): string {
+  return "/dispatcher/technician-candidates";
 }
 
 export function buildDispatcherDetailPath(requestNumber: string): string {
@@ -996,6 +1028,10 @@ export function buildAdminStaffRolesPath(username: string): string {
   return `/admin/staff/${encodeURIComponent(username)}/roles`;
 }
 
+export function buildAdminStaffProfilePath(username: string): string {
+  return `/admin/staff/${encodeURIComponent(username)}/profile`;
+}
+
 export function buildAdminStaffActivatePath(username: string): string {
   return `/admin/staff/${encodeURIComponent(username)}/activate`;
 }
@@ -1065,6 +1101,7 @@ export function resolveStaffLandingPath(staff: { roles: StaffRole[]; username?: 
   const safeNext = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : null;
   const matchingRoute = safeNext ? routeRoles.find((route) => safeNext.startsWith(route.prefix)) : undefined;
   if (safeNext && matchingRoute && staff.roles.includes(matchingRoute.role)) return safeNext;
+  if (staff.roles.length > 1) return staffWorkspacePath;
   if (staff.roles.includes("dispatcher")) return "/dispatcher";
   if (staff.roles.includes("technician")) return "/technician";
   if (staff.roles.includes("inventory")) return "/inventory";
@@ -1305,12 +1342,20 @@ function Header() {
 }
 
 function WorkspaceHeader({ session, onLogout }: { session?: StaffSession | null; onLogout?: () => void }) {
+  const canChooseWorkspace = Boolean(session && session.roles.length > 1);
+
   return (
     <header className="workspace-header">
       <div className="site-header-inner workspace-header-inner">
         <Logo />
         <div className="workspace-session-actions">
           {session ? <span>{session.username}</span> : <span className="workspace-header-label">Рабочий кабинет</span>}
+          {canChooseWorkspace ? (
+            <a className="workspace-switch-link" href={staffWorkspacePath}>
+              <Menu aria-hidden="true" />
+              Кабинеты
+            </a>
+          ) : null}
           {onLogout ? (
             <button type="button" onClick={onLogout} aria-label="Выйти">
               <LogOut aria-hidden="true" />
@@ -1684,17 +1729,22 @@ export function DispatcherPage({
   initialList,
   initialDetail,
   initialSchedule,
+  initialTechnicianCandidates,
   session,
   onLogout,
 }: {
   initialList?: DispatcherListResponse;
   initialDetail?: DispatcherRequestDetail;
   initialSchedule?: ScheduleListResponse;
+  initialTechnicianCandidates?: TechnicianCandidateListResponse;
   session?: StaffSession | null;
   onLogout?: () => void;
 }) {
   const [list, setList] = useState<DispatcherListResponse>(initialList ?? { items: [] });
   const [schedule, setSchedule] = useState<ScheduleListResponse>(initialSchedule ?? { items: [] });
+  const [technicianCandidates, setTechnicianCandidates] = useState<TechnicianCandidateListResponse>(
+    initialTechnicianCandidates ?? { items: [] },
+  );
   const [lowStock, setLowStock] = useState<InventoryPartListResponse>({ items: [] });
   const [selected, setSelected] = useState(initialDetail?.request_number ?? initialList?.items[0]?.request_number ?? "");
   const [detail, setDetail] = useState<DispatcherRequestDetail | null>(initialDetail ?? null);
@@ -1752,6 +1802,16 @@ export function DispatcherPage({
     return body;
   }
 
+  async function loadTechnicianCandidates() {
+    const response = await fetch(`${apiBaseUrl()}${buildDispatcherTechnicianCandidatesPath()}`, {
+      headers: staffAuthHeaders(session),
+    });
+    assertStaffResponse(response, "Technician candidates");
+    const body = (await response.json()) as TechnicianCandidateListResponse;
+    setTechnicianCandidates(body);
+    return body;
+  }
+
   async function loadLowStock() {
     const response = await fetch(`${apiBaseUrl()}${buildInventoryLowStockPath()}`, {
       headers: staffAuthHeaders(session),
@@ -1778,6 +1838,7 @@ export function DispatcherPage({
     setMessage(null);
     try {
       await Promise.all([loadList(), loadSchedule(), loadLowStock()]);
+      await loadTechnicianCandidates();
       if (requestNumber) await loadDetail(requestNumber);
     } catch {
       setMessage("Не удалось обновить диспетчерские данные.");
@@ -1955,12 +2016,12 @@ export function DispatcherPage({
     );
   }
 
-  function selectTechnicianCandidate(candidate: (typeof technicianCandidates)[number]) {
+  function selectTechnicianCandidate(candidate: TechnicianCandidate) {
     setTechnicianName(candidate.username);
     setTechnicianPhone(candidate.phone);
-    setTechnicianRegion(candidate.region);
+    setTechnicianRegion("");
     setAppointmentTechnician(candidate.username);
-    setAppointmentName(candidate.name);
+    setAppointmentName(candidate.display_name);
   }
 
   const pendingAiSuggestions = detail?.ai_suggestions?.filter((suggestion) => suggestion.status === "pending") ?? [];
@@ -2326,21 +2387,26 @@ export function DispatcherPage({
                         : "Мастер еще не назначен."}
                     </p>
                     {detail.assignment.visit_window ? <p>{detail.assignment.visit_window}</p> : null}
-                    <div className="technician-candidates" aria-label="Кандидаты мастеров">
-                      <strong>Кандидаты мастеров</strong>
-                      {technicianCandidates.map((candidate) => (
-                        <button
-                          key={candidate.name}
-                          type="button"
-                          onClick={() => selectTechnicianCandidate(candidate)}
-                        >
-                          <span>{candidate.name}</span>
-                          <small>
-                            {candidate.skills} · {candidate.region}
-                          </small>
-                        </button>
-                      ))}
-                    </div>
+	                    <div className="technician-candidates" aria-label="Кандидаты мастеров">
+	                      <strong>Кандидаты мастеров</strong>
+	                      {technicianCandidates.items.length ? (
+	                        technicianCandidates.items.map((candidate) => (
+	                          <button
+	                            key={candidate.username}
+	                            type="button"
+	                            onClick={() => selectTechnicianCandidate(candidate)}
+	                          >
+	                            <span>{candidate.display_name}</span>
+	                            <small>
+	                              {candidate.username}
+	                              {candidate.phone ? ` · ${candidate.phone}` : ""}
+	                            </small>
+	                          </button>
+	                        ))
+	                      ) : (
+	                        <small>Активных сотрудников с ролью technician пока нет.</small>
+	                      )}
+	                    </div>
                     <form className="dispatcher-form" onSubmit={submitAssignment}>
                       <input value={technicianName} onChange={(event) => setTechnicianName(event.target.value)} placeholder="Логин мастера" required />
                       <input value={technicianPhone} onChange={(event) => setTechnicianPhone(event.target.value)} placeholder="Телефон мастера" />
@@ -2518,6 +2584,97 @@ export function StaffLoginPage() {
   );
 }
 
+export function StaffWorkspacePage({
+  hasSession,
+  initialSession,
+}: {
+  hasSession?: boolean;
+  initialSession?: StaffSession | null;
+}) {
+  const [session, setSession] = useState<StaffSession | null>(() => {
+    if (initialSession !== undefined) return initialSession;
+    if (typeof hasSession === "boolean") {
+      return hasSession
+        ? {
+            accessToken: "test-token",
+            username: "dispatcher@coffeefix.local",
+            roles: ["dispatcher", "technician", "inventory"],
+          }
+        : null;
+    }
+    return getStoredStaffSession();
+  });
+
+  useEffect(() => {
+    if (initialSession !== undefined) return;
+    if (typeof hasSession === "boolean") return;
+    const stored = getStoredStaffSession();
+    setSession(stored);
+    if (!stored && typeof window !== "undefined") {
+      window.location.href = buildStaffLoginPath(staffWorkspacePath);
+    }
+  }, [hasSession, initialSession]);
+
+  function logout() {
+    clearStaffSession();
+    setSession(null);
+    if (typeof window !== "undefined") window.location.href = buildStaffLoginPath(staffWorkspacePath);
+  }
+
+  const availableCards = staffWorkspaceCards.filter((card) => staffHasRole(session, card.role));
+
+  if (!session) {
+    return (
+      <div className="app-page dispatcher-page">
+        <WorkspaceHeader />
+        <main className="dispatcher-main">
+          <section className="section-inner dispatcher-shell">
+            <div className="dispatcher-card protected-empty">
+              <Shield aria-hidden="true" />
+              <h1>Требуется вход сотрудника</h1>
+              <p>Выбор кабинета доступен только сотрудникам внутреннего контура.</p>
+              <a className="submit-button" href={buildStaffLoginPath(staffWorkspacePath)}>
+                <LogIn aria-hidden="true" />
+                Войти
+              </a>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app-page dispatcher-page staff-workspace-page">
+      <WorkspaceHeader session={session} onLogout={logout} />
+      <main className="dispatcher-main">
+        <section className="section-inner dispatcher-shell">
+          <div className="dispatcher-topline">
+            <div>
+              <span>Внутренний контур</span>
+              <h1>Выберите кабинет</h1>
+              <p>Доступные рабочие зоны для {session.username}.</p>
+            </div>
+          </div>
+          <div className="staff-workspace-grid">
+            {availableCards.map(({ role, href, title, copy, Icon }) => (
+              <a className="staff-workspace-card" href={href} key={role}>
+                <Icon aria-hidden="true" />
+                <strong>{title}</strong>
+                <span>{copy}</span>
+                <em>
+                  Открыть
+                  <ChevronRight aria-hidden="true" />
+                </em>
+              </a>
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
 export function ProtectedDispatcherPage({
   hasSession,
   initialSession,
@@ -2576,6 +2733,20 @@ export function ProtectedDispatcherPage({
 
 const staffRoleOptions: StaffRole[] = ["admin", "dispatcher", "technician", "inventory"];
 
+interface StaffProfileDraft {
+  firstName: string;
+  lastName: string;
+  phone: string;
+}
+
+function staffProfileDraft(account: StaffAccountItem): StaffProfileDraft {
+  return {
+    firstName: account.first_name,
+    lastName: account.last_name,
+    phone: account.phone,
+  };
+}
+
 export function AdminPage({
   initialSession,
   initialStaff,
@@ -2591,11 +2762,16 @@ export function AdminPage({
   const [staff, setStaff] = useState<StaffAccountListResponse>(initialStaff ?? { items: [] });
   const [audit, setAudit] = useState<StaffAuditListResponse>(initialAudit ?? { items: [] });
   const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [createRoles, setCreateRoles] = useState<StaffRole[]>(["dispatcher"]);
   const [roleDrafts, setRoleDrafts] = useState<Record<string, StaffRole[]>>(() =>
     Object.fromEntries((initialStaff?.items ?? []).map((item) => [item.username, item.roles])),
+  );
+  const [profileDrafts, setProfileDrafts] = useState<Record<string, StaffProfileDraft>>(() =>
+    Object.fromEntries((initialStaff?.items ?? []).map((item) => [item.username, staffProfileDraft(item)])),
   );
   const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -2607,6 +2783,7 @@ export function AdminPage({
     const body = (await response.json()) as StaffAccountListResponse;
     setStaff(body);
     setRoleDrafts(Object.fromEntries(body.items.map((item) => [item.username, item.roles])));
+    setProfileDrafts(Object.fromEntries(body.items.map((item) => [item.username, staffProfileDraft(item)])));
     return body;
   }
 
@@ -2650,16 +2827,20 @@ export function AdminPage({
         method: "POST",
         headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
         body: JSON.stringify({
-          username: username.trim(),
-          display_name: displayName.trim(),
-          password,
-          roles: createRoles,
-        }),
-      });
-      if (!response.ok) throw new Error(`Create staff failed with ${response.status}`);
-      setUsername("");
-      setDisplayName("");
-      setPassword("");
+	          username: username.trim(),
+	          first_name: firstName.trim(),
+	          last_name: lastName.trim(),
+	          phone: phone.trim(),
+	          password,
+	          roles: createRoles,
+	        }),
+	      });
+	      if (!response.ok) throw new Error(`Create staff failed with ${response.status}`);
+	      setUsername("");
+	      setFirstName("");
+	      setLastName("");
+	      setPhone("");
+	      setPassword("");
       setCreateRoles(["dispatcher"]);
       await refresh();
       setMessage("Сотрудник создан.");
@@ -2726,15 +2907,52 @@ export function AdminPage({
                 {staff.items.length ? (
                   staff.items.map((account) => {
                     const draftRoles = roleDrafts[account.username] ?? account.roles;
+                    const draftProfile = profileDrafts[account.username] ?? staffProfileDraft(account);
                     return (
                       <article className={account.active ? "admin-staff-row" : "admin-staff-row inactive"} key={account.username}>
-                        <div>
+                        <div className="admin-staff-identity">
                           <strong>{account.display_name}</strong>
                           <span>{account.username}</span>
+                          {account.phone ? <span>{account.phone}</span> : null}
                           <small>
                             {account.active ? "Активен" : "Отключен"} · обновлен{" "}
                             <time dateTime={account.updated_at}>{formatCompactDateTime(account.updated_at)}</time>
                           </small>
+                        </div>
+                        <div className="admin-profile-control" aria-label={`Профиль ${account.username}`}>
+                          <input
+                            value={draftProfile.firstName}
+                            onChange={(event) =>
+                              setProfileDrafts((current) => ({
+                                ...current,
+                                [account.username]: { ...draftProfile, firstName: event.target.value },
+                              }))
+                            }
+                            placeholder="Имя"
+                            required
+                          />
+                          <input
+                            value={draftProfile.lastName}
+                            onChange={(event) =>
+                              setProfileDrafts((current) => ({
+                                ...current,
+                                [account.username]: { ...draftProfile, lastName: event.target.value },
+                              }))
+                            }
+                            placeholder="Фамилия"
+                            required
+                          />
+                          <input
+                            value={draftProfile.phone}
+                            onChange={(event) =>
+                              setProfileDrafts((current) => ({
+                                ...current,
+                                [account.username]: { ...draftProfile, phone: event.target.value },
+                              }))
+                            }
+                            placeholder="Телефон"
+                            required
+                          />
                         </div>
                         <div className="role-chip-row" aria-label={`Роли ${account.username}`}>
                           {staffRoleOptions.map((role) => (
@@ -2754,6 +2972,22 @@ export function AdminPage({
                           ))}
                         </div>
                         <div className="admin-row-actions">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void postAdminAction(
+                                buildAdminStaffProfilePath(account.username),
+                                {
+                                  first_name: draftProfile.firstName.trim(),
+                                  last_name: draftProfile.lastName.trim(),
+                                  phone: draftProfile.phone.trim(),
+                                },
+                                "Данные сотрудника обновлены.",
+                              )
+                            }
+                          >
+                            Сохранить данные
+                          </button>
                           <button
                             type="button"
                             onClick={() =>
@@ -2807,7 +3041,9 @@ export function AdminPage({
               <h2>Новый сотрудник</h2>
               <form className="dispatcher-form" onSubmit={submitCreateStaff}>
                 <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="email сотрудника" required type="email" />
-                <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Имя в интерфейсе" required />
+                <input value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="Имя" required />
+                <input value={lastName} onChange={(event) => setLastName(event.target.value)} placeholder="Фамилия" required />
+                <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Телефон" required />
                 <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Временный пароль" required type="password" minLength={8} />
                 <div className="admin-role-control">
                   <span>Роли сотрудника</span>
@@ -4436,13 +4672,17 @@ function SectionHeading({ title, copy }: { title: string; copy: string }) {
 }
 
 export function App() {
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   const isDispatcherRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/dispatcher");
   const isTechnicianRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/technician");
   const isInventoryRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/inventory");
   const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
   const isStaffLoginRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/staff/login");
+  const isStaffWorkspaceRoute = typeof window !== "undefined" && window.location.pathname.startsWith(staffWorkspacePath);
+  const isStaffEntryRoute = pathname === "/staff" || pathname === "/staff/";
   const isStatusRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/status");
   if (isStaffLoginRoute) return <StaffLoginPage />;
+  if (isStaffWorkspaceRoute || isStaffEntryRoute) return <StaffWorkspacePage />;
   if (isAdminRoute) return <ProtectedAdminPage />;
   if (isDispatcherRoute) return <ProtectedDispatcherPage />;
   if (isTechnicianRoute) return <ProtectedTechnicianPage />;

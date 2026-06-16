@@ -27,13 +27,23 @@ def _dedupe_roles(roles: list[StaffRoleValue]) -> list[StaffRoleValue]:
 
 class CreateStaffAccountPayload(BaseModel):
     username: str = Field(min_length=1, max_length=180)
-    display_name: str = Field(min_length=1, max_length=180)
+    first_name: str | None = Field(default=None, max_length=120)
+    last_name: str | None = Field(default=None, max_length=120)
+    phone: str | None = Field(default=None, max_length=40)
+    display_name: str | None = Field(default=None, max_length=180)
     password: str = Field(min_length=8, max_length=240)
     roles: list[StaffRoleValue] = Field(min_length=1)
 
     _clean_username = field_validator("username")(_clean_required)
-    _clean_display_name = field_validator("display_name")(_clean_required)
     _clean_password = field_validator("password")(_clean_required)
+
+    @field_validator("first_name", "last_name", "phone", "display_name")
+    @classmethod
+    def _clean_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
 
     @field_validator("roles")
     @classmethod
@@ -41,6 +51,16 @@ class CreateStaffAccountPayload(BaseModel):
         if not roles:
             raise ValueError("At least one role is required")
         return _dedupe_roles(roles)
+
+
+class UpdateStaffProfilePayload(BaseModel):
+    first_name: str = Field(min_length=1, max_length=120)
+    last_name: str = Field(min_length=1, max_length=120)
+    phone: str = Field(min_length=1, max_length=40)
+
+    _clean_first_name = field_validator("first_name")(_clean_required)
+    _clean_last_name = field_validator("last_name")(_clean_required)
+    _clean_phone = field_validator("phone")(_clean_required)
 
 
 class UpdateStaffRolesPayload(BaseModel):
@@ -68,6 +88,9 @@ class ResetStaffPasswordPayload(BaseModel):
 class StaffAccount(BaseModel):
     username: str
     display_name: str
+    first_name: str
+    last_name: str
+    phone: str
     roles: list[StaffRoleValue]
     active: bool
     created_at: str
@@ -76,6 +99,16 @@ class StaffAccount(BaseModel):
 
 class StaffAccountListResponse(BaseModel):
     items: list[StaffAccount]
+
+
+class TechnicianCandidate(BaseModel):
+    username: str
+    display_name: str
+    phone: str
+
+
+class TechnicianCandidateListResponse(BaseModel):
+    items: list[TechnicianCandidate]
 
 
 class StaffAccountActionResponse(BaseModel):

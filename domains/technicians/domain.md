@@ -29,6 +29,7 @@ Technician identity:
 
 - Scheduling uses the staff username as the technician identifier.
 - Existing assignment matching still uses `assigned_technician_name`, now populated with the technician identifier when a structured appointment is created.
+- Dispatcher candidate selection reads active staff accounts with the `technician` role. Candidates expose staff display name, username, and phone. Region, skills, and availability remain manual or deferred technician-profile data.
 
 Capacity assumption:
 

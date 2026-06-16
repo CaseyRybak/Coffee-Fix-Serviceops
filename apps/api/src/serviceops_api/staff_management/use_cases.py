@@ -13,6 +13,9 @@ from serviceops_api.staff_management.models import (
     StaffAuditEvent,
     StaffAuditListResponse,
     StaffPasswordResetResponse,
+    TechnicianCandidate,
+    TechnicianCandidateListResponse,
+    UpdateStaffProfilePayload,
     UpdateStaffRolesPayload,
 )
 from serviceops_api.staff_management.repository import StaffAccountStore
@@ -33,6 +36,38 @@ class ListStaffAccounts:
 
     def execute(self) -> StaffAccountListResponse:
         return StaffAccountListResponse(items=[_account(row) for row in self._repository.list_accounts()])
+
+
+class ListTechnicianCandidates:
+    def __init__(self, repository: StaffAccountStore) -> None:
+        self._repository = repository
+
+    def execute(self) -> TechnicianCandidateListResponse:
+        candidates = [
+            TechnicianCandidate(
+                username=str(row["username"]),
+                display_name=str(row["display_name"]),
+                phone=str(row.get("phone", "")),
+            )
+            for row in self._repository.list_accounts()
+            if bool(row["active"]) and "technician" in row["roles"]
+        ]
+        return TechnicianCandidateListResponse(items=candidates)
+
+
+class UpdateStaffProfile:
+    def __init__(self, repository: StaffAccountStore) -> None:
+        self._repository = repository
+
+    def execute(self, username: str, payload: UpdateStaffProfilePayload, actor: str) -> StaffAccountActionResponse:
+        row = self._repository.update_profile(
+            username,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            phone=payload.phone,
+            actor=actor,
+        )
+        return StaffAccountActionResponse(account=_account(row))
 
 
 class UpdateStaffRoles:
@@ -81,6 +116,9 @@ def _account(row: dict[str, object]) -> StaffAccount:
     return StaffAccount(
         username=str(row["username"]),
         display_name=str(row["display_name"]),
+        first_name=str(row.get("first_name", "")),
+        last_name=str(row.get("last_name", "")),
+        phone=str(row.get("phone", "")),
         roles=list(row["roles"]),
         active=bool(row["active"]),
         created_at=str(row["created_at"]),

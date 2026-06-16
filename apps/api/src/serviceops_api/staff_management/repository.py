@@ -17,6 +17,7 @@ KNOWLEDGE_BASE_MIGRATION_PATH = MIGRATIONS_DIR / "0002_knowledge_base_rag.sql"
 AI_SUGGESTIONS_MIGRATION_PATH = MIGRATIONS_DIR / "0003_ai_suggestions.sql"
 TECHNICIAN_INVENTORY_MIGRATION_PATH = MIGRATIONS_DIR / "0004_technician_inventory.sql"
 STAFF_MANAGEMENT_MIGRATION_PATH = MIGRATIONS_DIR / "0005_staff_management.sql"
+STAFF_PROFILE_FIELDS_MIGRATION_PATH = MIGRATIONS_DIR / "0012_staff_profile_fields.sql"
 
 
 class StaffAccountStore(Protocol):
@@ -31,6 +32,9 @@ class StaffAccountStore(Protocol):
 
     def update_roles(self, username: str, roles: list[StaffRoleValue], actor: str) -> dict[str, object]:
         """Replace account roles."""
+
+    def update_profile(self, username: str, first_name: str, last_name: str, phone: str, actor: str) -> dict[str, object]:
+        """Update staff profile fields."""
 
     def set_active(self, username: str, active: bool, actor: str) -> dict[str, object]:
         """Activate or deactivate an account."""
@@ -62,35 +66,40 @@ class SqliteStaffAccountRepository:
         return cls(":memory:")
 
     def initialize(self) -> None:
-        self._connection.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS staff_accounts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                display_name TEXT NOT NULL,
-                password_hash TEXT NOT NULL,
-                active INTEGER NOT NULL DEFAULT 1,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
+        with self._connection:
+            self._connection.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS staff_accounts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL UNIQUE,
+                    display_name TEXT NOT NULL,
+                    first_name TEXT NOT NULL DEFAULT '',
+                    last_name TEXT NOT NULL DEFAULT '',
+                    phone TEXT NOT NULL DEFAULT '',
+                    password_hash TEXT NOT NULL,
+                    active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
 
-            CREATE TABLE IF NOT EXISTS staff_account_roles (
-                staff_account_id INTEGER NOT NULL REFERENCES staff_accounts(id) ON DELETE CASCADE,
-                role TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (staff_account_id, role)
-            );
+                CREATE TABLE IF NOT EXISTS staff_account_roles (
+                    staff_account_id INTEGER NOT NULL REFERENCES staff_accounts(id) ON DELETE CASCADE,
+                    role TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (staff_account_id, role)
+                );
 
-            CREATE TABLE IF NOT EXISTS staff_audit_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                actor_username TEXT NOT NULL,
-                target_username TEXT NOT NULL,
-                action TEXT NOT NULL,
-                metadata TEXT NOT NULL DEFAULT '{}',
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            """
-        )
+                CREATE TABLE IF NOT EXISTS staff_audit_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    actor_username TEXT NOT NULL,
+                    target_username TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    metadata TEXT NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+                """
+            )
+            self._ensure_profile_columns()
 
     def create_account(self, payload: CreateStaffAccountPayload, password_hash: str, actor: str) -> dict[str, object]:
         try:
@@ -100,9 +109,18 @@ class SqliteStaffAccountRepository:
                     INSERT INTO staff_accounts (username, display_name, password_hash)
                     VALUES (?, ?, ?)
                     """,
-                    (payload.username, payload.display_name, password_hash),
+                    (payload.username, self._display_name_from_payload(payload), password_hash),
                 )
                 account_id = int(cursor.lastrowid)
+                profile = self._profile_from_payload(payload)
+                self._connection.execute(
+                    """
+                    UPDATE staff_accounts
+                    SET first_name = ?, last_name = ?, phone = ?, display_name = ?
+                    WHERE id = ?
+                    """,
+                    (profile["first_name"], profile["last_name"], profile["phone"], profile["display_name"], account_id),
+                )
                 self._replace_roles(account_id, payload.roles)
                 self._insert_audit(actor, payload.username, "staff.created", {"roles": payload.roles})
         except sqlite3.IntegrityError as exc:
@@ -115,7 +133,7 @@ class SqliteStaffAccountRepository:
     def list_accounts(self) -> list[dict[str, object]]:
         rows = self._connection.execute(
             """
-            SELECT id, username, display_name, password_hash, active, created_at, updated_at
+            SELECT id, username, display_name, first_name, last_name, phone, password_hash, active, created_at, updated_at
             FROM staff_accounts
             ORDER BY username
             """
@@ -125,7 +143,7 @@ class SqliteStaffAccountRepository:
     def get_account_by_username(self, username: str) -> dict[str, object] | None:
         row = self._connection.execute(
             """
-            SELECT id, username, display_name, password_hash, active, created_at, updated_at
+            SELECT id, username, display_name, first_name, last_name, phone, password_hash, active, created_at, updated_at
             FROM staff_accounts
             WHERE username = ?
             """,
@@ -143,6 +161,21 @@ class SqliteStaffAccountRepository:
             self._replace_roles(int(account["id"]), roles)
             self._connection.execute("UPDATE staff_accounts SET updated_at = CURRENT_TIMESTAMP WHERE username = ?", (username,))
             self._insert_audit(actor, username, "staff.roles_updated", {"roles": roles})
+        return self._require_account(username)
+
+    def update_profile(self, username: str, first_name: str, last_name: str, phone: str, actor: str) -> dict[str, object]:
+        self._require_account(username)
+        display_name = self._display_name(first_name, last_name, username)
+        with self._connection:
+            self._connection.execute(
+                """
+                UPDATE staff_accounts
+                SET first_name = ?, last_name = ?, phone = ?, display_name = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE username = ?
+                """,
+                (first_name, last_name, phone, display_name, username),
+            )
+            self._insert_audit(actor, username, "staff.profile_updated", {})
         return self._require_account(username)
 
     def set_active(self, username: str, active: bool, actor: str) -> dict[str, object]:
@@ -205,6 +238,41 @@ class SqliteStaffAccountRepository:
             [(account_id, role) for role in sorted(roles)],
         )
 
+    def _ensure_profile_columns(self) -> None:
+        existing = {
+            str(row["name"])
+            for row in self._connection.execute("PRAGMA table_info(staff_accounts)").fetchall()
+        }
+        for column in ("first_name", "last_name", "phone"):
+            if column not in existing:
+                self._connection.execute(f"ALTER TABLE staff_accounts ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
+        self._connection.execute(
+            """
+            UPDATE staff_accounts
+            SET first_name = display_name
+            WHERE first_name = '' AND last_name = '' AND display_name <> ''
+            """
+        )
+
+    def _profile_from_payload(self, payload: CreateStaffAccountPayload) -> dict[str, str]:
+        first_name = (payload.first_name or "").strip()
+        last_name = (payload.last_name or "").strip()
+        phone = (payload.phone or "").strip()
+        if not first_name and not last_name and payload.display_name:
+            first_name = payload.display_name.strip()
+        return {
+            "first_name": first_name,
+            "last_name": last_name,
+            "phone": phone,
+            "display_name": self._display_name(first_name, last_name, payload.username),
+        }
+
+    def _display_name_from_payload(self, payload: CreateStaffAccountPayload) -> str:
+        return self._profile_from_payload(payload)["display_name"]
+
+    def _display_name(self, first_name: str, last_name: str, username: str) -> str:
+        return " ".join(part for part in (first_name.strip(), last_name.strip()) if part).strip() or username
+
     def _insert_audit(self, actor: str, target: str, action: str, metadata: dict[str, object]) -> None:
         self._connection.execute(
             """
@@ -226,7 +294,10 @@ class SqliteStaffAccountRepository:
         return {
             "id": row["id"],
             "username": row["username"],
-            "display_name": row["display_name"],
+            "display_name": self._display_name(str(row["first_name"]), str(row["last_name"]), str(row["username"])),
+            "first_name": row["first_name"],
+            "last_name": row["last_name"],
+            "phone": row["phone"],
             "password_hash": row["password_hash"],
             "roles": [role["role"] for role in role_rows],
             "active": bool(row["active"]),
@@ -259,6 +330,7 @@ class PostgresStaffAccountRepository:
             AI_SUGGESTIONS_MIGRATION_PATH,
             TECHNICIAN_INVENTORY_MIGRATION_PATH,
             STAFF_MANAGEMENT_MIGRATION_PATH,
+            STAFF_PROFILE_FIELDS_MIGRATION_PATH,
         ):
             connection.execute(migration_path.read_text(encoding="utf-8"))
         connection.commit()
@@ -269,11 +341,18 @@ class PostgresStaffAccountRepository:
             with connection.transaction():
                 row = connection.execute(
                     """
-                    INSERT INTO staff_accounts (username, display_name, password_hash)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO staff_accounts (username, display_name, first_name, last_name, phone, password_hash)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
-                    (payload.username, payload.display_name, password_hash),
+                    (
+                        payload.username,
+                        self._display_name_from_payload(payload),
+                        self._profile_from_payload(payload)["first_name"],
+                        self._profile_from_payload(payload)["last_name"],
+                        self._profile_from_payload(payload)["phone"],
+                        password_hash,
+                    ),
                 ).fetchone()
                 if row is None:
                     raise RuntimeError("staff account insert did not return an id")
@@ -286,7 +365,7 @@ class PostgresStaffAccountRepository:
     def list_accounts(self) -> list[dict[str, object]]:
         rows = self._connect().execute(
             """
-            SELECT id, username, display_name, password_hash, active, created_at, updated_at
+            SELECT id, username, display_name, first_name, last_name, phone, password_hash, active, created_at, updated_at
             FROM staff_accounts
             ORDER BY username
             """
@@ -296,7 +375,7 @@ class PostgresStaffAccountRepository:
     def get_account_by_username(self, username: str) -> dict[str, object] | None:
         row = self._connect().execute(
             """
-            SELECT id, username, display_name, password_hash, active, created_at, updated_at
+            SELECT id, username, display_name, first_name, last_name, phone, password_hash, active, created_at, updated_at
             FROM staff_accounts
             WHERE username = %s
             """,
@@ -315,6 +394,22 @@ class PostgresStaffAccountRepository:
             self._replace_roles(int(account["id"]), roles)
             connection.execute("UPDATE staff_accounts SET updated_at = now() WHERE username = %s", (username,))
             self._insert_audit(actor, username, "staff.roles_updated", {"roles": roles})
+        return self._require_account(username)
+
+    def update_profile(self, username: str, first_name: str, last_name: str, phone: str, actor: str) -> dict[str, object]:
+        self._require_account(username)
+        display_name = self._display_name(first_name, last_name, username)
+        connection = self._connect()
+        with connection.transaction():
+            connection.execute(
+                """
+                UPDATE staff_accounts
+                SET first_name = %s, last_name = %s, phone = %s, display_name = %s, updated_at = now()
+                WHERE username = %s
+                """,
+                (first_name, last_name, phone, display_name, username),
+            )
+            self._insert_audit(actor, username, "staff.profile_updated", {})
         return self._require_account(username)
 
     def set_active(self, username: str, active: bool, actor: str) -> dict[str, object]:
@@ -385,6 +480,25 @@ class PostgresStaffAccountRepository:
                 (account_id, role),
             )
 
+    def _profile_from_payload(self, payload: CreateStaffAccountPayload) -> dict[str, str]:
+        first_name = (payload.first_name or "").strip()
+        last_name = (payload.last_name or "").strip()
+        phone = (payload.phone or "").strip()
+        if not first_name and not last_name and payload.display_name:
+            first_name = payload.display_name.strip()
+        return {
+            "first_name": first_name,
+            "last_name": last_name,
+            "phone": phone,
+            "display_name": self._display_name(first_name, last_name, payload.username),
+        }
+
+    def _display_name_from_payload(self, payload: CreateStaffAccountPayload) -> str:
+        return self._profile_from_payload(payload)["display_name"]
+
+    def _display_name(self, first_name: str, last_name: str, username: str) -> str:
+        return " ".join(part for part in (first_name.strip(), last_name.strip()) if part).strip() or username
+
     def _insert_audit(self, actor: str, target: str, action: str, metadata: dict[str, object]) -> None:
         self._connect().execute(
             """
@@ -402,7 +516,10 @@ class PostgresStaffAccountRepository:
         return {
             "id": row["id"],
             "username": row["username"],
-            "display_name": row["display_name"],
+            "display_name": self._display_name(str(row["first_name"]), str(row["last_name"]), str(row["username"])),
+            "first_name": row["first_name"],
+            "last_name": row["last_name"],
+            "phone": row["phone"],
             "password_hash": row["password_hash"],
             "roles": [role["role"] for role in role_rows],
             "active": row["active"],

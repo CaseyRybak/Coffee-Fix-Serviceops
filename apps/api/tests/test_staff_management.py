@@ -67,7 +67,9 @@ def test_staff_repository_creates_account_with_roles_and_audit() -> None:
     created = CreateStaffAccount(repository).execute(
         CreateStaffAccountPayload(
             username="tech-1@coffeefix.local",
-            display_name="Tech One",
+            first_name="Tech",
+            last_name="One",
+            phone="+7 999 100-20-30",
             password="temporary-pass-1",
             roles=["technician"],
         ),
@@ -76,6 +78,9 @@ def test_staff_repository_creates_account_with_roles_and_audit() -> None:
 
     assert created.username == "tech-1@coffeefix.local"
     assert created.display_name == "Tech One"
+    assert created.first_name == "Tech"
+    assert created.last_name == "One"
+    assert created.phone == "+7 999 100-20-30"
     assert created.roles == ["technician"]
     assert created.active is True
     assert ListStaffAccounts(repository).execute().items[0].username == "tech-1@coffeefix.local"
@@ -375,7 +380,9 @@ def test_admin_staff_management_api_lifecycle_and_role_protection() -> None:
             "/admin/staff",
             {
                 "username": "inventory-admin@coffeefix.local",
-                "display_name": "Inventory Admin",
+                "first_name": "Inventory",
+                "last_name": "Admin",
+                "phone": "+7 999 200-30-40",
                 "password": "temporary-pass-1",
                 "roles": ["inventory"],
             },
@@ -389,6 +396,19 @@ def test_admin_staff_management_api_lifecycle_and_role_protection() -> None:
             staff_repository,
             "/admin/staff/inventory-admin%40coffeefix.local/roles",
             {"roles": ["inventory", "dispatcher"]},
+            token=admin_token,
+        )
+    )
+    profile_response = asyncio.run(
+        post_json(
+            service_repository,
+            staff_repository,
+            "/admin/staff/inventory-admin%40coffeefix.local/profile",
+            {
+                "first_name": "Updated",
+                "last_name": "Specialist",
+                "phone": "+7 999 555-44-33",
+            },
             token=admin_token,
         )
     )
@@ -414,13 +434,86 @@ def test_admin_staff_management_api_lifecycle_and_role_protection() -> None:
     non_admin_response = asyncio.run(get_json(service_repository, staff_repository, "/admin/staff", token=dispatcher_token))
 
     assert create_response.status_code == 201
+    assert create_response.json()["first_name"] == "Inventory"
+    assert create_response.json()["last_name"] == "Admin"
+    assert create_response.json()["phone"] == "+7 999 200-30-40"
     assert list_response.status_code == 200
     assert "inventory-admin@coffeefix.local" in [item["username"] for item in list_response.json()["items"]]
     assert roles_response.json()["account"]["roles"] == ["dispatcher", "inventory"]
+    assert profile_response.status_code == 200
+    assert profile_response.json()["account"]["display_name"] == "Updated Specialist"
+    assert profile_response.json()["account"]["phone"] == "+7 999 555-44-33"
     assert deactivate_response.json()["account"]["active"] is False
     assert reset_response.json()["temporary_password"]
-    assert audit_response.json()["items"][0]["action"] == "staff.password_reset"
+    assert "staff.profile_updated" in [item["action"] for item in audit_response.json()["items"]]
     assert non_admin_response.status_code == 403
+
+
+def test_dispatcher_can_list_active_technician_candidates_from_staff_roles() -> None:
+    service_repository = ServiceRequestRepository.in_memory()
+    staff_repository = SqliteStaffAccountRepository.in_memory()
+    staff_repository.create_account(
+        CreateStaffAccountPayload(
+            username="dispatcher@coffeefix.local",
+            display_name="Dispatcher",
+            password="dispatcher-local",
+            roles=["dispatcher"],
+        ),
+        password_hash=hash_staff_password("dispatcher-local"),
+        actor="system",
+    )
+    staff_repository.create_account(
+        CreateStaffAccountPayload(
+            username="dispatcher-tech@coffeefix.local",
+            first_name="Dispatcher",
+            last_name="Tech",
+            phone="+7 999 111-22-33",
+            password="temporary-pass-1",
+            roles=["dispatcher", "technician", "inventory"],
+        ),
+        password_hash=hash_staff_password("temporary-pass-1"),
+        actor="admin@coffeefix.local",
+    )
+    staff_repository.create_account(
+        CreateStaffAccountPayload(
+            username="inactive-tech@coffeefix.local",
+            display_name="Inactive Tech",
+            password="temporary-pass-1",
+            roles=["technician"],
+        ),
+        password_hash=hash_staff_password("temporary-pass-1"),
+        actor="admin@coffeefix.local",
+    )
+    staff_repository.set_active("inactive-tech@coffeefix.local", False, actor="admin@coffeefix.local")
+    staff_repository.create_account(
+        CreateStaffAccountPayload(
+            username="inventory@coffeefix.local",
+            display_name="Inventory",
+            password="temporary-pass-1",
+            roles=["inventory"],
+        ),
+        password_hash=hash_staff_password("temporary-pass-1"),
+        actor="admin@coffeefix.local",
+    )
+    dispatcher_login = asyncio.run(
+        login(service_repository, staff_repository, "dispatcher@coffeefix.local", "dispatcher-local")
+    )
+    dispatcher_token = str(dispatcher_login.json()["access_token"])
+
+    response = asyncio.run(
+        get_json(service_repository, staff_repository, "/dispatcher/technician-candidates", token=dispatcher_token)
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [
+            {
+                "username": "dispatcher-tech@coffeefix.local",
+                "display_name": "Dispatcher Tech",
+                "phone": "+7 999 111-22-33",
+            }
+        ]
+    }
 
 
 def test_forbidden_staff_role_records_safe_audit_event() -> None:

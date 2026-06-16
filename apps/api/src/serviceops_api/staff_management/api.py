@@ -11,6 +11,8 @@ from serviceops_api.staff_management.models import (
     StaffAccountListResponse,
     StaffAuditListResponse,
     StaffPasswordResetResponse,
+    TechnicianCandidateListResponse,
+    UpdateStaffProfilePayload,
     UpdateStaffRolesPayload,
 )
 from serviceops_api.staff_management.use_cases import (
@@ -19,7 +21,9 @@ from serviceops_api.staff_management.use_cases import (
     DeactivateStaffAccount,
     ListStaffAccounts,
     ListStaffAuditEvents,
+    ListTechnicianCandidates,
     ResetStaffPassword,
+    UpdateStaffProfile,
     UpdateStaffRoles,
 )
 
@@ -28,6 +32,7 @@ def create_staff_management_router(
     create_account: CreateStaffAccount,
     list_accounts: ListStaffAccounts,
     update_roles: UpdateStaffRoles,
+    update_profile: UpdateStaffProfile,
     activate_account: ActivateStaffAccount,
     deactivate_account: DeactivateStaffAccount,
     reset_password: ResetStaffPassword,
@@ -62,6 +67,17 @@ def create_staff_management_router(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff account not found") from exc
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @router.post("/{username}/profile", response_model=StaffAccountActionResponse)
+    async def post_staff_profile(
+        username: str,
+        payload: UpdateStaffProfilePayload,
+        current_staff: StaffUser = Depends(staff_dependency),
+    ) -> StaffAccountActionResponse:
+        try:
+            return update_profile.execute(username, payload, actor=current_staff.username)
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff account not found") from exc
 
     @router.post("/{username}/activate", response_model=StaffAccountActionResponse)
     async def post_staff_activate(
@@ -99,5 +115,20 @@ def create_staff_management_router(
     @router.get("/audit", response_model=StaffAuditListResponse)
     async def get_staff_audit(current_staff: StaffUser = Depends(staff_dependency)) -> StaffAuditListResponse:
         return list_audit_events.execute()
+
+    return router
+
+
+def create_staff_dispatcher_directory_router(
+    list_technician_candidates: ListTechnicianCandidates,
+    staff_dependency: Depends,
+) -> APIRouter:
+    router = APIRouter(prefix="/dispatcher", tags=["staff directory"])
+
+    @router.get("/technician-candidates", response_model=TechnicianCandidateListResponse)
+    async def get_technician_candidates(
+        current_staff: StaffUser = Depends(staff_dependency),
+    ) -> TechnicianCandidateListResponse:
+        return list_technician_candidates.execute()
 
     return router

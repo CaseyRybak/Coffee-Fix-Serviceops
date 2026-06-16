@@ -81,7 +81,7 @@ from serviceops_api.scheduling.use_cases import (
     RescheduleAppointment,
 )
 from serviceops_api.staff_auth import StaffAuthenticator, create_staff_auth_router, require_staff_any_role, require_staff_role
-from serviceops_api.staff_management.api import create_staff_management_router
+from serviceops_api.staff_management.api import create_staff_dispatcher_directory_router, create_staff_management_router
 from serviceops_api.staff_management.repository import (
     PostgresStaffAccountRepository,
     SqliteStaffAccountRepository,
@@ -93,7 +93,9 @@ from serviceops_api.staff_management.use_cases import (
     DeactivateStaffAccount,
     ListStaffAccounts,
     ListStaffAuditEvents,
+    ListTechnicianCandidates,
     ResetStaffPassword,
+    UpdateStaffProfile,
     UpdateStaffRoles,
 )
 from serviceops_api.technicians.api import create_technician_router
@@ -179,11 +181,18 @@ def create_app(
             CreateStaffAccount(staff_account_store),
             ListStaffAccounts(staff_account_store),
             UpdateStaffRoles(staff_account_store),
+            UpdateStaffProfile(staff_account_store),
             ActivateStaffAccount(staff_account_store),
             DeactivateStaffAccount(staff_account_store),
             ResetStaffPassword(staff_account_store),
             ListStaffAuditEvents(staff_account_store),
             staff_dependency=require_staff_role("admin", authenticator),
+        )
+    )
+    app.include_router(
+        create_staff_dispatcher_directory_router(
+            ListTechnicianCandidates(staff_account_store),
+            staff_dependency=require_staff_role("dispatcher", authenticator),
         )
     )
     app.include_router(

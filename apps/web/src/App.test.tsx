@@ -12,6 +12,7 @@ import {
   ProtectedInventoryPage,
   ProtectedTechnicianPage,
   StaffLoginPage,
+  StaffWorkspacePage,
   StatusPage,
   SuccessState,
   buildDispatcherAssignmentPath,
@@ -20,6 +21,7 @@ import {
   buildDispatcherInternalNotePath,
   buildDispatcherListPath,
   buildDispatcherSchedulePath,
+  buildDispatcherTechnicianCandidatesPath,
   buildDispatcherAppointmentPath,
   buildDispatcherAppointmentReschedulePath,
   buildDispatcherAppointmentCancelPath,
@@ -28,6 +30,7 @@ import {
   buildAdminStaffAuditPath,
   buildAdminStaffDeactivatePath,
   buildAdminStaffPath,
+  buildAdminStaffProfilePath,
   buildAdminStaffResetPasswordPath,
   buildAdminStaffRolesPath,
   buildGenerateAiSuggestionsPath,
@@ -376,6 +379,7 @@ describe("App", () => {
   it("builds dispatcher API paths", () => {
     assert.equal(buildDispatcherListPath(), "/dispatcher/service-requests");
     assert.equal(buildDispatcherSchedulePath(), "/dispatcher/schedule");
+    assert.equal(buildDispatcherTechnicianCandidatesPath(), "/dispatcher/technician-candidates");
     assert.equal(
       buildDispatcherDetailPath(" CFX-20260605-000001 "),
       "/dispatcher/service-requests/CFX-20260605-000001",
@@ -469,6 +473,10 @@ describe("App", () => {
       "/admin/staff/admin%20user%40coffeefix.local/roles",
     );
     assert.equal(
+      buildAdminStaffProfilePath("admin@coffeefix.local"),
+      "/admin/staff/admin%40coffeefix.local/profile",
+    );
+    assert.equal(
       buildAdminStaffActivatePath("admin@coffeefix.local"),
       "/admin/staff/admin%40coffeefix.local/activate",
     );
@@ -520,6 +528,10 @@ describe("App", () => {
       resolveStaffLandingPath({ username: "lead@coffeefix.local", roles: ["admin", "dispatcher"] }, "/dispatcher"),
       "/dispatcher",
     );
+    assert.equal(
+      resolveStaffLandingPath({ username: "lead@coffeefix.local", roles: ["dispatcher", "technician", "inventory"] }, null),
+      "/staff/workspace",
+    );
   });
 
   it("reads stored staff sessions safely", () => {
@@ -570,6 +582,61 @@ describe("App", () => {
     assert.doesNotMatch(wrongRoleHtml, /Заявки, статусы, уточнения/);
   });
 
+  it("renders a staff workspace chooser for multi-role users", () => {
+    const html = renderToStaticMarkup(
+      <StaffWorkspacePage
+        initialSession={{
+          accessToken: "lead-token",
+          username: "lead@coffeefix.local",
+          roles: ["dispatcher", "technician", "inventory"],
+        }}
+      />,
+    );
+
+    assert.match(html, /Выберите кабинет/);
+    assert.match(html, /href="\/dispatcher"/);
+    assert.match(html, /Диспетчерская/);
+    assert.match(html, /href="\/technician"/);
+    assert.match(html, /Кабинет мастера/);
+    assert.match(html, /href="\/inventory"/);
+    assert.match(html, /Склад/);
+    assert.doesNotMatch(html, /href="\/admin"/);
+  });
+
+  it("routes the /staff/ entry to the workspace chooser for stored multi-role sessions", () => {
+    const previousWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        location: {
+          origin: "http://localhost:3000",
+          pathname: "/staff/",
+          search: "",
+        },
+        localStorage: {
+          getItem: () =>
+            JSON.stringify({
+              accessToken: "dispatcher-token",
+              username: "dispatcher@coffeefix.local",
+              roles: ["admin", "dispatcher", "technician", "inventory"],
+            }),
+        },
+      },
+    });
+
+    try {
+      const html = renderToStaticMarkup(<App />);
+
+      assert.match(html, /Выберите кабинет/);
+      assert.match(html, /href="\/dispatcher"/);
+      assert.match(html, /href="\/admin"/);
+      assert.match(html, /href="\/technician"/);
+      assert.match(html, /href="\/inventory"/);
+    } finally {
+      Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
+    }
+  });
+
   it("renders technician and inventory route guards", () => {
     const technicianGuard = renderToStaticMarkup(<ProtectedTechnicianPage hasSession={false} />);
     const technicianWrongRole = renderToStaticMarkup(
@@ -606,6 +673,9 @@ describe("App", () => {
             {
               username: "admin@coffeefix.local",
               display_name: "Admin",
+              first_name: "Coffee",
+              last_name: "Admin",
+              phone: "+7 999 000-10-00",
               roles: ["admin"],
               active: true,
               created_at: "2026-06-07 12:00:00",
@@ -614,6 +684,9 @@ describe("App", () => {
             {
               username: "tech@coffeefix.local",
               display_name: "Tech",
+              first_name: "Field",
+              last_name: "Tech",
+              phone: "+7 999 000-10-02",
               roles: ["technician"],
               active: false,
               created_at: "2026-06-07 12:00:00",
@@ -643,12 +716,35 @@ describe("App", () => {
     assert.match(workspaceHtml, /Новый сотрудник/);
     assert.match(workspaceHtml, /Роли сотрудника/);
     assert.match(workspaceHtml, /admin@coffeefix.local/);
+    assert.match(workspaceHtml, /Coffee/);
+    assert.match(workspaceHtml, /Admin/);
+    assert.match(workspaceHtml, /\+7 999 000-10-00/);
     assert.match(workspaceHtml, /tech@coffeefix.local/);
     assert.match(workspaceHtml, /technician/);
     assert.match(workspaceHtml, /Активировать/);
     assert.match(workspaceHtml, /Сбросить пароль/);
+    assert.match(workspaceHtml, /Имя/);
+    assert.match(workspaceHtml, /Фамилия/);
+    assert.match(workspaceHtml, /Телефон/);
     assert.match(workspaceHtml, /Аудит действий/);
     assert.match(workspaceHtml, /staff.deactivated/);
+  });
+
+  it("keeps admin staff rows in a responsive editing layout", () => {
+    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf-8");
+
+    assert.match(css, /\.admin-staff-row\s*{[^}]*grid-template-areas:/s);
+    assert.match(css, /\.admin-staff-row\s*{[^}]*minmax\(420px, 1fr\)/s);
+    assert.match(css, /\.admin-staff-identity\s*{[^}]*grid-area: identity;/s);
+    assert.match(css, /\.admin-profile-control\s*{[^}]*grid-area: profile;/s);
+    assert.match(css, /\.admin-staff-row \.role-chip-row\s*{[^}]*grid-area: roles;/s);
+    assert.match(css, /\.admin-row-actions\s*{[^}]*display: grid;/s);
+    assert.match(css, /\.admin-row-actions\s*{[^}]*grid-template-columns: 1fr;/s);
+    assert.match(css, /\.admin-row-actions button\s*{[^}]*white-space: nowrap;/s);
+    assert.doesNotMatch(
+      css,
+      /grid-template-columns: minmax\(170px, 0\.75fr\) minmax\(210px, 0\.9fr\) minmax\(210px, 0\.75fr\) minmax\(220px, 0\.7fr\)/,
+    );
   });
 
   it("renders dispatcher list detail and action controls", () => {
@@ -670,6 +766,15 @@ describe("App", () => {
           ],
         }}
         initialDetail={dispatcherDetail}
+        initialTechnicianCandidates={{
+          items: [
+            {
+              username: "dispatcher@coffeefix.local",
+              display_name: "Dispatcher",
+              phone: "+7 999 111-22-33",
+            },
+          ],
+        }}
       />,
     );
 
@@ -684,8 +789,10 @@ describe("App", () => {
     assert.match(html, /\+7 999 222-33-44/);
     assert.match(html, /Завтра 14:00-16:00/);
     assert.match(html, /Кандидаты мастеров/);
-    assert.match(html, /Sergey Morozov/);
-    assert.match(html, /Jura, Saeco · ЦАО/);
+    assert.match(html, /Dispatcher/);
+    assert.match(html, /dispatcher@coffeefix.local/);
+    assert.match(html, /\+7 999 111-22-33/);
+    assert.doesNotMatch(html, /Sergey Morozov/);
     assert.match(html, /Клиент просит звонить после 12:00./);
     assert.match(html, /Обновить статус/);
     assert.match(html, /Клиент увидит эти заголовок и описание в истории статуса/);

@@ -577,7 +577,7 @@ p {
 
 .admin-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
   gap: 18px;
   align-items: start;
 }
@@ -615,14 +615,22 @@ p {
 
 .admin-staff-row {
   display: grid;
-  grid-template-columns: minmax(180px, 0.9fr) minmax(240px, 1fr) minmax(220px, 0.85fr);
+  grid-template-columns: minmax(190px, 0.58fr) minmax(420px, 1fr) minmax(168px, 168px);
+  grid-template-areas:
+    "identity profile actions"
+    "identity roles actions";
   gap: 12px;
-  align-items: center;
-  min-height: 92px;
+  align-items: start;
+  min-height: 116px;
   padding: 14px;
   background: #fffaf2;
   border: 1px solid rgba(90, 56, 37, 0.12);
   border-radius: 8px;
+}
+
+.admin-staff-identity {
+  grid-area: identity;
+  align-self: center;
 }
 
 .admin-staff-row.inactive {
@@ -648,10 +656,38 @@ p {
   font-size: 0.84rem;
 }
 
-.role-chip-row,
-.admin-row-actions {
+.admin-profile-control {
+  display: grid;
+  grid-area: profile;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.admin-profile-control input:last-child {
+  grid-column: 1 / -1;
+}
+
+.role-chip-row {
   display: flex;
   flex-wrap: wrap;
+  gap: 7px;
+}
+
+.admin-staff-row .role-chip-row {
+  grid-area: roles;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-width: 0;
+}
+
+.admin-staff-row .role-chip {
+  flex: 0 0 auto;
+}
+
+.admin-row-actions {
+  display: grid;
+  grid-area: actions;
+  grid-template-columns: 1fr;
   gap: 7px;
 }
 
@@ -675,6 +711,11 @@ p {
 
 .admin-row-actions button {
   color: #2f241c;
+  width: 100%;
+  min-height: 36px;
+  font-size: 0.8rem;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .admin-role-control {
@@ -747,7 +788,8 @@ p {
   font-weight: 800;
 }
 
-.workspace-session-actions button {
+.workspace-session-actions button,
+.workspace-switch-link {
   display: inline-flex;
   gap: 7px;
   align-items: center;
@@ -760,7 +802,73 @@ p {
   font-weight: 800;
 }
 
+.workspace-switch-link {
+  text-decoration: none;
+}
+
 .workspace-session-actions svg {
+  width: 16px;
+  height: 16px;
+}
+
+.staff-workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.staff-workspace-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px 14px;
+  align-items: start;
+  min-height: 150px;
+  padding: 18px;
+  color: #2f241c;
+  background: #ffffff;
+  border: 1px solid #e2d8cd;
+  border-radius: 8px;
+  text-decoration: none;
+  box-shadow: 0 14px 32px rgba(31, 26, 23, 0.06);
+}
+
+.staff-workspace-card > svg {
+  grid-row: span 3;
+  width: 42px;
+  height: 42px;
+  padding: 10px;
+  color: #ffffff;
+  background: #2f6b4f;
+  border-radius: 8px;
+}
+
+.staff-workspace-card strong,
+.staff-workspace-card span,
+.staff-workspace-card em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.staff-workspace-card strong {
+  font-size: 1.05rem;
+}
+
+.staff-workspace-card span {
+  color: #75665d;
+  line-height: 1.45;
+}
+
+.staff-workspace-card em {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  align-self: end;
+  color: #2f6b4f;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.staff-workspace-card em svg {
   width: 16px;
   height: 16px;
 }
@@ -2792,9 +2900,26 @@ select:focus {
   }
 
   .admin-staff-row,
+  .admin-profile-control,
   .inventory-table article {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+
+  .admin-staff-row {
+    grid-template-areas:
+      "identity"
+      "profile"
+      "roles"
+      "actions";
+  }
+
+  .admin-staff-identity {
+    align-self: start;
+  }
+
+  .admin-profile-control input:last-child {
+    grid-column: auto;
   }
 
   .inventory-part-card,
