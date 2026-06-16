@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 
 import httpx
 
@@ -42,6 +43,19 @@ async def staff_token(username: str, password: str) -> str:
     response = await post_json("/staff/login", {"username": username, "password": password})
     assert response.status_code == 200
     return str(response.json()["access_token"])
+
+
+def test_inventory_russian_catalog_migration_normalizes_gaggia_classic_pump_seed() -> None:
+    migration = Path("src/serviceops_api/migrations/0010_inventory_russian_catalog.sql").read_text(encoding="utf-8")
+
+    assert "WHEN 'GAGGIA-CLASSIC-PUMP-DIAMETER-20-MM' THEN 'Вибрационный насос Gaggia Classic 20 мм'" in migration
+    assert (
+        "GAGGIA-CLASSIC-PUMP-DIAMETER-20-MM"
+        in migration[migration.index("WHERE sku IN (") : migration.index(");", migration.index("WHERE sku IN ("))]
+    )
+    assert "DELETE FROM part_compatibility" in migration
+    assert "pc.brand = 'Jura'" in migration
+    assert "pc.series = 'серия E'" in migration
 
 
 def test_inventory_repository_records_stock_and_parts_used() -> None:
