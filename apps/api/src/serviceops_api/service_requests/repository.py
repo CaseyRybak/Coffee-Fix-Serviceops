@@ -2013,7 +2013,11 @@ class PostgresServiceRequestRepository:
                     """,
                     (request["id"], actor),
                 )
-        except (psycopg.errors.ExclusionViolation, psycopg.errors.UniqueViolation) as exc:
+        except (
+            psycopg.errors.DeadlockDetected,
+            psycopg.errors.ExclusionViolation,
+            psycopg.errors.UniqueViolation,
+        ) as exc:
             raise SchedulingConflictError("Technician already has an appointment in this window") from exc
         return self._appointment_response(request_number, "visit_scheduled", appointment_id, "Appointment scheduled")
 
@@ -2089,7 +2093,11 @@ class PostgresServiceRequestRepository:
                     """,
                     (request["id"], status_after, actor),
                 )
-        except (psycopg.errors.ExclusionViolation, psycopg.errors.UniqueViolation) as exc:
+        except (
+            psycopg.errors.DeadlockDetected,
+            psycopg.errors.ExclusionViolation,
+            psycopg.errors.UniqueViolation,
+        ) as exc:
             raise SchedulingConflictError("Technician already has an appointment in this window") from exc
         return self._appointment_response(request_number, status_after, new_appointment_id, "Appointment rescheduled")
 

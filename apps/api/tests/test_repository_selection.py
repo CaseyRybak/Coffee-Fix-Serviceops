@@ -242,6 +242,14 @@ def test_postgres_service_request_repository_uses_sequence_for_request_numbers(m
     assert not any("COUNT(*)" in sql for sql in executed_sql)
 
 
+def test_postgres_scheduling_treats_deadlocks_as_conflicts() -> None:
+    import inspect
+
+    source = inspect.getsource(PostgresServiceRequestRepository)
+
+    assert "psycopg.errors.DeadlockDetected" in source
+
+
 def test_postgres_inventory_repository_uses_row_locks_for_stock_and_reservations() -> None:
     import inspect
 
