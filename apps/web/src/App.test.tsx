@@ -294,6 +294,15 @@ describe("App", () => {
     assert.equal(getNextFormStep(3), 3);
   });
 
+  it("does not expose a photo or video block in the intake form", () => {
+    const source = readFileSync(new URL("./App.tsx", import.meta.url), "utf-8");
+
+    assert.doesNotMatch(source, /Фото или видео/);
+    assert.doesNotMatch(source, /leak\.jpg/);
+    assert.doesNotMatch(source, /image\/jpeg/);
+    assert.doesNotMatch(source, /attachment-grid/);
+  });
+
   it("blocks moving to the next intake step until required fields are filled", () => {
     const emptyForm = {
       name: "",
@@ -308,9 +317,6 @@ describe("App", () => {
       visitTime: "",
       comment: "",
       urgency: "one_two_days" as const,
-      attachmentFilename: "",
-      attachmentContentType: "",
-      attachmentSizeBytes: "",
     };
 
     assert.deepEqual(validateIntakeStep(emptyForm, 1), ["Имя", "Телефон"]);
@@ -335,9 +341,6 @@ describe("App", () => {
       visitTime: "",
       comment: "",
       urgency: "today",
-      attachmentFilename: "leak.jpg",
-      attachmentContentType: "image/jpeg",
-      attachmentSizeBytes: "34822",
     });
 
     assert.deepEqual(payload, {
@@ -355,13 +358,6 @@ describe("App", () => {
       problem: "Leaking water",
       address: "Tverskaya district",
       urgency: "today",
-      attachment_metadata: [
-        {
-          filename: "leak.jpg",
-          content_type: "image/jpeg",
-          size_bytes: 34822,
-        },
-      ],
     });
   });
 

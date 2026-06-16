@@ -54,9 +54,6 @@ export interface IntakeFormState {
   visitTime: string;
   comment: string;
   urgency: Urgency;
-  attachmentFilename: string;
-  attachmentContentType: string;
-  attachmentSizeBytes: string;
 }
 
 interface IntakePayload {
@@ -74,11 +71,6 @@ interface IntakePayload {
   problem: string;
   address: string;
   urgency: Urgency;
-  attachment_metadata?: Array<{
-    filename: string;
-    content_type: string;
-    size_bytes: number;
-  }>;
 }
 
 type RequestStatus =
@@ -447,9 +439,6 @@ const initialForm: IntakeFormState = {
   visitTime: "",
   comment: "",
   urgency: "one_two_days",
-  attachmentFilename: "",
-  attachmentContentType: "",
-  attachmentSizeBytes: "",
 };
 
 const navLinks = [
@@ -692,13 +681,6 @@ export function buildServiceRequestPayload(form: IntakeFormState): IntakePayload
 
   const model = form.model.trim();
   if (model) payload.machine.model = model;
-
-  const filename = form.attachmentFilename.trim();
-  const contentType = form.attachmentContentType.trim();
-  const sizeBytes = Number(form.attachmentSizeBytes);
-  if (filename && contentType && Number.isFinite(sizeBytes) && sizeBytes > 0) {
-    payload.attachment_metadata = [{ filename, content_type: contentType, size_bytes: sizeBytes }];
-  }
 
   return payload;
 }
@@ -4524,13 +4506,6 @@ function RequestForm() {
             </Field>
             <Field label="Удобное время визита" optional>
               <input value={form.visitTime} onChange={(event) => set("visitTime")(event.target.value)} placeholder="Например: завтра после 14:00" />
-            </Field>
-            <Field label="Фото или видео" optional>
-              <div className="attachment-grid">
-                <input value={form.attachmentFilename} onChange={(event) => set("attachmentFilename")(event.target.value)} placeholder="leak.jpg" />
-                <input value={form.attachmentContentType} onChange={(event) => set("attachmentContentType")(event.target.value)} placeholder="image/jpeg" />
-                <input inputMode="numeric" value={form.attachmentSizeBytes} onChange={(event) => set("attachmentSizeBytes")(event.target.value)} placeholder="34822" />
-              </div>
             </Field>
             <Field label="Комментарий" optional>
               <textarea value={form.comment} onChange={(event) => set("comment")(event.target.value)} placeholder="Любые дополнительные сведения" rows={2} />

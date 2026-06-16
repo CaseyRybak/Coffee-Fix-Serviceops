@@ -1205,12 +1205,6 @@ select:focus {
   border-color: #5a3825;
 }
 
-.attachment-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.88fr) minmax(0, 0.72fr);
-  gap: 8px;
-}
-
 .form-navigation {
   display: flex;
   align-items: center;
@@ -3148,7 +3142,6 @@ select:focus {
     max-width: none;
   }
 
-  .attachment-grid,
   .footer-cta-inner,
   .footer-bottom {
     grid-template-columns: 1fr;
