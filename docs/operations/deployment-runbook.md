@@ -5,7 +5,7 @@
 - VPS has Docker, Docker Compose, and Dokploy installed.
 - DNS records point the web, API, and n8n hostnames to the VPS.
 - HTTPS is configured in Dokploy or the reverse proxy before public exposure.
-- The repository is available to Dokploy.
+- The repository `main` branch is available to Dokploy.
 - Production `.env` values are set from `.env.example` with real secrets.
 - A persistent backup directory exists on the host and is covered by host-level retention.
 - A production-safe first-admin bootstrap command is run before public launch. The current local seed command is intentionally blocked in production.
@@ -58,7 +58,7 @@ Do not use local development staff credentials, default passwords, or local URLs
 
 ## Dokploy Setup
 
-1. Create a new Dokploy Compose app from `docker-compose.production.yml`.
+1. Create a new Dokploy Compose app from the repository `main` branch and `docker-compose.production.yml`.
 2. Add production environment variables in the Dokploy app settings.
 3. Configure persistent volumes for `postgres-data` and `n8n-data`.
 4. Route the web domain to service `web` port `80`.

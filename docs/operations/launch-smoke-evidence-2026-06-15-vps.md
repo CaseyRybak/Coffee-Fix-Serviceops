@@ -11,6 +11,7 @@ This record captures the first real Coffee Fix ServiceOps VPS/Dokploy test deplo
 - Initial deployed Git revision: `4b65f18` on branch `production`
 - Latest verified application-code revision after worker fix: `f59989c` on branch `production`
 - Latest observed Dokploy checkout during post-evidence redeploy: `e2c0f75` on branch `production`
+- Branch reconciliation on 2026-06-16: `main` was fast-forwarded to `cf94f46`, Dokploy was switched to branch `main`, and the temporary `production` branch was deleted after API/web smoke checks passed.
 - Dokploy app: `coffee-fix-serviceops`
 - Web URL: `http://138.124.91.212:3001`
 - API URL: `http://138.124.91.212:8000`
@@ -26,7 +27,7 @@ This record captures the first real Coffee Fix ServiceOps VPS/Dokploy test deplo
 - Dokploy projects created separately:
   - `Coffee-Fix-Serviceops`
   - `Hermes`
-- `Coffee-Fix-Serviceops` compose service uses repository `CaseyRybak/Coffee-Fix-Serviceops`, branch `production`, compose path `./docker-compose.production.yml`.
+- `Coffee-Fix-Serviceops` compose service uses repository `CaseyRybak/Coffee-Fix-Serviceops`, branch `main`, compose path `./docker-compose.production.yml`.
 - PostgreSQL and Redis remain private containers with no UFW public rules.
 - UFW public rules during test deployment:
   - `OpenSSH`
@@ -118,6 +119,39 @@ smoke checks passed for request CFX-20260615-000002
 - Worker runtime review was completed after a Redis client dependency fix; see "Worker Fix And Redeploy Evidence".
 - Telegram bot container was not running during the initial deployment because production compose still used an optional profile for that service; customer Telegram opt-in verification remained a follow-up at that point.
 - n8n Cloud webhook execution for a real API-created request succeeded.
+
+## Branch Reconciliation Evidence
+
+After the initial VPS test deployment, the temporary deployment branches were collapsed back to a single repository branch.
+
+- `main` was fast-forwarded to the deployed application revision `cf94f46`.
+- The stale remote phase branch `phase-08-technician-inventory` was deleted.
+- Dokploy configuration for `coffee-fix-serviceops` was changed from branch `production` to branch `main`.
+- The Dokploy checkout was switched to `main` and its Git refspec was updated to fetch `refs/heads/main`.
+- The `production` branch was deleted locally and on GitHub after `main` and `production` pointed to the same revision.
+- Final remote branch check showed only `refs/heads/main` at `cf94f46`.
+
+Post-reconciliation smoke command:
+
+```bash
+SERVICEOPS_PUBLIC_API_BASE_URL=http://138.124.91.212:8000 \
+SERVICEOPS_PUBLIC_WEB_BASE_URL=http://138.124.91.212:3001 \
+bash tools/operations/smoke_test.sh
+```
+
+Result:
+
+```text
+checking API health: http://138.124.91.212:8000/health
+checking web root: http://138.124.91.212:3001/
+creating smoke service request
+checking status by request number: CFX-20260616-000005
+checking status by public token
+SERVICEOPS_SMOKE_STAFF_USERNAME/PASSWORD not configured; skipping staff route smoke check.
+N8N_TEST_WEBHOOK_URL is not configured; manually verify the n8n webhook path.
+manual follow-up: inspect worker logs and Telegram bot profile logs in Dokploy or Docker Compose.
+smoke checks passed for request CFX-20260616-000005
+```
 
 ## Worker Fix And Redeploy Evidence
 
@@ -239,9 +273,10 @@ Checksum result:
 
 ## Rollback Readiness
 
-- Previous known-good compose configuration before worker fix: branch `production`, commit `4b65f18`.
-- Latest verified application-code fix after worker fix: branch `production`, commit `f59989c`.
-- Latest observed Dokploy checkout after evidence redeploy: branch `production`, commit `e2c0f75`.
+- Previous known-good compose configuration before worker fix: historical branch `production`, commit `4b65f18`; this commit is now reachable through `main`.
+- Latest verified application-code fix after worker fix: historical branch `production`, commit `f59989c`; this commit is now reachable through `main`.
+- Latest observed Dokploy checkout after evidence redeploy: historical branch `production`, commit `e2c0f75`; this commit is now reachable through `main`.
+- Current repository deployment branch after 2026-06-16 reconciliation: `main`, commit `cf94f46`.
 - Latest verified backup identified: `/var/backups/serviceops/serviceops-20260615-205909.dump`.
 - Maintenance/public-route disable procedure: close UFW rules for `3001/tcp` and `8000/tcp`, and disable Dokploy routes when domains are later configured.
 - Restore decision owner: project owner.

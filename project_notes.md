@@ -18,7 +18,7 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 16:
 - Scheduling depth artifacts: structured appointment window persistence, dispatcher create/reschedule/cancel scheduling APIs, technician overlap capacity checks, dispatcher and technician schedule views, technician-visible appointment timing, customer-safe public appointment snapshots, and request timeline events for scheduling changes.
 - Inventory reservation and catalog-control artifacts: request-linked part reservations, reservation release/adjustment, stock movement audit records, available/reserved/on-hand stock visibility, low-stock thresholds, dispatcher read-only low-stock visibility, technician consumption of reserved parts, structured factual part keys, duplicate catalog protection, and exact-model/series/generic-group compatibility records.
 - Post-Phase-16 production hardening: atomic PostgreSQL request-number sequence, PostgreSQL appointment overlap exclusion, scheduling deadlock-to-conflict handling, row locks for stock/reservation mutations, safer notification delivery rowcount logging, default production Telegram bot service, no direct n8n port publication, and frontend redirect for expired staff sessions.
-- First real Aeza VPS/Dokploy test deployment evidence: Docker/Dokploy installed, `production` branch deployed, API/web/PostgreSQL/Redis healthy, migrations and first-admin bootstrap completed, n8n Cloud notification path verified through Telegram and backend delivery callback, PostgreSQL backup/restore drill recorded, and worker Redis broker dependency fixed/redeployed.
+- First real Aeza VPS/Dokploy test deployment evidence: Docker/Dokploy installed, the initial temporary `production` branch deployment was reconciled back to `main`, Dokploy now tracks `main`, API/web/PostgreSQL/Redis smoke checks passed, migrations and first-admin bootstrap completed, n8n Cloud notification path verified through Telegram and backend delivery callback, PostgreSQL backup/restore drill recorded, and worker Redis broker dependency fixed/redeployed.
 
 ## Active Focus
 
@@ -80,6 +80,7 @@ Choose the next approved implementation phase and create its detailed implementa
 - Public status snapshots must remain customer-safe and must not expose internal notes, AI internals, staff data, audit data, technician internal details, or inventory metadata.
 - Staff workspaces are role-protected; public navigation still does not expose staff login, dispatcher, admin, technician, or inventory routes.
 - Production deployment uses `docker-compose.production.yml`; local Compose remains localhost-only.
+- Repository deployment now uses a single `main` branch; the temporary `production` and phase deployment branches were removed after `main` was fast-forwarded to the deployed revision.
 - PostgreSQL and Redis stay private in production; web, API, and n8n are routed through Dokploy or the reverse proxy.
 - Production PostgreSQL request numbers use `service_request_number_seq`; sqlite local/test persistence keeps lightweight local counters.
 - PostgreSQL appointment capacity is enforced by an exclusion constraint, and scheduling conflicts/deadlocks are surfaced as dispatcher-safe conflicts.
