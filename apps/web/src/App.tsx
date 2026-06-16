@@ -1047,6 +1047,10 @@ export function staffAuthHeaders(session: StaffSession | null = getStoredStaffSe
   return session ? { Authorization: `Bearer ${session.accessToken}` } : {};
 }
 
+export function isStaffAuthFailureStatus(status: number): boolean {
+  return status === 401 || status === 403;
+}
+
 export function staffHasRole(session: StaffSession | null, role: StaffRole): boolean {
   return Boolean(session?.roles.includes(role));
 }
@@ -1719,11 +1723,19 @@ export function DispatcherPage({
   const [urgencyFilter, setUrgencyFilter] = useState<DispatcherUrgencyFilter>("all");
   const filteredItems = filterDispatcherItems(list.items, statusFilter, urgencyFilter);
 
+  function assertStaffResponse(response: Response, label: string) {
+    if (isStaffAuthFailureStatus(response.status)) {
+      onLogout?.();
+      throw new Error(`${label} failed with ${response.status}`);
+    }
+    if (!response.ok) throw new Error(`${label} failed with ${response.status}`);
+  }
+
   async function loadList() {
     const response = await fetch(`${apiBaseUrl()}${buildDispatcherListPath()}`, {
       headers: staffAuthHeaders(session),
     });
-    if (!response.ok) throw new Error(`Dispatcher list failed with ${response.status}`);
+    assertStaffResponse(response, "Dispatcher list");
     const body = (await response.json()) as DispatcherListResponse;
     setList(body);
     if (!selected && body.items[0]) setSelected(body.items[0].request_number);
@@ -1734,7 +1746,7 @@ export function DispatcherPage({
     const response = await fetch(`${apiBaseUrl()}${buildDispatcherSchedulePath()}`, {
       headers: staffAuthHeaders(session),
     });
-    if (!response.ok) throw new Error(`Dispatcher schedule failed with ${response.status}`);
+    assertStaffResponse(response, "Dispatcher schedule");
     const body = (await response.json()) as ScheduleListResponse;
     setSchedule(body);
     return body;
@@ -1744,7 +1756,7 @@ export function DispatcherPage({
     const response = await fetch(`${apiBaseUrl()}${buildInventoryLowStockPath()}`, {
       headers: staffAuthHeaders(session),
     });
-    if (!response.ok) throw new Error(`Low-stock inventory failed with ${response.status}`);
+    assertStaffResponse(response, "Low-stock inventory");
     const body = (await response.json()) as InventoryPartListResponse;
     setLowStock(body);
     return body;
@@ -1755,7 +1767,7 @@ export function DispatcherPage({
     const response = await fetch(`${apiBaseUrl()}${buildDispatcherDetailPath(requestNumber)}`, {
       headers: staffAuthHeaders(session),
     });
-    if (!response.ok) throw new Error(`Dispatcher detail failed with ${response.status}`);
+    assertStaffResponse(response, "Dispatcher detail");
     const body = (await response.json()) as DispatcherRequestDetail;
     setDetail(body);
     setSelected(body.request_number);

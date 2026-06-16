@@ -53,6 +53,7 @@ import {
   resolveApiBaseUrl,
   resolveStaffLandingPath,
   getStoredStaffSession,
+  isStaffAuthFailureStatus,
   staffAuthHeaders,
   filterDispatcherItems,
   normalizeRequestNumber,
@@ -452,6 +453,13 @@ describe("App", () => {
     assert.deepEqual(staffAuthHeaders({ accessToken: "staff-token", username: "dispatcher@coffeefix.local", roles: ["dispatcher"] }), {
       Authorization: "Bearer staff-token",
     });
+  });
+
+  it("treats unauthorized staff API responses as session failures", () => {
+    assert.equal(isStaffAuthFailureStatus(401), true);
+    assert.equal(isStaffAuthFailureStatus(403), true);
+    assert.equal(isStaffAuthFailureStatus(409), false);
+    assert.equal(isStaffAuthFailureStatus(500), false);
   });
 
   it("builds admin staff management API paths", () => {
