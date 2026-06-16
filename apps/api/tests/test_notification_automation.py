@@ -5,8 +5,10 @@ import httpx
 
 from serviceops_api.main import create_app
 from serviceops_api.notifications.models import DeliveryResultPayload, NotificationEvent
+from serviceops_api.notifications.n8n import N8nWebhookClient
 from serviceops_api.notifications.repository import SqliteNotificationRepository
 from serviceops_api.notifications.use_cases import NotificationPublisher, RecordN8nDeliveryResult
+from serviceops_api.config import Settings
 from serviceops_api.service_requests.repository import ServiceRequestRepository
 
 
@@ -35,7 +37,7 @@ class RecordingN8nClient:
 
     def deliver(self, event: dict[str, object]) -> dict[str, str]:
         self.events.append(event)
-        return {"status": "sent", "provider_message_id": f"n8n-{event['event_id']}"}
+        return {"status": "queued", "provider_message_id": f"n8n-{event['event_id']}"}
 
 
 class FailingN8nClient:
@@ -85,6 +87,17 @@ class MissingDeliveryUpdateStore:
 
     def record_callback_result(self, payload: DeliveryResultPayload) -> None:
         raise AssertionError("not used by publisher")
+
+
+class AcceptedWebhookResponse:
+    status = 200
+    headers = {"X-N8n-Execution-Id": "execution-123"}
+
+    def __enter__(self) -> "AcceptedWebhookResponse":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
 
 
 async def post_json(
@@ -175,7 +188,7 @@ def test_request_created_event_is_public_safe_and_persisted() -> None:
     }
     assert "111-22-33" not in str(event)
     assert "Tverskaya" not in str(event)
-    assert notification_repository.list_for_request(request_number)[0]["status"] == "sent"
+    assert notification_repository.list_for_request(request_number)[0]["status"] == "queued"
 
 
 def test_notification_publisher_logs_delivery_outcomes(caplog) -> None:
@@ -280,6 +293,30 @@ def test_notification_publisher_logs_missing_delivery_update_as_skipped(caplog) 
         "provider": "n8n",
         "reason": "delivery_attempt_not_found",
     }
+
+
+def test_n8n_webhook_acceptance_keeps_delivery_queued(monkeypatch) -> None:
+    def accepted_urlopen(*args: object, **kwargs: object) -> AcceptedWebhookResponse:
+        return AcceptedWebhookResponse()
+
+    monkeypatch.setattr("serviceops_api.notifications.n8n.urlopen", accepted_urlopen)
+    client = N8nWebhookClient(
+        Settings(
+            n8n_webhook_shared_secret="webhook-secret",
+            n8n_clarification_webhook_url="https://n8n.example.test/webhook/serviceops/clarification-requested",
+        )
+    )
+
+    result = client.deliver(
+        {
+            "event_id": "CFX-20260616-000006:service_request.clarification_requested:2",
+            "event_type": "service_request.clarification_requested",
+            "request_number": "CFX-20260616-000006",
+            "payload": {"request_number": "CFX-20260616-000006"},
+        }
+    )
+
+    assert result == {"status": "queued", "provider_message_id": "execution-123"}
 
 
 def test_lifecycle_events_are_emitted_and_deduplicated_by_event_id() -> None:
@@ -472,5 +509,5 @@ def test_dispatcher_detail_shows_notification_delivery_status_but_public_status_
     assert detail_response.status_code == 200
     detail = detail_response.json()
     assert detail["notification_deliveries"][0]["event_type"] == "service_request.created"
-    assert detail["notification_deliveries"][0]["status"] == "sent"
+    assert detail["notification_deliveries"][0]["status"] == "queued"
     assert "notification_deliveries" not in public_response.json()

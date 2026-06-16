@@ -49,7 +49,7 @@ class N8nWebhookClient:
         try:
             with urlopen(request, timeout=self._timeout_seconds) as response:
                 return {
-                    "status": "sent" if 200 <= response.status < 300 else "failed",
+                    "status": "queued" if 200 <= response.status < 300 else "failed",
                     "provider_message_id": response.headers.get("X-N8n-Execution-Id", ""),
                 }
         except (HTTPError, URLError, TimeoutError) as exc:

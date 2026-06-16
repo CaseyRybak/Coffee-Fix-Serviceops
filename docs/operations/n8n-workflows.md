@@ -179,3 +179,71 @@ Allowed statuses: `queued`, `sent`, `failed`, `retried`.
 ## Import Or Restore
 
 The live n8n instance already contains the Phase 12 workflows listed above. To restore them in another n8n instance, import the JSON exports from `docs/operations/n8n-workflows/`, configure the environment variables, activate the workflows, then set backend webhook URL variables to the production paths.
+
+## Local n8n Runtime
+
+Local n8n runs as the `n8n` service in `docker-compose.yml` and is bound to `127.0.0.1:${N8N_PORT:-5678}`. It shares the local Postgres container with ServiceOps by using the `n8n_` table prefix and stores n8n files in the `n8n-data` Docker volume.
+
+For local container-to-container calls, backend webhook URLs must use the Docker service name:
+
+```bash
+SERVICEOPS_N8N_REQUEST_CREATED_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/request-created
+SERVICEOPS_N8N_STATUS_CHANGED_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/status-changed
+SERVICEOPS_N8N_CLARIFICATION_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/clarification-requested
+SERVICEOPS_N8N_CUSTOMER_ANSWERED_WEBHOOK_URL=http://n8n:5678/webhook/serviceops/customer-answered
+```
+
+The n8n callback target is environment-based inside the workflow exports:
+
+```bash
+SERVICEOPS_API_BASE_URL=http://api:8000
+```
+
+The project may use the same Telegram bot and staff chat in local and production while it remains a pet project. Keep those values only in ignored environment files or deployment secrets, never in workflow exports or committed docs.
+
+To import the repository exports into local n8n:
+
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+src = Path("docs/operations/n8n-workflows")
+dst = Path("/tmp/serviceops-n8n-import")
+dst.mkdir(parents=True, exist_ok=True)
+for old in dst.glob("*.json"):
+    old.unlink()
+for path in src.glob("*.json"):
+    data = json.loads(path.read_text())
+    workflow = data["workflow"]
+    workflow["active"] = False
+    workflow.pop("activeVersion", None)
+    workflow.pop("triggerInfo", None)
+    workflow.pop("scopes", None)
+    workflow.pop("canExecute", None)
+    (dst / path.name).write_text(json.dumps(workflow, ensure_ascii=False, indent=2) + "\n")
+PY
+
+docker compose up -d n8n
+docker compose exec -T n8n mkdir -p /tmp/serviceops-n8n-import
+docker compose cp /tmp/serviceops-n8n-import/. n8n:/tmp/serviceops-n8n-import
+docker compose exec -T n8n n8n import:workflow --separate --input=/tmp/serviceops-n8n-import
+docker compose exec -T n8n n8n publish:workflow --id=fbEwkH56MkvmDnsD
+docker compose exec -T n8n n8n publish:workflow --id=0njpM50BqmqJeZE2
+docker compose exec -T n8n n8n publish:workflow --id=bJWa9A1ALnypyE2V
+docker compose exec -T n8n n8n publish:workflow --id=PVYG8clWqn9opv1l
+docker compose restart n8n
+```
+
+Use a clean destination path when re-importing. If `docker compose cp` copies a directory into an existing directory, n8n can accidentally import stale JSON from the parent path.
+
+Run the local notification smoke after `api`, `telegram-bot`, and `n8n` are up:
+
+```bash
+set -a
+. ./.env
+set +a
+SERVICEOPS_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 python3 tools/operations/local_notification_smoke.py
+```
+
+The smoke creates a local request, links a Telegram opt-in through the protected bot endpoint, asks a dispatcher clarification, and waits until the clarification delivery callback becomes `sent`. It simulates the Telegram `/start <token>` link step because a local script cannot make a real Telegram user send `/start` automatically.

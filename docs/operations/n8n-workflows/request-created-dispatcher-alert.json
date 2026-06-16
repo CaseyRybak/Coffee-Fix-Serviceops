@@ -1,170 +1,26 @@
 {
-  "triggerInfo": "This workflow has the following trigger(s):\n\n\nWebhook trigger(s):\n\n\n\t\t\t\t<trigger 1>\n\t\t\t\t\t - Node name: ServiceOps Webhook\n\t\t\t\t\t - Base URL: https://caseyrybak.app.n8n.cloud/\n\t\t\t\t\t - Production path: /webhook/serviceops/request-created\n\t\t\t\t\t - Test path: /webhook-test/serviceops/request-created\n\t\t\t\t\t - HTTP Method: POST\n\t\t\t\t\t - Response Mode: Webhook is configured to respond immediately with the message \"Workflow got started.\"\n\t\t\t\t\t - No credentials required for this webhook.\n\t\t\t\t</trigger 1>",
   "workflow": {
+    "id": "fbEwkH56MkvmDnsD",
+    "name": "ServiceOps - Request Created Dispatcher Alert",
     "active": true,
-    "activeVersion": {
-      "connections": {
-        "Send Telegram Message": {
-          "main": [
-            [
-              {
-                "index": 0,
-                "node": "Report Delivery Result",
-                "type": "main"
-              }
-            ]
-          ]
-        },
-        "ServiceOps Webhook": {
-          "main": [
-            [
-              {
-                "index": 0,
-                "node": "Validate Secret And Format Dispatcher Alert",
-                "type": "main"
-              }
-            ]
-          ]
-        },
-        "Validate Secret And Format Dispatcher Alert": {
-          "main": [
-            [
-              {
-                "index": 0,
-                "node": "Send Telegram Message",
-                "type": "main"
-              }
-            ]
-          ]
-        }
-      },
-      "nodes": [
-        {
-          "id": "bc2c687b-c5dc-41b9-8183-20e4d97341ab",
-          "name": "ServiceOps Webhook",
-          "parameters": {
-            "authentication": "none",
-            "httpMethod": "POST",
-            "options": {
-              "responseCode": {
-                "values": {
-                  "responseCode": 200
-                }
-              }
-            },
-            "path": "serviceops/request-created",
-            "responseMode": "onReceived"
-          },
-          "position": [
-            0,
-            0
-          ],
-          "type": "n8n-nodes-base.webhook",
-          "typeVersion": 2.1,
-          "webhookId": "9ee9c308-bb66-4ad8-8f33-80670514f6c5"
-        },
-        {
-          "id": "cfc960c5-bf88-4305-a65d-ddd70c299093",
-          "name": "Validate Secret And Format Dispatcher Alert",
-          "parameters": {
-            "jsCode": "const secret = $json.headers['x-serviceops-webhook-secret'] || $json.headers['X-ServiceOps-Webhook-Secret'];\nif (secret !== $env.SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET) { throw new Error('Invalid ServiceOps webhook secret'); }\nconst event = $json.body;\nconst payload = event.payload || {};\nconst urgencyLabels = { today: 'Сегодня', one_two_days: 'В ближайшие 1-2 дня', planned: 'Планово' };\nconst machine = [payload.machine_brand, payload.machine_model].filter(Boolean).join(' ') || 'Не указана';\nconst nl = String.fromCharCode(10);\nconst text = [\n  'Новая заявка Coffee Fix',\n  '',\n  'Заявка: ' + payload.request_number,\n  'Клиент: ' + payload.customer_name + ' (' + payload.customer_phone_masked + ')',\n  'Кофемашина: ' + machine,\n  'Срочность: ' + (urgencyLabels[payload.urgency] || payload.urgency || 'Не указана'),\n  '',\n  'Страница статуса:',\n  payload.public_status_url,\n].join('\n');\nreturn { event_id: event.event_id, event_type: event.event_type, request_number: event.request_number, chat_id: $env.SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID, text };",
-            "language": "javaScript",
-            "mode": "runOnceForEachItem"
-          },
-          "position": [
-            224,
-            0
-          ],
-          "type": "n8n-nodes-base.code",
-          "typeVersion": 2
-        },
-        {
-          "id": "d4cf1fb8-7d8e-4c99-9a95-e753c44ef2d6",
-          "name": "Send Telegram Message",
-          "parameters": {
-            "contentType": "json",
-            "jsonBody": "={ { chat_id: $json.chat_id, text: $json.text, disable_web_page_preview: true } }",
-            "method": "POST",
-            "options": {
-              "response": {
-                "response": {
-                  "fullResponse": true,
-                  "neverError": true,
-                  "responseFormat": "json"
-                }
-              },
-              "timeout": 10000
-            },
-            "sendBody": true,
-            "specifyBody": "json",
-            "url": "={ \"https://api.telegram.org/bot\" + $env.SERVICEOPS_TELEGRAM_BOT_TOKEN + \"/sendMessage\" }"
-          },
-          "position": [
-            448,
-            0
-          ],
-          "type": "n8n-nodes-base.httpRequest",
-          "typeVersion": 4.4
-        },
-        {
-          "id": "8970a33a-7503-4ea6-88eb-0e40c4308263",
-          "name": "Report Delivery Result",
-          "parameters": {
-            "contentType": "json",
-            "headerParameters": {
-              "parameters": [
-                {
-                  "name": "X-ServiceOps-Callback-Secret",
-                  "value": "={ $env.SERVICEOPS_N8N_CALLBACK_SECRET }"
-                }
-              ]
-            },
-            "jsonBody": "={ { event_id: $(\"Validate Secret And Format Dispatcher Alert\").item.json.event_id, status: $json.statusCode >= 200 && $json.statusCode < 300 ? \"sent\" : \"failed\", channel: \"telegram\", provider_message_id: $json.body && $json.body.result ? String($json.body.result.message_id) : \"\", error: $json.statusCode >= 200 && $json.statusCode < 300 ? \"\" : JSON.stringify($json.body), attempt_count: 1 } }",
-            "method": "POST",
-            "options": {
-              "response": {
-                "response": {
-                  "neverError": true,
-                  "responseFormat": "json"
-                }
-              },
-              "timeout": 10000
-            },
-            "sendBody": true,
-            "sendHeaders": true,
-            "specifyBody": "json",
-            "url": "={ $env.SERVICEOPS_API_BASE_URL + \"/notifications/n8n/delivery-results\" }"
-          },
-          "position": [
-            672,
-            0
-          ],
-          "type": "n8n-nodes-base.httpRequest",
-          "typeVersion": 4.4
-        }
-      ]
+    "isArchived": false,
+    "versionId": "9c3cb934-cc7d-43a4-b1cd-ac82fa591186",
+    "activeVersionId": "9c3cb934-cc7d-43a4-b1cd-ac82fa591186",
+    "triggerCount": 1,
+    "createdAt": "2026-06-10T10:54:28.421Z",
+    "updatedAt": "2026-06-15T20:41:31.623Z",
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true
     },
-    "activeVersionId": "060427be-b079-4559-b592-3056cee8eb13",
-    "canExecute": true,
     "connections": {
-      "Send Telegram Message": {
-        "main": [
-          [
-            {
-              "index": 0,
-              "node": "Report Delivery Result",
-              "type": "main"
-            }
-          ]
-        ]
-      },
       "ServiceOps Webhook": {
         "main": [
           [
             {
-              "index": 0,
               "node": "Validate Secret And Format Dispatcher Alert",
-              "type": "main"
+              "type": "main",
+              "index": 0
             }
           ]
         ]
@@ -173,70 +29,81 @@
         "main": [
           [
             {
-              "index": 0,
               "node": "Send Telegram Message",
-              "type": "main"
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Telegram Message": {
+        "main": [
+          [
+            {
+              "node": "Report Delivery Result",
+              "type": "main",
+              "index": 0
             }
           ]
         ]
       }
     },
-    "createdAt": "2026-06-10T10:54:28.421Z",
-    "description": "Coffee Fix ServiceOps Phase 12 notification workflow.",
-    "id": "fbEwkH56MkvmDnsD",
-    "isArchived": false,
-    "meta": {
-      "aiBuilderAssisted": true,
-      "builderVariant": "mcp"
-    },
-    "name": "ServiceOps - Request Created Dispatcher Alert",
     "nodes": [
       {
         "id": "bc2c687b-c5dc-41b9-8183-20e4d97341ab",
         "name": "ServiceOps Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ],
         "parameters": {
-          "authentication": "none",
           "httpMethod": "POST",
+          "path": "serviceops/request-created",
+          "authentication": "none",
+          "responseMode": "onReceived",
           "options": {
             "responseCode": {
               "values": {
                 "responseCode": 200
               }
             }
-          },
-          "path": "serviceops/request-created",
-          "responseMode": "onReceived"
+          }
         },
-        "position": [
-          0,
-          0
-        ],
-        "type": "n8n-nodes-base.webhook",
-        "typeVersion": 2.1,
         "webhookId": "9ee9c308-bb66-4ad8-8f33-80670514f6c5"
       },
       {
         "id": "cfc960c5-bf88-4305-a65d-ddd70c299093",
         "name": "Validate Secret And Format Dispatcher Alert",
-        "parameters": {
-          "jsCode": "const secret = $json.headers['x-serviceops-webhook-secret'] || $json.headers['X-ServiceOps-Webhook-Secret'];\nif (secret !== $env.SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET) { throw new Error('Invalid ServiceOps webhook secret'); }\nconst event = $json.body;\nconst payload = event.payload || {};\nconst urgencyLabels = { today: 'Сегодня', one_two_days: 'В ближайшие 1-2 дня', planned: 'Планово' };\nconst machine = [payload.machine_brand, payload.machine_model].filter(Boolean).join(' ') || 'Не указана';\nconst nl = String.fromCharCode(10);\nconst text = [\n  'Новая заявка Coffee Fix',\n  '',\n  'Заявка: ' + payload.request_number,\n  'Клиент: ' + payload.customer_name + ' (' + payload.customer_phone_masked + ')',\n  'Кофемашина: ' + machine,\n  'Срочность: ' + (urgencyLabels[payload.urgency] || payload.urgency || 'Не указана'),\n  '',\n  'Страница статуса:',\n  payload.public_status_url,\n].join('\n');\nreturn { event_id: event.event_id, event_type: event.event_type, request_number: event.request_number, chat_id: $env.SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID, text };",
-          "language": "javaScript",
-          "mode": "runOnceForEachItem"
-        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
         "position": [
           224,
           0
         ],
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "const secret = $json.headers['x-serviceops-webhook-secret'] || $json.headers['X-ServiceOps-Webhook-Secret'];\nconst expectedSecret = $env.SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET;\nif (secret !== expectedSecret) { throw new Error('Invalid ServiceOps webhook secret'); }\nconst event = $json.body;\nconst payload = event.payload || {};\nconst urgencyLabels = { today: 'Сегодня', one_two_days: 'В ближайшие 1-2 дня', planned: 'Планово' };\nconst machine = [payload.machine_brand, payload.machine_model].filter(Boolean).join(' ') || 'Не указана';\nconst nl = String.fromCharCode(10);\nconst text = [\n  'Новая заявка Coffee Fix',\n  '',\n  'Заявка: ' + payload.request_number,\n  'Клиент: ' + payload.customer_name + ' (' + payload.customer_phone_masked + ')',\n  'Кофемашина: ' + machine,\n  'Срочность: ' + (urgencyLabels[payload.urgency] || payload.urgency || 'Не указана'),\n  '',\n  'Страница статуса:',\n  payload.public_status_url,\n].join(nl);\nreturn { event_id: event.event_id, event_type: event.event_type, request_number: event.request_number, chat_id: $env.SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID, text };"
+        }
       },
       {
         "id": "d4cf1fb8-7d8e-4c99-9a95-e753c44ef2d6",
         "name": "Send Telegram Message",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          448,
+          0
+        ],
         "parameters": {
-          "contentType": "json",
-          "jsonBody": "={ { chat_id: $json.chat_id, text: $json.text, disable_web_page_preview: true } }",
           "method": "POST",
+          "url": "={{ \"https://api.telegram.org/bot\" + $env.SERVICEOPS_TELEGRAM_BOT_TOKEN + \"/sendMessage\" }}",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { chat_id: $json.chat_id, text: $json.text, disable_web_page_preview: true } }}",
           "options": {
             "response": {
               "response": {
@@ -246,33 +113,34 @@
               }
             },
             "timeout": 10000
-          },
-          "sendBody": true,
-          "specifyBody": "json",
-          "url": "={ \"https://api.telegram.org/bot\" + $env.SERVICEOPS_TELEGRAM_BOT_TOKEN + \"/sendMessage\" }"
-        },
-        "position": [
-          448,
-          0
-        ],
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.4
+          }
+        }
       },
       {
         "id": "8970a33a-7503-4ea6-88eb-0e40c4308263",
         "name": "Report Delivery Result",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          672,
+          0
+        ],
         "parameters": {
-          "contentType": "json",
+          "method": "POST",
+          "url": "={{ $env.SERVICEOPS_API_BASE_URL + \"/notifications/n8n/delivery-results\" }}",
+          "sendHeaders": true,
           "headerParameters": {
             "parameters": [
               {
                 "name": "X-ServiceOps-Callback-Secret",
-                "value": "={ $env.SERVICEOPS_N8N_CALLBACK_SECRET }"
+                "value": "={{ $env.SERVICEOPS_N8N_CALLBACK_SECRET }}"
               }
             ]
           },
-          "jsonBody": "={ { event_id: $(\"Validate Secret And Format Dispatcher Alert\").item.json.event_id, status: $json.statusCode >= 200 && $json.statusCode < 300 ? \"sent\" : \"failed\", channel: \"telegram\", provider_message_id: $json.body && $json.body.result ? String($json.body.result.message_id) : \"\", error: $json.statusCode >= 200 && $json.statusCode < 300 ? \"\" : JSON.stringify($json.body), attempt_count: 1 } }",
-          "method": "POST",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { event_id: $(\"Validate Secret And Format Dispatcher Alert\").item.json.event_id, status: $json.statusCode >= 200 && $json.statusCode < 300 ? \"sent\" : \"failed\", channel: \"telegram\", provider_message_id: $json.body && $json.body.result ? String($json.body.result.message_id) : \"\", error: $json.statusCode >= 200 && $json.statusCode < 300 ? \"\" : JSON.stringify($json.body), attempt_count: 1 } }}",
           "options": {
             "response": {
               "response": {
@@ -281,21 +149,159 @@
               }
             },
             "timeout": 10000
-          },
-          "sendBody": true,
-          "sendHeaders": true,
-          "specifyBody": "json",
-          "url": "={ $env.SERVICEOPS_API_BASE_URL + \"/notifications/n8n/delivery-results\" }"
-        },
-        "position": [
-          672,
-          0
-        ],
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.4
+          }
+        }
       }
     ],
+    "activeVersion": {
+      "nodes": [
+        {
+          "id": "bc2c687b-c5dc-41b9-8183-20e4d97341ab",
+          "name": "ServiceOps Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 2.1,
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {
+            "httpMethod": "POST",
+            "path": "serviceops/request-created",
+            "authentication": "none",
+            "responseMode": "onReceived",
+            "options": {
+              "responseCode": {
+                "values": {
+                  "responseCode": 200
+                }
+              }
+            }
+          },
+          "webhookId": "9ee9c308-bb66-4ad8-8f33-80670514f6c5"
+        },
+        {
+          "id": "cfc960c5-bf88-4305-a65d-ddd70c299093",
+          "name": "Validate Secret And Format Dispatcher Alert",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            224,
+            0
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "language": "javaScript",
+            "jsCode": "const secret = $json.headers['x-serviceops-webhook-secret'] || $json.headers['X-ServiceOps-Webhook-Secret'];\nconst expectedSecret = $env.SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET;\nif (secret !== expectedSecret) { throw new Error('Invalid ServiceOps webhook secret'); }\nconst event = $json.body;\nconst payload = event.payload || {};\nconst urgencyLabels = { today: 'Сегодня', one_two_days: 'В ближайшие 1-2 дня', planned: 'Планово' };\nconst machine = [payload.machine_brand, payload.machine_model].filter(Boolean).join(' ') || 'Не указана';\nconst nl = String.fromCharCode(10);\nconst text = [\n  'Новая заявка Coffee Fix',\n  '',\n  'Заявка: ' + payload.request_number,\n  'Клиент: ' + payload.customer_name + ' (' + payload.customer_phone_masked + ')',\n  'Кофемашина: ' + machine,\n  'Срочность: ' + (urgencyLabels[payload.urgency] || payload.urgency || 'Не указана'),\n  '',\n  'Страница статуса:',\n  payload.public_status_url,\n].join(nl);\nreturn { event_id: event.event_id, event_type: event.event_type, request_number: event.request_number, chat_id: $env.SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID, text };"
+          }
+        },
+        {
+          "id": "d4cf1fb8-7d8e-4c99-9a95-e753c44ef2d6",
+          "name": "Send Telegram Message",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.4,
+          "position": [
+            448,
+            0
+          ],
+          "parameters": {
+            "method": "POST",
+            "url": "={{ \"https://api.telegram.org/bot\" + $env.SERVICEOPS_TELEGRAM_BOT_TOKEN + \"/sendMessage\" }}",
+            "sendBody": true,
+            "contentType": "json",
+            "specifyBody": "json",
+            "jsonBody": "={{ { chat_id: $json.chat_id, text: $json.text, disable_web_page_preview: true } }}",
+            "options": {
+              "response": {
+                "response": {
+                  "fullResponse": true,
+                  "neverError": true,
+                  "responseFormat": "json"
+                }
+              },
+              "timeout": 10000
+            }
+          }
+        },
+        {
+          "id": "8970a33a-7503-4ea6-88eb-0e40c4308263",
+          "name": "Report Delivery Result",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.4,
+          "position": [
+            672,
+            0
+          ],
+          "parameters": {
+            "method": "POST",
+            "url": "={{ $env.SERVICEOPS_API_BASE_URL + \"/notifications/n8n/delivery-results\" }}",
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-ServiceOps-Callback-Secret",
+                  "value": "={{ $env.SERVICEOPS_N8N_CALLBACK_SECRET }}"
+                }
+              ]
+            },
+            "sendBody": true,
+            "contentType": "json",
+            "specifyBody": "json",
+            "jsonBody": "={{ { event_id: $(\"Validate Secret And Format Dispatcher Alert\").item.json.event_id, status: $json.statusCode >= 200 && $json.statusCode < 300 ? \"sent\" : \"failed\", channel: \"telegram\", provider_message_id: $json.body && $json.body.result ? String($json.body.result.message_id) : \"\", error: $json.statusCode >= 200 && $json.statusCode < 300 ? \"\" : JSON.stringify($json.body), attempt_count: 1 } }}",
+            "options": {
+              "response": {
+                "response": {
+                  "neverError": true,
+                  "responseFormat": "json"
+                }
+              },
+              "timeout": 10000
+            }
+          }
+        }
+      ],
+      "connections": {
+        "ServiceOps Webhook": {
+          "main": [
+            [
+              {
+                "node": "Validate Secret And Format Dispatcher Alert",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Validate Secret And Format Dispatcher Alert": {
+          "main": [
+            [
+              {
+                "node": "Send Telegram Message",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Send Telegram Message": {
+          "main": [
+            [
+              {
+                "node": "Report Delivery Result",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "tags": [],
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp"
+    },
     "parentFolderId": null,
+    "description": "Coffee Fix ServiceOps Phase 12 notification workflow.",
     "scopes": [
       "workflow:create",
       "workflow:delete",
@@ -311,13 +317,7 @@
       "workflow:update",
       "workflow:updateRedactionSetting"
     ],
-    "settings": {
-      "availableInMCP": true,
-      "executionOrder": "v1"
-    },
-    "tags": [],
-    "triggerCount": 1,
-    "updatedAt": "2026-06-10T10:54:28.421Z",
-    "versionId": "060427be-b079-4559-b592-3056cee8eb13"
-  }
+    "canExecute": true
+  },
+  "triggerInfo": "This workflow has the following trigger(s):\n\n\nWebhook trigger(s):\n\n\n\t\t\t\t<trigger 1>\n\t\t\t\t\t - Node name: ServiceOps Webhook\n\t\t\t\t\t - Base URL: https://caseyrybak.app.n8n.cloud/\n\t\t\t\t\t - Production path: /webhook/serviceops/request-created\n\t\t\t\t\t - Test path: /webhook-test/serviceops/request-created\n\t\t\t\t\t - HTTP Method: POST\n\t\t\t\t\t - Response Mode: Webhook is configured to respond immediately with the message \"Workflow got started.\"\n\t\t\t\t\t - No credentials required for this webhook.\n\t\t\t\t</trigger 1>"
 }

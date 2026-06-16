@@ -116,5 +116,42 @@ services:
       timeout: 3s
       retries: 5
 
+  n8n:
+    image: n8nio/n8n:2.22.3
+    environment:
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: ${N8N_PORT:-5678}
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
+      N8N_BASIC_AUTH_ACTIVE: ${N8N_BASIC_AUTH_ACTIVE:-true}
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-serviceops-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:-change-me}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me-32-byte-minimum-production-key}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: ${N8N_BLOCK_ENV_ACCESS_IN_NODE:-false}
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:-serviceops}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-serviceops}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-serviceops}
+      DB_TABLE_PREFIX: n8n_
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+      SERVICEOPS_API_BASE_URL: ${SERVICEOPS_API_BASE_URL:-http://api:8000}
+      SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET: ${SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET:-}
+      SERVICEOPS_N8N_CALLBACK_SECRET: ${SERVICEOPS_N8N_CALLBACK_SECRET:-}
+      SERVICEOPS_TELEGRAM_BOT_TOKEN: ${SERVICEOPS_TELEGRAM_BOT_TOKEN:-}
+      SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID: ${SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID:-}
+    ports:
+      - "127.0.0.1:${N8N_PORT:-5678}:5678"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres-data:
+  n8n-data:
