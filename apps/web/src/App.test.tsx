@@ -29,6 +29,7 @@ import {
   buildAdminStaffActivatePath,
   buildAdminStaffAuditPath,
   buildAdminStaffDeactivatePath,
+  buildAdminStaffChangeRequests,
   buildAdminStaffPath,
   buildAdminStaffProfilePath,
   buildAdminStaffResetPasswordPath,
@@ -776,11 +777,34 @@ describe("App", () => {
     assert.match(workspaceHtml, /technician/);
     assert.match(workspaceHtml, /Активировать/);
     assert.match(workspaceHtml, /Сбросить пароль/);
+    assert.match(workspaceHtml, /Сохранить изменения/);
+    assert.doesNotMatch(workspaceHtml, /Сохранить данные/);
+    assert.doesNotMatch(workspaceHtml, /Сохранить роли/);
     assert.match(workspaceHtml, /Имя/);
     assert.match(workspaceHtml, /Фамилия/);
     assert.match(workspaceHtml, /Телефон/);
     assert.match(workspaceHtml, /Аудит действий/);
     assert.match(workspaceHtml, /staff.deactivated/);
+  });
+
+  it("builds combined admin staff profile and role change requests", () => {
+    assert.deepEqual(
+      buildAdminStaffChangeRequests(
+        "tech@coffeefix.local",
+        { firstName: " Иван ", lastName: " Кофеевич ", phone: " +79111111111 " },
+        ["dispatcher", "technician"],
+      ),
+      [
+        {
+          path: "/admin/staff/tech%40coffeefix.local/profile",
+          body: { first_name: "Иван", last_name: "Кофеевич", phone: "+79111111111" },
+        },
+        {
+          path: "/admin/staff/tech%40coffeefix.local/roles",
+          body: { roles: ["dispatcher", "technician"] },
+        },
+      ],
+    );
   });
 
   it("keeps admin staff rows in a responsive editing layout", () => {

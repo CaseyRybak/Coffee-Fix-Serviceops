@@ -2823,6 +2823,23 @@ function staffProfileDraft(account: StaffAccountItem): StaffProfileDraft {
   };
 }
 
+export function buildAdminStaffChangeRequests(username: string, profile: StaffProfileDraft, roles: StaffRole[]) {
+  return [
+    {
+      path: buildAdminStaffProfilePath(username),
+      body: {
+        first_name: profile.firstName.trim(),
+        last_name: profile.lastName.trim(),
+        phone: profile.phone.trim(),
+      },
+    },
+    {
+      path: buildAdminStaffRolesPath(username),
+      body: { roles },
+    },
+  ];
+}
+
 export function AdminPage({
   initialSession,
   initialStaff,
@@ -2952,6 +2969,30 @@ export function AdminPage({
     }
   }
 
+  async function postAdminActions(actions: { path: string; body: object }[], successMessage: string) {
+    setLoading(true);
+    setMessage(null);
+    setTemporaryPassword(null);
+    try {
+      const responses = await Promise.all(
+        actions.map((action) =>
+          fetch(`${apiBaseUrl()}${action.path}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
+            body: JSON.stringify(action.body),
+          }),
+        ),
+      );
+      if (responses.some((response) => !response.ok)) throw new Error("Admin changes failed");
+      await refresh();
+      setMessage(successMessage);
+    } catch {
+      setMessage("Не удалось сохранить изменения сотрудника.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="app-page dispatcher-page admin-page">
       <WorkspaceHeader session={session} onLogout={onLogout} />
@@ -3051,30 +3092,13 @@ export function AdminPage({
                           <button
                             type="button"
                             onClick={() =>
-                              void postAdminAction(
-                                buildAdminStaffProfilePath(account.username),
-                                {
-                                  first_name: draftProfile.firstName.trim(),
-                                  last_name: draftProfile.lastName.trim(),
-                                  phone: draftProfile.phone.trim(),
-                                },
-                                "Данные сотрудника обновлены.",
+                              void postAdminActions(
+                                buildAdminStaffChangeRequests(account.username, draftProfile, draftRoles),
+                                "Изменения сотрудника сохранены.",
                               )
                             }
                           >
-                            Сохранить данные
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void postAdminAction(
-                                buildAdminStaffRolesPath(account.username),
-                                { roles: draftRoles },
-                                "Роли сотрудника обновлены.",
-                              )
-                            }
-                          >
-                            Сохранить роли
+                            Сохранить изменения
                           </button>
                           {account.active ? (
                             <button
