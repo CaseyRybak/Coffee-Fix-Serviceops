@@ -78,12 +78,12 @@ Record only secret names and rotation outcome, never secret values.
 - Staff login: Passed manually from allowed operator IP. A new staff user was created and successfully logged in; no credential values are recorded in this evidence file.
 - Staff workspaces: Passed manually. The new staff user could open the role-appropriate internal cabinets after the domain, HTTPS, CORS, and firewall changes.
 - n8n request-created delivery: Passed for `CFX-20260617-000009`; API logs recorded `notification.event_queued` and `notification.delivery_recorded` with provider `n8n`.
-- Telegram opt-in ownership: Pending. Production Telegram bot is polling; local polling ownership still needs confirmation before public demo.
-- Backup command readiness: Pending.
-- Restore dry-run readiness: Pending.
+- Telegram opt-in ownership: Passed manually. Production Telegram bot is polling on the VPS; local Docker is stopped, so no local `telegram-bot` container is competing for the shared bot token.
+- Backup command readiness: Passed. Production PostgreSQL backup created `/var/backups/serviceops/serviceops-20260617-161005.dump` with matching `.sha256`; checksum verification returned `OK`.
+- Restore dry-run readiness: Passed by non-destructive readiness audit. `docs/operations/backup-restore.md` defines abort conditions, checksum verification, disposable restore target `serviceops_restore_drill`, migration check, smoke check, and evidence fields; no restore command was executed against production.
 
 ## Go/No-Go
 
 - Decision: No-Go for final public demo handoff, but web/API domain routing, direct test-port closure, and Dokploy IP restriction are now passed.
-- Remaining blockers: Telegram local-vs-production polling ownership still needs confirmation; setup-exposed secrets still need rotation evidence; backup/restore readiness still needs evidence.
+- Remaining blockers: setup-exposed secrets still need rotation evidence.
 - Follow-up owner: Pending.
