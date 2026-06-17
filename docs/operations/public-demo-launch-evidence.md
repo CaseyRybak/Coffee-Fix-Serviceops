@@ -69,6 +69,15 @@ This record is sanitized. Do not include passwords, bearer tokens, Telegram bot 
 - Backup command readiness: Passed. Production PostgreSQL backup created `/var/backups/serviceops/serviceops-20260617-161005.dump` with matching `.sha256`; checksum verification returned `OK`.
 - Restore dry-run readiness: Passed by non-destructive readiness audit. `docs/operations/backup-restore.md` defines abort conditions, checksum verification, disposable restore target `serviceops_restore_drill`, migration check, smoke check, and evidence fields; no restore command was executed against production.
 
+## Phase 17a Hero Asset Optimization
+
+- Original hero PNG fallback: `hero-coffee-service-wide.png`, `1514x941`, `1,865,388` bytes.
+- Desktop WebP: `hero-coffee-service-wide-desktop.webp`, `1514x941`, `118,892` bytes.
+- Mobile WebP: `hero-coffee-service-wide-mobile.webp`, `800x497`, `45,770` bytes.
+- Browser selection verified locally with Playwright: desktop viewport selected the desktop WebP, mobile viewport selected the mobile WebP.
+- Visual check: desktop and mobile screenshots confirmed the same hero composition without cropping.
+- Production note: redeploy `main` after commit `dfa6028` before expecting the public domain to serve the optimized assets.
+
 ## Go/No-Go
 
 - Decision: Go for current pet-project public demo posture.
