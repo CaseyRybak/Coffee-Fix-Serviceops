@@ -1418,10 +1418,18 @@ function HeroSection() {
           <p className="hero-footnote">После отправки заявки вы получите номер обращения и ссылку для отслеживания статуса.</p>
         </div>
         <div className="hero-media">
-          <img
-            src="/assets/hero-coffee-service-wide.png"
-            alt="Профессиональная кофемашина на сервисном столе"
-          />
+          <picture>
+            <source
+              type="image/webp"
+              media="(max-width: 720px)"
+              srcSet="/assets/hero-coffee-service-wide-mobile.webp"
+            />
+            <source type="image/webp" srcSet="/assets/hero-coffee-service-wide-desktop.webp" />
+            <img
+              src="/assets/hero-coffee-service-wide.png"
+              alt="Профессиональная кофемашина на сервисном столе"
+            />
+          </picture>
         </div>
       </div>
     </section>

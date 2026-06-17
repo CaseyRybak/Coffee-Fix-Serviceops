@@ -277,6 +277,8 @@ describe("App", () => {
     const html = renderToStaticMarkup(<App />);
     const css = readFileSync(new URL("./styles.css", import.meta.url), "utf-8");
 
+    assert.match(html, /srcSet="\/assets\/hero-coffee-service-wide-desktop\.webp"/);
+    assert.match(html, /srcSet="\/assets\/hero-coffee-service-wide-mobile\.webp"/);
     assert.match(html, /src="\/assets\/hero-coffee-service-wide\.png"/);
     assert.match(css, /\.hero-media img\s*{[^}]*object-fit: contain;/s);
     assert.doesNotMatch(css, /\.hero-media img\s*{[^}]*object-fit: cover;/s);

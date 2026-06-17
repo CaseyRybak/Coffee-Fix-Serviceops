@@ -1016,6 +1016,10 @@ p {
   border-radius: 16px;
 }
 
+.hero-media picture {
+  display: block;
+}
+
 .hero-media img {
   display: block;
   width: 100%;
