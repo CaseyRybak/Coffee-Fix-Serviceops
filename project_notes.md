@@ -21,20 +21,21 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 16:
 - First real Aeza VPS/Dokploy test deployment evidence: Docker/Dokploy installed, the initial temporary `production` branch deployment was reconciled back to `main`, Dokploy now tracks `main`, API/web/PostgreSQL/Redis smoke checks passed, migrations and first-admin bootstrap completed, the legacy n8n Cloud path was verified and then replaced by self-hosted VPS n8n, PostgreSQL backup/restore drill recorded, and worker Redis broker dependency fixed/redeployed.
 - Self-hosted n8n VPS production handoff: repository workflow exports were imported and published on the VPS n8n service, the production API webhook URLs now target `http://n8n:5678/webhook/serviceops/...` on the Compose network, request-created delivery was verified end-to-end on `CFX-20260616-000008`, and local Telegram polling was stopped to avoid competing with the production bot while the project intentionally uses one Telegram bot token.
 - Phase 17/17a public demo closure: real domain and HTTPS routes for web/API are configured, direct public test ports are blocked externally, Dokploy is restricted to the operator IP, staff-route smoke passed, n8n/Telegram/backup/restore-readiness evidence is recorded, and the public hero image now uses responsive desktop/mobile WebP assets with PNG fallback.
+- Phase 18 portfolio packaging and demo-mode policy: README is now portfolio-oriented, `docs/product/portfolio-demo-guide.md` documents safe demo scenarios, screenshot guidance, disposable credential policy, fake-data rules, and production-safe reset guidance, and `docs/review/phase-18-review.md` records the closure review.
 
 ## Active Focus
 
-Phase 18 portfolio packaging and demo mode, after Phase 17 closed the current pet-project public demo posture and Phase 17a optimized first-load hero image delivery.
+Phase 19 frontend workspace decomposition, after Phase 18 packaged the public demo story and documented demo safety without adding a production database reset mode.
 
-Phase 18 needs a detailed implementation plan before changing README, demo data, screenshots, or portfolio packaging behavior. Use `docs/execution-plans/phases/18-portfolio-packaging-and-demo-mode.md` as the slice map and keep the review gate in `docs/review/subagent-review-protocol.md`.
+Phase 19 needs a detailed implementation plan before splitting the large web workspace. Use `docs/execution-plans/phases/19-frontend-workspace-decomposition.md` as the slice map and keep the review gate in `docs/review/subagent-review-protocol.md`.
 
 ## Next Steps
 
-1. Redeploy the latest `main` if the public demo should serve the Phase 17a hero asset optimization immediately.
-2. Create a Phase 18 detailed implementation plan before changing README, screenshots, demo credentials guidance, demo data, or portfolio packaging.
-3. Package the public demo story: README, demo path, safe demo scenarios, screenshot guidance, architecture summary, and operations evidence links.
-4. Keep demo data and credentials safe for portfolio review.
-5. After Phase 18, proceed to frontend decomposition, owner dashboard/SLA, operational n8n automation, procurement lite, technician recommendation, and AI assistant tools.
+1. Redeploy the latest `main` if the public demo should serve the Phase 18 portfolio README and demo guide immediately.
+2. Create a Phase 19 detailed implementation plan before changing frontend workspace structure.
+3. Decompose the large `apps/web/src/App.tsx` and `apps/web/src/styles.css` surface into safer workspace modules before adding owner dashboard, procurement, recommendation, or assistant screens.
+4. Keep demo data and credentials safe for portfolio review: use fake customer data, disposable staff accounts, deterministic AI defaults, and no production database reset.
+5. After Phase 19, proceed to owner dashboard/SLA, operational n8n automation, procurement lite, technician recommendation, and AI assistant tools.
 
 ## Current Entry Points
 
@@ -51,6 +52,8 @@ Phase 18 needs a detailed implementation plan before changing README, demo data,
 - Documentation audit after Phase 16 and production hardening: `docs/review/documentation-audit-2026-06-16.md`
 - Phase 17 review: `docs/review/phase-17-review.md`
 - Phase 17a review: `docs/review/phase-17a-review.md`
+- Phase 18 review: `docs/review/phase-18-review.md`
+- Portfolio demo guide: `docs/product/portfolio-demo-guide.md`
 - Public demo launch evidence: `docs/operations/public-demo-launch-evidence.md`
 - Aeza VPS launch smoke evidence: `docs/operations/launch-smoke-evidence-2026-06-15-vps.md`
 - Self-hosted n8n VPS evidence: `docs/operations/self-hosted-n8n-vps-evidence-2026-06-16.md`
@@ -94,8 +97,9 @@ Phase 18 needs a detailed implementation plan before changing README, demo data,
 - PostgreSQL inventory reserve/release/consume paths lock stock and reservation rows before mutation.
 - n8n workflow records are operational artifacts. Phase 12 created live n8n workflows and repository exports; production now runs the imported workflow exports on self-hosted VPS n8n, and backend webhook emission plus delivery-result persistence are implemented.
 - The project currently uses one Telegram bot token and one staff chat for local and production. Only one polling bot instance may run with that token; production owns real `/start` traffic, and local tests should simulate opt-in through protected API calls unless production polling is intentionally paused.
-- Phases 18-24 are intentionally roadmap-level slice maps. Detailed implementation plans must still be created just in time from current code and docs before executing each phase.
+- Phases 19-24 are intentionally roadmap-level slice maps. Detailed implementation plans must still be created just in time from current code and docs before executing each phase.
 - Production staff bootstrap uses `python -m serviceops_api.operations.bootstrap_admin`; local seed users remain disabled outside local/dev/test.
+- Portfolio demo mode is a documentation policy and walkthrough, not a runtime switch or production database reset. Public portfolio review should use fake customer data, disposable staff accounts, deterministic AI defaults, and sanitized screenshots/evidence.
 - AI and embedding providers default to deterministic mode for local development and tests; OpenAI-compatible live adapters are configurable for production through secret-backed environment variables.
 - AI prompt assembly filters weakly related RAG chunks before provider calls; when no relevant source remains, both deterministic and live providers must treat the request as a knowledge gap and avoid forcing old repair scenarios onto new symptoms.
 - Operational logs and audit metadata must use safe structured fields and must not expose passwords, tokens, webhook secrets, API keys, raw AI prompts, provider bodies, customer phone numbers, Telegram chat ids, internal note bodies, or unrestricted source chunk text.
