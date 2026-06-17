@@ -3,72 +3,67 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { App } from "./App";
+import { AdminPage, ProtectedAdminPage, buildAdminStaffChangeRequests } from "./features/admin/AdminPage";
+import { DispatcherPage, ProtectedDispatcherPage, filterDispatcherItems } from "./features/dispatcher/DispatcherPage";
+import { ProtectedInventoryPage } from "./features/inventory/InventoryPage";
+import { StatusPage } from "./features/public/StatusPage";
+import { StaffLoginPage } from "./features/staff-auth/StaffLoginPage";
+import { StaffWorkspacePage } from "./features/staff-auth/StaffWorkspacePage";
+import { ProtectedTechnicianPage } from "./features/technician/TechnicianPage";
+import { SuccessState, getNextFormStep, validateIntakeStep } from "./features/public/PublicLandingPage";
 import {
-  App,
-  AdminPage,
-  DispatcherPage,
-  ProtectedAdminPage,
-  ProtectedDispatcherPage,
-  ProtectedInventoryPage,
-  ProtectedTechnicianPage,
-  StaffLoginPage,
-  StaffWorkspacePage,
-  StatusPage,
-  SuccessState,
+  buildAcceptAiClarificationPath,
+  buildAdminStaffActivatePath,
+  buildAdminStaffAuditPath,
+  buildAdminStaffDeactivatePath,
+  buildAdminStaffPath,
+  buildAdminStaffProfilePath,
+  buildAdminStaffResetPasswordPath,
+  buildAdminStaffRolesPath,
+  buildCustomerAnswerPayload,
+  buildDispatcherAppointmentCancelPath,
+  buildDispatcherAppointmentPath,
+  buildDispatcherAppointmentReschedulePath,
   buildDispatcherAssignmentPath,
   buildDispatcherClarificationPath,
   buildDispatcherDetailPath,
   buildDispatcherInternalNotePath,
   buildDispatcherListPath,
   buildDispatcherSchedulePath,
+  buildDispatcherStatusPath,
   buildDispatcherTechnicianCandidatesPath,
-  buildDispatcherAppointmentPath,
-  buildDispatcherAppointmentReschedulePath,
-  buildDispatcherAppointmentCancelPath,
-  buildAcceptAiClarificationPath,
-  buildAdminStaffActivatePath,
-  buildAdminStaffAuditPath,
-  buildAdminStaffDeactivatePath,
-  buildAdminStaffChangeRequests,
-  buildAdminStaffPath,
-  buildAdminStaffProfilePath,
-  buildAdminStaffResetPasswordPath,
-  buildAdminStaffRolesPath,
   buildGenerateAiSuggestionsPath,
   buildIgnoreAiSuggestionPath,
   buildInventoryPartCompatibilityPath,
   buildInventoryPartsPath,
   buildInventoryStockPath,
-  buildInventorySkuSuggestion,
-  buildInventoryPartSpecLabel,
-  buildInventoryCompatibilityLabel,
+  buildServiceRequestPayload,
+  buildStatusLookupPath,
   buildTechnicianDetailPath,
   buildTechnicianDiagnosisPath,
   buildTechnicianListPath,
   buildTechnicianPartsUsedPath,
   buildTechnicianResultPath,
   buildTechnicianSchedulePath,
-  buildDispatcherStatusPath,
-  buildCustomerAnswerPayload,
-  buildServiceRequestPayload,
-  buildStaffLoginPath,
-  buildStatusLookupPath,
   buildTelegramOptInPayload,
-  resolveApiBaseUrl,
-  resolveStaffLandingPath,
+  normalizeRequestNumber,
   replaceStatusLookupRoute,
   replaceStatusRoute,
-  getStoredStaffSession,
-  isStaffAuthFailureStatus,
-  staffAuthHeaders,
-  filterDispatcherItems,
-  normalizeRequestNumber,
+  resolveApiBaseUrl,
   statusLookupValueFromPath,
   statusPathFromRequestNumber,
   telegramOptInPathFromRequestNumber,
-  getNextFormStep,
-  validateIntakeStep,
-} from "./App";
+} from "./shared/api";
+import { buildInventoryCompatibilityLabel, buildInventoryPartSpecLabel } from "./shared/formatters";
+import { buildInventorySkuSuggestion } from "./shared/inventory";
+import {
+  buildStaffLoginPath,
+  getStoredStaffSession,
+  isStaffAuthFailureStatus,
+  resolveStaffLandingPath,
+  staffAuthHeaders,
+} from "./shared/staffAuth";
 
 describe("App", () => {
   const dispatcherDetail = {
@@ -298,7 +293,7 @@ describe("App", () => {
   });
 
   it("does not expose a photo or video block in the intake form", () => {
-    const source = readFileSync(new URL("./App.tsx", import.meta.url), "utf-8");
+    const source = readFileSync(new URL("./features/public/PublicLandingPage.tsx", import.meta.url), "utf-8");
 
     assert.doesNotMatch(source, /Фото или видео/);
     assert.doesNotMatch(source, /leak\.jpg/);

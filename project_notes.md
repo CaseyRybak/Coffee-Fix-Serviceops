@@ -22,20 +22,21 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 16:
 - Self-hosted n8n VPS production handoff: repository workflow exports were imported and published on the VPS n8n service, the production API webhook URLs now target `http://n8n:5678/webhook/serviceops/...` on the Compose network, request-created delivery was verified end-to-end on `CFX-20260616-000008`, and local Telegram polling was stopped to avoid competing with the production bot while the project intentionally uses one Telegram bot token.
 - Phase 17/17a public demo closure: real domain and HTTPS routes for web/API are configured, direct public test ports are blocked externally, Dokploy is restricted to the operator IP, staff-route smoke passed, n8n/Telegram/backup/restore-readiness evidence is recorded, and the public hero image now uses responsive desktop/mobile WebP assets with PNG fallback.
 - Phase 18 portfolio packaging and demo-mode policy: README is now portfolio-oriented, `docs/product/portfolio-demo-guide.md` documents safe demo scenarios, screenshot guidance, disposable credential policy, fake-data rules, and production-safe reset guidance, and `docs/review/phase-18-review.md` records the closure review.
+- Phase 19 frontend workspace decomposition: the large web entry file has been split into public, staff-auth, dispatcher, technician, inventory, admin, and shared frontend modules; shared API path builders, staff auth helpers, type definitions, formatters, inventory helpers, and UI primitives now live outside `apps/web/src/App.tsx`; web tests, TypeScript lint, and production build passed.
 
 ## Active Focus
 
-Phase 19 frontend workspace decomposition, after Phase 18 packaged the public demo story and documented demo safety without adding a production database reset mode.
+Phase 20 owner dashboard and SLA foundation, after Phase 19 reduced frontend change risk before adding owner dashboard, procurement, recommendation, or assistant screens.
 
-Phase 19 needs a detailed implementation plan before splitting the large web workspace. Use `docs/execution-plans/phases/19-frontend-workspace-decomposition.md` as the slice map and keep the review gate in `docs/review/subagent-review-protocol.md`.
+Phase 20 needs a detailed implementation plan before adding SLA, owner/admin dashboard metrics, daily report payloads, and dashboard UI. Use `docs/execution-plans/phases/20-owner-dashboard-and-sla-foundation.md` as the slice map and keep the review gate in `docs/review/subagent-review-protocol.md`.
 
 ## Next Steps
 
-1. Redeploy the latest `main` if the public demo should serve the Phase 18 portfolio README and demo guide immediately.
-2. Create a Phase 19 detailed implementation plan before changing frontend workspace structure.
-3. Decompose the large `apps/web/src/App.tsx` and `apps/web/src/styles.css` surface into safer workspace modules before adding owner dashboard, procurement, recommendation, or assistant screens.
+1. Create a Phase 20 detailed implementation plan before changing SLA/dashboard code.
+2. Read the Phase 20 slice map and relevant service-request, scheduling, inventory, technician, and notification domain docs before planning.
+3. Add owner/admin dashboard and SLA foundation without exposing SLA diagnostics, staff workload, inventory quantities, or internal risk labels publicly.
 4. Keep demo data and credentials safe for portfolio review: use fake customer data, disposable staff accounts, deterministic AI defaults, and no production database reset.
-5. After Phase 19, proceed to owner dashboard/SLA, operational n8n automation, procurement lite, technician recommendation, and AI assistant tools.
+5. After Phase 20, proceed to operational n8n automation, procurement lite, technician recommendation, and AI assistant tools.
 
 ## Current Entry Points
 
@@ -53,6 +54,7 @@ Phase 19 needs a detailed implementation plan before splitting the large web wor
 - Phase 17 review: `docs/review/phase-17-review.md`
 - Phase 17a review: `docs/review/phase-17a-review.md`
 - Phase 18 review: `docs/review/phase-18-review.md`
+- Phase 19 review: `docs/review/phase-19-review.md`
 - Portfolio demo guide: `docs/product/portfolio-demo-guide.md`
 - Public demo launch evidence: `docs/operations/public-demo-launch-evidence.md`
 - Aeza VPS launch smoke evidence: `docs/operations/launch-smoke-evidence-2026-06-15-vps.md`

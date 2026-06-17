@@ -1,5 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 
+/* Base tokens and reset */
+
 :root {
   color: #1f1a17;
   background: #f7f2ea;
@@ -61,6 +63,8 @@ p {
   width: min(1240px, calc(100% - 32px));
   margin: 0 auto;
 }
+
+/* Public shell and brand */
 
 .service-bar {
   color: #e2d8cd;
@@ -205,6 +209,8 @@ p {
   font-size: 0.92rem;
 }
 
+/* Shared staff workspace shell */
+
 .workspace-header {
   position: sticky;
   top: 0;
@@ -217,6 +223,8 @@ p {
 .workspace-header-inner {
   min-height: 72px;
 }
+
+/* Technician workspace */
 
 .technician-workspace {
   align-items: start;
@@ -301,6 +309,8 @@ p {
 .inventory-page .compact-form select {
   grid-column: 1 / -1;
 }
+
+/* Inventory workspace */
 
 .inventory-workspace {
   display: grid;
@@ -575,6 +585,8 @@ p {
   grid-template-columns: minmax(120px, 0.9fr) minmax(160px, 1fr) minmax(110px, 0.6fr) auto;
 }
 
+/* Admin workspace */
+
 .admin-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
@@ -811,6 +823,8 @@ p {
   height: 16px;
 }
 
+/* Staff workspace chooser */
+
 .staff-workspace-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -872,6 +886,8 @@ p {
   width: 16px;
   height: 16px;
 }
+
+/* Public landing page */
 
 .menu-button {
   display: none;
@@ -1311,6 +1327,8 @@ select:focus {
   color: #2f6b4f;
 }
 
+/* Public status page */
+
 .status-main {
   min-height: 70vh;
   padding: 48px 0 64px;
@@ -1542,6 +1560,8 @@ select:focus {
   grid-column: 2;
 }
 
+/* Staff authentication */
+
 .staff-login-page {
   background:
     linear-gradient(135deg, rgba(31, 26, 23, 0.04), rgba(47, 107, 79, 0.08)),
@@ -1637,6 +1657,8 @@ select:focus {
   min-height: 76vh;
   padding: 32px 0 56px;
 }
+
+/* Dispatcher workspace */
 
 .dispatcher-shell {
   display: grid;
