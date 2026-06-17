@@ -56,7 +56,7 @@ Use this checklist during production degradation. Keep customer-facing updates s
 - First checks: Telegram bot logs, bot token presence, API base URL, opt-in link API failures, Telegram platform status.
 - Customer impact: Telegram opt-in and customer notifications may fail; public status page remains the fallback.
 - Containment: stop bot polling if it loops on failures.
-- Rollback criteria: bot image, token rotation, or API URL change broke linking.
+- Rollback criteria: bot image, bot configuration, or API URL change broke linking.
 - Restore criteria: not applicable unless notification data is corrupted.
 - Owner handoff: integrations owner plus operations owner.
 - Evidence: `telegram.opt_in_linked` failure logs, API status, and affected request numbers without tokens or chat ids.
@@ -91,15 +91,15 @@ Use this checklist during production degradation. Keep customer-facing updates s
 - Owner handoff: automation owner plus dispatcher lead.
 - Evidence: failed delivery query, affected `event_id` values, and n8n execution ids.
 
-## Suspected Secret Exposure
+## Credential Access Incident
 
-- First checks: identify secret type, exposure location, affected service, and whether the secret was reusable.
-- Customer impact: depends on exposed credential; assume compromise until rotated.
-- Containment: revoke or rotate the secret, redeploy affected services, and invalidate related sessions or callbacks.
-- Rollback criteria: rollback only if a deployment introduced the exposure.
+- First checks: identify credential type, affected service, access scope, and whether related sessions or callbacks are still valid.
+- Customer impact: depends on affected credential scope.
+- Containment: disable the affected credential path, redeploy affected services if configuration changes, and invalidate related sessions or callbacks.
+- Rollback criteria: rollback only if a deployment introduced the credential access issue.
 - Restore criteria: not applicable unless attacker-modified data is confirmed.
 - Owner handoff: operations owner plus product owner.
-- Evidence: redacted excerpt showing where exposure happened, rotation timestamp, and services redeployed.
+- Evidence: redacted incident summary, mitigation timestamp, and services redeployed.
 
 ## Restore-From-Backup Decision
 

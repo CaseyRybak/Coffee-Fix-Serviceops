@@ -67,4 +67,4 @@ This file preserves historical phase context that used to make `project_notes.md
 - Full technician profiles, durable availability calendar, automatic matching, route optimization, and customer self-scheduling.
 - Warehouses, suppliers, purchase orders, barcode scanning, billing totals, and warranty stock handling.
 - Provider latency/error dashboards and external log shipping.
-- Public-launch readiness after VPS test deployment: domains, HTTPS, closure of temporary direct test ports, Dokploy admin access restriction, disposable staff-route smoke, secret rotation, and repeat smoke checks after real database transfer.
+- Public-launch readiness after VPS test deployment: domains, HTTPS, closure of temporary direct test ports, Dokploy admin access restriction, disposable staff-route smoke, and repeat smoke checks after real database transfer.

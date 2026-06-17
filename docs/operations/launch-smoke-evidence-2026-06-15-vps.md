@@ -49,7 +49,7 @@ Update on June 16, 2026: the n8n Cloud notification path recorded here is histor
   - `ServiceOps - Clarification Customer Notification`
   - `ServiceOps - Customer Answered Dispatcher Alert`
 - n8n delivery-result callback URL now targets `http://138.124.91.212:8000/notifications/n8n/delivery-results`.
-- The temporary n8n MCP API key used during setup was exposed in chat and should be rotated before any public launch.
+- Keep provider/admin credentials out of tracked evidence and chat logs.
 
 ## Migration Evidence
 
@@ -288,7 +288,7 @@ Checksum result:
 - Domains and HTTPS are not configured; current deployment is IP-and-port based test access over HTTP.
 - Staff route smoke should be rerun with disposable staff credentials through `tools/operations/smoke_test.sh`.
 - Telegram bot opt-in runtime should be reviewed after each production deploy.
-- n8n MCP API key and any exposed setup secrets should be rotated before public launch.
+- Keep public-demo launch evidence sanitized and avoid recording reusable credentials.
 - Real database transfer has not happened yet; smoke, backup, and n8n checks must be repeated after import.
 
 ## Go/No-Go

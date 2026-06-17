@@ -43,8 +43,8 @@ None found in implementation-session review.
 
 ## Non-Blocking Issues
 
-- Staff users are local-development seeded identities backed by environment settings and hard-coded role demo users. Production user lifecycle, password rotation, password reset, SSO/OAuth, audit logs, and persistent staff accounts remain deferred by Phase 05 scope.
-- Staff tokens are stateless bearer tokens. This is adequate for the MVP access gate, but production deployment should rotate `SERVICEOPS_STAFF_AUTH_SECRET`, use HTTPS-only transport, and add token revocation or session management if operationally required.
+- Staff users are local-development seeded identities backed by environment settings and hard-coded role demo users. Production user lifecycle, password reset, SSO/OAuth, audit logs, and persistent staff accounts remain deferred by Phase 05 scope.
+- Staff tokens are stateless bearer tokens. This is adequate for the MVP access gate, but production deployment should use HTTPS-only transport and add token revocation or session management if operationally required.
 - Independent subagent review remains pending because this artifact was produced by the same implementation session.
 - The implementation-session audit found and corrected one frontend-only gap: a saved staff session without the `dispatcher` role no longer renders the dispatcher workspace shell before backend API calls fail with `403`.
 

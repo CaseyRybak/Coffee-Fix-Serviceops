@@ -54,7 +54,7 @@ This avoids building AI or automation around incomplete domain models and avoids
 
 ### Phase 17: Public Demo And Launch Closure
 
-Close the public demonstration and launch-readiness gaps: domains, HTTPS, routing, direct port closure, Dokploy restriction, secret rotation, live smoke evidence, and Telegram polling ownership.
+Close the public demonstration and launch-readiness gaps: domains, HTTPS, routing, direct port closure, Dokploy restriction, live smoke evidence, and Telegram polling ownership.
 
 ### Phase 17a: Demo Performance And Hero Image Optimization
 

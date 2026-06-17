@@ -8,7 +8,7 @@ Make the existing system safe and reliable enough to show as a public demo.
 
 ## Why This Phase Exists
 
-The codebase and operations artifacts are strong, but the live demo posture is still temporary. The project needs a real domain/HTTPS route, closed direct test ports, restricted Dokploy access, rotated setup-exposed secrets, and fresh smoke evidence before it is used as a portfolio link.
+The codebase and operations artifacts are strong, but the live demo posture is still temporary. The project needs a real domain/HTTPS route, closed direct test ports, restricted Dokploy access, and fresh smoke evidence before it is used as a portfolio link.
 
 ## Context To Read
 
@@ -31,7 +31,6 @@ The codebase and operations artifacts are strong, but the live demo posture is s
 - Direct temporary public test ports `3001` and `8000` closed or replaced by private/internal routing.
 - Dokploy access on `3000` restricted to trusted IP/VPN or documented as intentionally unavailable to the public.
 - n8n `5678`, PostgreSQL, and Redis verified as not directly published to the public internet.
-- Setup-exposed secrets rotated, including n8n MCP/API secrets and any other temporary deployment secrets used during launch setup.
 - Telegram polling ownership clarified for demo/prod: either separate local and production bot tokens or an explicit one-active-polling rule with local simulation guidance.
 - Disposable staff-route smoke credentials or equivalent safe demo smoke mechanism.
 - Fresh production smoke evidence covering web, API health, public intake/status, staff login/dispatcher route, n8n callback path, Telegram opt-in ownership, backup, and restore-drill readiness.
@@ -52,9 +51,8 @@ The codebase and operations artifacts are strong, but the live demo posture is s
 - n8n, PostgreSQL, Redis, and internal service ports are not directly reachable from the public internet.
 - Dokploy is restricted or explicitly documented as non-public.
 - Smoke evidence records pass/fail status, timestamps, routes checked, and sanitized notes.
-- Rotated secrets are documented without revealing secret values.
 - Public launch evidence changes the posture from test-only/no-go to demo-ready or clearly records the remaining blocker.
 
 ## Subagent Review Gate
 
-Review public exposure, HTTPS routing, secret handling, smoke evidence quality, Telegram polling ownership, and whether the repository can guide a future operator without relying on chat history.
+Review public exposure, HTTPS routing, smoke evidence quality, Telegram polling ownership, and whether the repository can guide a future operator without relying on chat history.

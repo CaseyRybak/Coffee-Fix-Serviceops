@@ -4,7 +4,7 @@
 
 **Goal:** Make the existing ServiceOps deployment safe and reliable enough to use as a public portfolio demo.
 
-**Architecture:** Keep Phase 17 in the operations boundary. The application code should not gain product features in this slice; work is limited to deployment posture, environment/routing documentation, smoke evidence, secret rotation guidance, Telegram polling ownership, and small script/doc updates needed to prove the public demo route. Production state remains owned by the API/PostgreSQL/n8n runtime, while evidence documents record sanitized verification results.
+**Architecture:** Keep Phase 17 in the operations boundary. The application code should not gain product features in this slice; work is limited to deployment posture, environment/routing documentation, smoke evidence, Telegram polling ownership, and small script/doc updates needed to prove the public demo route. Production state remains owned by the API/PostgreSQL/n8n runtime, while evidence documents record sanitized verification results.
 
 **Tech Stack:** Docker Compose production runtime, Dokploy/reverse proxy routing, bash smoke scripts, curl/OpenSSL/SSH operator checks, PostgreSQL backup/restore scripts, FastAPI health/public routes, React/Vite web build served by nginx, self-hosted n8n, aiogram Telegram bot.
 
@@ -13,7 +13,7 @@
 ## File Structure
 
 - Create `docs/operations/public-demo-launch-evidence.md`: sanitized evidence record for the final demo posture, replacing ad-hoc chat notes with durable go/no-go evidence.
-- Modify `docs/operations/deployment-runbook.md`: update the public-demo checklist, domain/HTTPS routing, direct-port closure, Dokploy restriction, secret rotation, and Telegram polling ownership steps.
+- Modify `docs/operations/deployment-runbook.md`: update the public-demo checklist, domain/HTTPS routing, direct-port closure, Dokploy restriction, and Telegram polling ownership steps.
 - Modify `docs/operations/smoke-tests.md`: add public-domain smoke command examples and expected evidence fields.
 - Modify `docs/operations/operational-diagnostics.md`: add external access and port-posture checks if missing.
 - Modify `docs/operations/self-hosted-n8n-vps-evidence-2026-06-16.md`: add a dated follow-up pointer to the new public demo evidence record, without rewriting historical evidence.
@@ -37,8 +37,6 @@ The implementation worker must confirm or gather these values before running pro
 - Whether Dokploy admin access will be IP-restricted, VPN-only, or temporarily disabled from public access.
 - Whether local and production Telegram share one bot token or use separate tokens.
 - Disposable staff smoke username and password, or a documented reason why staff-route smoke is deferred.
-- Which setup-exposed secrets must be rotated before public demo.
-
 Do not write real hostnames, staff usernames, passwords, Telegram chat ids, bot tokens, API keys, or webhook secrets into tracked docs unless they are intentionally public placeholders.
 
 ## Task 1: Baseline Public Access And Runtime Inventory
@@ -99,19 +97,6 @@ This record is sanitized. Do not include passwords, bearer tokens, Telegram bot 
 - API route target:
 - n8n UI route target:
 - CORS allowed origins:
-
-## Secret Rotation
-
-Record only secret names and rotation outcome, never secret values.
-
-| Secret | Rotated? | Where configured | Notes |
-| --- | --- | --- | --- |
-| SERVICEOPS_STAFF_AUTH_SECRET | Pending | Dokploy | |
-| SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET | Pending | Dokploy/n8n | |
-| SERVICEOPS_N8N_CALLBACK_SECRET | Pending | Dokploy/n8n | |
-| SERVICEOPS_TELEGRAM_BOT_API_SECRET | Pending | Dokploy/bot | |
-| N8N_ENCRYPTION_KEY | Pending | Dokploy | Only rotate with n8n credential migration plan |
-| n8n MCP/API key | Pending | n8n | |
 
 ## Smoke Checks
 
@@ -322,83 +307,7 @@ docker compose -f docker-compose.production.yml --env-file .env.example config -
 
 Expected: PASS.
 
-## Task 4: Secret Rotation And Environment Hygiene
-
-**Files:**
-- Modify: `docs/operations/deployment-runbook.md`
-- Modify: `docs/operations/public-demo-launch-evidence.md`
-- Modify: `.env.example` only for placeholder clarity.
-
-- [ ] **Step 1: Create a rotation checklist**
-
-In `docs/operations/public-demo-launch-evidence.md`, record rotation status for secret names only:
-
-- `SERVICEOPS_STAFF_AUTH_SECRET`
-- `SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET`
-- `SERVICEOPS_N8N_CALLBACK_SECRET`
-- `SERVICEOPS_TELEGRAM_BOT_API_SECRET`
-- `SERVICEOPS_TELEGRAM_BOT_TOKEN` if it was exposed outside the operator boundary
-- `N8N_BASIC_AUTH_PASSWORD`
-- `N8N_ENCRYPTION_KEY` only with a deliberate n8n credential migration plan
-- n8n MCP/API keys exposed during setup
-- live AI/embedding API keys if they were ever configured for smoke
-
-- [ ] **Step 2: Rotate safe-to-rotate secrets**
-
-Generate new values outside tracked files:
-
-```bash
-openssl rand -base64 48
-```
-
-Apply them in Dokploy/n8n/Telegram configuration as appropriate. Do not paste values into docs or terminal logs captured for evidence.
-
-Expected:
-- API, n8n workflows, Telegram bot, and smoke scripts use the updated secret values.
-- Old setup-exposed secrets are no longer accepted.
-
-- [ ] **Step 3: Validate configuration after rotation**
-
-Run:
-
-```bash
-docker compose -f docker-compose.production.yml ps
-curl -fsS https://<api-host>/health
-SERVICEOPS_PUBLIC_API_BASE_URL=https://<api-host> \
-SERVICEOPS_PUBLIC_WEB_BASE_URL=https://<web-host> \
-bash tools/operations/smoke_test.sh
-```
-
-If staff smoke credentials are available:
-
-```bash
-SERVICEOPS_PUBLIC_API_BASE_URL=https://<api-host> \
-SERVICEOPS_PUBLIC_WEB_BASE_URL=https://<web-host> \
-SERVICEOPS_SMOKE_STAFF_USERNAME="<disposable-dispatcher-username>" \
-SERVICEOPS_SMOKE_STAFF_PASSWORD="<disposable-dispatcher-password>" \
-bash tools/operations/smoke_test.sh
-```
-
-Expected:
-- Smoke passes.
-- Staff password is not printed by the smoke script.
-
-- [ ] **Step 4: Run a tracked-file secret scan**
-
-Run:
-
-```bash
-rg -n "sk-|SERVICEOPS_[A-Z0-9_]*(SECRET|TOKEN|PASSWORD|API_KEY)=.+[A-Za-z0-9_-]{16,}" . \
-  --glob '!apps/**/.venv/**' \
-  --glob '!node_modules/**' \
-  --glob '!reference/figma/node_modules/**'
-```
-
-Expected:
-- No real reusable secrets in tracked files.
-- Placeholder examples and test assertions are the only acceptable matches.
-
-## Task 5: Telegram Polling Ownership And Opt-In Smoke
+## Task 4: Telegram Polling Ownership And Opt-In Smoke
 
 **Files:**
 - Modify: `docs/operations/deployment-runbook.md`
@@ -451,10 +360,10 @@ Append a short dated follow-up to `docs/operations/self-hosted-n8n-vps-evidence-
 ```markdown
 ## Follow-Up: YYYY-MM-DD
 
-Public demo launch closure evidence now lives in `docs/operations/public-demo-launch-evidence.md`. That record supersedes this file for current port posture, HTTPS routing, secret rotation, and Telegram polling ownership.
+Public demo launch closure evidence now lives in `docs/operations/public-demo-launch-evidence.md`. That record supersedes this file for current port posture, HTTPS routing, and Telegram polling ownership.
 ```
 
-## Task 6: Public Smoke Evidence And Backup/Restore Readiness
+## Task 5: Public Smoke Evidence And Backup/Restore Readiness
 
 **Files:**
 - Modify: `docs/operations/smoke-tests.md`
@@ -536,7 +445,7 @@ Expected:
 - Restore command refuses or is not run against production.
 - Evidence records whether the dry run passed or remains blocked.
 
-## Task 7: Documentation Harness And Phase Handoff
+## Task 6: Documentation Harness And Phase Handoff
 
 **Files:**
 - Modify: `tools/repo-checks/check_docs.py`
@@ -571,7 +480,6 @@ Record:
 - HTTPS posture.
 - Direct port posture.
 - Dokploy access decision.
-- Secret rotation result.
 - Smoke evidence path.
 - Remaining launch risks, if any.
 
@@ -626,7 +534,7 @@ Run these before requesting review:
 - [ ] External port posture check for `22`, `80`, `443`, `3000`, `3001`, `8000`, `2377`, `7946`, `5432`, `5678`, and `6379`.
 - [ ] Production n8n request-created delivery smoke or documented equivalent evidence.
 - [ ] Telegram opt-in ownership smoke or documented equivalent evidence.
-- [ ] Secret scan:
+- [ ] Tracked-file hygiene scan:
 
 ```bash
 rg -n "sk-|SERVICEOPS_[A-Z0-9_]*(SECRET|TOKEN|PASSWORD|API_KEY)=.+[A-Za-z0-9_-]{16,}" . \
@@ -644,7 +552,6 @@ Ask the reviewer to inspect:
 - Public web and API demo routes work over HTTPS and do not require IP-address test ports.
 - Direct exposure of n8n, PostgreSQL, Redis, and temporary API/web test ports is closed or justified.
 - Dokploy admin access is restricted or explicitly documented as non-public.
-- Secret rotation is documented without secret values.
 - Smoke evidence is specific, dated, sanitized, and reproducible.
 - Telegram polling ownership prevents local and production bots from competing for the same token.
 - Phase 17 does not add unrelated product features.
@@ -652,7 +559,7 @@ Ask the reviewer to inspect:
 
 ## Self-Review
 
-- Phase 17 deliverables are covered by Tasks 1-7.
+- Phase 17 deliverables are covered by Tasks 1-6.
 - The plan preserves the operations boundary and does not add product features.
 - The plan records real demo readiness with evidence rather than assuming readiness from docs.
 - The plan keeps all sensitive values out of tracked files.

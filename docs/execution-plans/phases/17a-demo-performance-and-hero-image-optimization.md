@@ -24,7 +24,7 @@ This is not a domain, DNS, HTTPS, or Dokploy routing issue. It is a frontend per
 
 - Redesigning the public landing page.
 - Changing public copy or product positioning.
-- Changing domain, HTTPS, Dokploy, firewall, or secret-rotation work from Phase 17.
+- Changing domain, HTTPS, Dokploy, or firewall work from Phase 17.
 - Adding portfolio README, screenshots, demo credentials, or demo reset flows from Phase 18.
 - Broad frontend decomposition from Phase 19.
 

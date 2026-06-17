@@ -57,7 +57,7 @@ Created through the n8n MCP API during Phase 12 and now imported into the self-h
 
 Repository exports are stored in `docs/operations/n8n-workflows/`.
 
-The earlier n8n Cloud workflows are no longer the production path. Keep them only as historical setup context or remove them after secrets are rotated and the self-hosted path has passed the full launch smoke.
+The earlier n8n Cloud workflows are no longer the production path. Keep them only as historical setup context or remove them after the self-hosted path has passed the full launch smoke.
 
 ## Production VPS Runtime
 

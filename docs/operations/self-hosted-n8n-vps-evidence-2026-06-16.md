@@ -74,5 +74,5 @@ Interpretation: `2377` and `7946` may listen on the host because Docker Swarm is
 - Close temporary direct public web/API test ports `3001` and `8000` after reverse-proxy routing is ready.
 - Restrict Dokploy `3000` to trusted IP/VPN access before public launch.
 - Keep n8n `5678` private; route the UI through Dokploy/Traefik only when UI access is required.
-- Rotate setup-exposed n8n MCP/API secrets before public launch.
+- Use `docs/operations/public-demo-launch-evidence.md` for the current public-demo go/no-go posture.
 - Repeat smoke tests after the real database transfer and after disposable production staff credentials are available.

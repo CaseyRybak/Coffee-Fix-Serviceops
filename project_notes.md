@@ -32,9 +32,8 @@ Phase 17 detailed implementation plan is ready at `docs/execution-plans/detailed
 1. Execute `docs/execution-plans/detailed/17-public-demo-and-launch-closure-implementation.md`.
 2. Domain/HTTPS routing for web/API is configured, direct public `3001`/`8000` access is blocked, and Dokploy `3000` is restricted to `80.91.223.6`; keep this recorded in `docs/operations/public-demo-launch-evidence.md`.
 3. Rerun staff-route smoke with disposable staff credentials, keep local `telegram-bot` stopped while production polling uses the shared Telegram bot token, and repeat deployment smoke checks after the real database transfer.
-4. Rotate setup-exposed secrets such as the n8n MCP API key before public launch.
-5. After Phase 17, optimize first-load public demo hero/static asset performance before portfolio packaging, then proceed through frontend decomposition, owner dashboard/SLA, operational n8n automation, procurement lite, technician recommendation, and AI assistant tools.
-6. Keep repository docs, tests, production Compose config, and operations scripts passing after changes.
+4. After Phase 17, optimize first-load public demo hero/static asset performance before portfolio packaging, then proceed through frontend decomposition, owner dashboard/SLA, operational n8n automation, procurement lite, technician recommendation, and AI assistant tools.
+5. Keep repository docs, tests, production Compose config, and operations scripts passing after changes.
 
 ## Current Entry Points
 

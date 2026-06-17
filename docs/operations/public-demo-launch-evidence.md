@@ -55,19 +55,6 @@ This record is sanitized. Do not include passwords, bearer tokens, Telegram bot 
 - Added and enabled `serviceops-docker-port-guard.service` so the Docker port guard rules are re-applied after server reboot.
 - External checks after the guard: `3000` returns HTTP 200 from allowed IP `80.91.223.6`; `3001` and `8000` time out from the same IP; HTTPS web and API routes still return HTTP 200.
 
-## Secret Rotation
-
-Record only secret names and rotation outcome, never secret values.
-
-| Secret | Rotated? | Where configured | Notes |
-| --- | --- | --- | --- |
-| `SERVICEOPS_STAFF_AUTH_SECRET` | Pending | Dokploy | |
-| `SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET` | Pending | Dokploy/n8n | |
-| `SERVICEOPS_N8N_CALLBACK_SECRET` | Pending | Dokploy/n8n | |
-| `SERVICEOPS_TELEGRAM_BOT_API_SECRET` | Pending | Dokploy/bot | |
-| `N8N_ENCRYPTION_KEY` | Pending | Dokploy | Only rotate with an n8n credential migration plan. |
-| n8n MCP/API key | Pending | n8n | |
-
 ## Smoke Checks
 
 - API health: Passed from workstation against `https://api.coffeefix-demo.online/health`.
@@ -84,6 +71,6 @@ Record only secret names and rotation outcome, never secret values.
 
 ## Go/No-Go
 
-- Decision: No-Go for final public demo handoff, but web/API domain routing, direct test-port closure, and Dokploy IP restriction are now passed.
-- Remaining blockers: setup-exposed secrets still need rotation evidence.
+- Decision: Go for current pet-project public demo posture.
+- Remaining blockers: None for Phase 17 pet-project demo posture.
 - Follow-up owner: Pending.

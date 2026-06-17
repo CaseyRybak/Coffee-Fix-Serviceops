@@ -43,7 +43,7 @@ Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `d
 15. `phases/14-operational-hardening.md`: production observability, audit expansion, backup dry-runs, and incident procedures.
 16. `phases/15-scheduling-depth.md`: appointment windows, rescheduling, technician availability, and schedule views.
 17. `phases/16-inventory-reservations.md`: part reservations, stock movement history, compatibility hints, and low-stock visibility.
-18. `phases/17-public-demo-and-launch-closure.md`: domain/HTTPS demo access, port posture, secret rotation, and production smoke evidence.
+18. `phases/17-public-demo-and-launch-closure.md`: domain/HTTPS demo access, port posture, and production smoke evidence.
 19. `phases/17a-demo-performance-and-hero-image-optimization.md`: first-load public demo hero/static asset optimization before screenshots and portfolio packaging.
 20. `phases/18-portfolio-packaging-and-demo-mode.md`: portfolio README, screenshots, demo scenarios, and safe demo data.
 21. `phases/19-frontend-workspace-decomposition.md`: frontend module split before new dashboard, procurement, and assistant screens.

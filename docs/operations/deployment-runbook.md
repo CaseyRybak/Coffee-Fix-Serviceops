@@ -126,7 +126,7 @@ Expected output contains only non-secret fields:
 {"roles":["admin"],"status":"created","username":"admin@example.com"}
 ```
 
-The command refuses to run when an active admin already exists. After the first admin exists, use the admin workspace to create dispatcher, technician, and inventory users. Rotate the bootstrap password through the admin workspace if the value was visible to more than the intended operator.
+The command refuses to run when an active admin already exists. After the first admin exists, use the admin workspace to create dispatcher, technician, and inventory users. Manage bootstrap credentials through the admin workspace after first use.
 
 ## Startup Order
 

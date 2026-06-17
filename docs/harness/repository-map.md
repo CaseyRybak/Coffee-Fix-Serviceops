@@ -51,8 +51,8 @@
 - `docs/execution-plans/detailed/14-operational-hardening-implementation.md`: completed detailed plan for observability, audit expansion, restore dry-runs, incident response, and diagnostics.
 - `docs/execution-plans/detailed/15-scheduling-depth-implementation.md`: completed detailed plan for structured appointment windows, dispatcher scheduling, technician schedule visibility, and public-safe appointment snapshots.
 - `docs/execution-plans/detailed/16-inventory-reservations-implementation.md`: completed detailed plan for part reservations, stock movements, compatibility records, low-stock visibility, and technician reserved-parts consumption.
-- `docs/execution-plans/detailed/17-public-demo-and-launch-closure-implementation.md`: current detailed plan for public demo routing, HTTPS, port posture, secret rotation, smoke evidence, and Phase 17 handoff.
-- `docs/execution-plans/phases/17-public-demo-and-launch-closure.md`: next slice map for public demo routing, HTTPS, port posture, secret rotation, and production smoke evidence.
+- `docs/execution-plans/detailed/17-public-demo-and-launch-closure-implementation.md`: current detailed plan for public demo routing, HTTPS, port posture, smoke evidence, and Phase 17 handoff.
+- `docs/execution-plans/phases/17-public-demo-and-launch-closure.md`: next slice map for public demo routing, HTTPS, port posture, and production smoke evidence.
 - `docs/execution-plans/phases/17a-demo-performance-and-hero-image-optimization.md`: future slice map for first-load public demo hero/static asset optimization before portfolio packaging.
 - `docs/execution-plans/phases/18-portfolio-packaging-and-demo-mode.md`: future slice map for portfolio README, screenshots, demo scenarios, and safe demo data.
 - `docs/execution-plans/phases/19-frontend-workspace-decomposition.md`: future slice map for splitting the large frontend before more staff workspaces are added.
