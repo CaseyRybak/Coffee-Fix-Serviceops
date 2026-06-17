@@ -30,6 +30,7 @@ This file preserves historical phase context that used to make `project_notes.md
 - 2026-06-16: Hardened production paths after Phase 16 with atomic PostgreSQL request-number generation, appointment overlap exclusion and deadlock handling, row locks for inventory stock/reservation mutations, safer notification delivery rowcount logging, production Telegram bot default startup, no direct n8n port publication, and expired staff-session redirects in the web app.
 - 2026-06-16: Completed documentation audit after Phase 16 and post-phase production hardening, updating current-state entry points, review artifacts, domain boundaries, and repository checks.
 - 2026-06-16: Moved production notification automation from the earlier n8n Cloud path to the self-hosted VPS n8n service, imported and activated repository workflow exports, verified request-created delivery on `CFX-20260616-000008`, and documented the one-active-polling rule while local and production share one Telegram bot token.
+- 2026-06-17: Captured the post-Phase-16 roadmap after internal and external review. The next sequence is public demo closure, portfolio packaging, frontend decomposition, owner dashboard/SLA, operational n8n automation, procurement lite, technician recommendations, and a bounded AI assistant with tools.
 
 ## Historical Decisions
 
@@ -55,6 +56,7 @@ This file preserves historical phase context that used to make `project_notes.md
 - Production backups use PostgreSQL custom-format dumps with checksum files, and restore drills should run against a non-production database.
 - AI and embedding providers default to deterministic local/test mode; OpenAI-compatible live providers are enabled only through secret-backed environment variables.
 - PostgreSQL production paths use database-level concurrency guards where practical: request-number sequencing, appointment overlap exclusion, and row locks for stock/reservation mutations.
+- Post-Phase-16 roadmap entries are slice maps, not detailed implementation plans. Detailed plans remain just-in-time artifacts created from current code and docs before each phase starts.
 
 ## Deferred Work Ledger
 

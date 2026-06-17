@@ -32,6 +32,7 @@
 ## Plans And Review
 
 - `docs/execution-plans/index.md`: phase list.
+- `docs/execution-plans/roadmap-after-phase-16.md`: roadmap context, confirmed gaps, ordering rationale, and reconstruction guidance for Phases 17-24.
 - `docs/execution-plans/phases/`: phase slice maps.
 - `docs/execution-plans/detailed/`: just-in-time detailed implementation plans.
 - `docs/execution-plans/detailed/README.md`: current-versus-historical detailed plan guidance.
@@ -50,6 +51,15 @@
 - `docs/execution-plans/detailed/14-operational-hardening-implementation.md`: completed detailed plan for observability, audit expansion, restore dry-runs, incident response, and diagnostics.
 - `docs/execution-plans/detailed/15-scheduling-depth-implementation.md`: completed detailed plan for structured appointment windows, dispatcher scheduling, technician schedule visibility, and public-safe appointment snapshots.
 - `docs/execution-plans/detailed/16-inventory-reservations-implementation.md`: completed detailed plan for part reservations, stock movements, compatibility records, low-stock visibility, and technician reserved-parts consumption.
+- `docs/execution-plans/detailed/17-public-demo-and-launch-closure-implementation.md`: current detailed plan for public demo routing, HTTPS, port posture, secret rotation, smoke evidence, and Phase 17 handoff.
+- `docs/execution-plans/phases/17-public-demo-and-launch-closure.md`: next slice map for public demo routing, HTTPS, port posture, secret rotation, and production smoke evidence.
+- `docs/execution-plans/phases/18-portfolio-packaging-and-demo-mode.md`: future slice map for portfolio README, screenshots, demo scenarios, and safe demo data.
+- `docs/execution-plans/phases/19-frontend-workspace-decomposition.md`: future slice map for splitting the large frontend before more staff workspaces are added.
+- `docs/execution-plans/phases/20-owner-dashboard-and-sla-foundation.md`: future slice map for owner dashboard metrics, SLA deadlines, overdue state, and daily report data.
+- `docs/execution-plans/phases/21-operational-n8n-automation.md`: future slice map for SLA reminders, red alerts, owner daily reports, and low-stock alerts.
+- `docs/execution-plans/phases/22-procurement-lite.md`: future slice map for suppliers, purchase requests, approval states, low-stock drafts, and receiving stock movements.
+- `docs/execution-plans/phases/23-technician-profiles-and-recommendation.md`: future slice map for technician profiles, skills, regions, workload, and explainable recommendations.
+- `docs/execution-plans/phases/24-ai-assistant-with-tools.md`: future slice map for a bounded staff AI assistant with safe tool use and human confirmation.
 - `docs/execution-plans/completed/`: reserved archive directory for completed phase plans if the project later moves them out of `detailed/`.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.

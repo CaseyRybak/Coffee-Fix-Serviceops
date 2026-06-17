@@ -23,23 +23,25 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 16:
 
 ## Active Focus
 
-Backlog grooming after Phase 16, with a live VPS test deployment available for launch-readiness follow-up.
+Phase 17 public demo and launch closure, with roadmap context preserved for Phases 17-24 after the post-Phase-16 review and external inspection.
 
-Choose the next approved implementation phase and create its detailed implementation plan before execution. Keep the review gate in `docs/review/subagent-review-protocol.md`.
+Phase 17 detailed implementation plan is ready at `docs/execution-plans/detailed/17-public-demo-and-launch-closure-implementation.md`. Execute it task-by-task before marking the public demo ready. Keep the review gate in `docs/review/subagent-review-protocol.md`.
 
 ## Next Steps
 
-1. Define the next approved phase or backlog slice after inventory reservations.
-2. Before public launch, configure domains and HTTPS for web/API/Dokploy, then close temporary direct test ports `3001` and `8000`; consider restricting Dokploy `3000` to trusted IP/VPN access.
+1. Execute `docs/execution-plans/detailed/17-public-demo-and-launch-closure-implementation.md`.
+2. Before public demo launch, configure domains and HTTPS for web/API/Dokploy, then close temporary direct test ports `3001` and `8000`; consider restricting Dokploy `3000` to trusted IP/VPN access.
 3. Rerun staff-route smoke with disposable staff credentials, keep local `telegram-bot` stopped while production polling uses the shared Telegram bot token, and repeat deployment smoke checks after the real database transfer.
 4. Rotate setup-exposed secrets such as the n8n MCP API key before public launch.
-5. Keep repository docs, tests, production Compose config, and operations scripts passing after changes.
+5. After Phase 17, proceed through the preserved roadmap order: portfolio packaging, frontend decomposition, owner dashboard/SLA, operational n8n automation, procurement lite, technician recommendation, and AI assistant tools.
+6. Keep repository docs, tests, production Compose config, and operations scripts passing after changes.
 
 ## Current Entry Points
 
 - Project map: `AGENTS.md`
 - Architecture: `ARCHITECTURE.md`
 - Phase index: `docs/execution-plans/index.md`
+- Post-Phase-16 roadmap: `docs/execution-plans/roadmap-after-phase-16.md`
 - Repository map: `docs/harness/repository-map.md`
 - Project history: `docs/harness/project-history.md`
 - Documentation audit after Phase 10: `docs/review/documentation-audit-2026-06-07.md`
@@ -89,6 +91,7 @@ Choose the next approved implementation phase and create its detailed implementa
 - PostgreSQL inventory reserve/release/consume paths lock stock and reservation rows before mutation.
 - n8n workflow records are operational artifacts. Phase 12 created live n8n workflows and repository exports; production now runs the imported workflow exports on self-hosted VPS n8n, and backend webhook emission plus delivery-result persistence are implemented.
 - The project currently uses one Telegram bot token and one staff chat for local and production. Only one polling bot instance may run with that token; production owns real `/start` traffic, and local tests should simulate opt-in through protected API calls unless production polling is intentionally paused.
+- Phases 17-24 are intentionally roadmap-level slice maps. Detailed implementation plans must still be created just in time from current code and docs before executing each phase.
 - Production staff bootstrap uses `python -m serviceops_api.operations.bootstrap_admin`; local seed users remain disabled outside local/dev/test.
 - AI and embedding providers default to deterministic mode for local development and tests; OpenAI-compatible live adapters are configurable for production through secret-backed environment variables.
 - AI prompt assembly filters weakly related RAG chunks before provider calls; when no relevant source remains, both deterministic and live providers must treat the request as a knowledge gap and avoid forcing old repair scenarios onto new symptoms.
