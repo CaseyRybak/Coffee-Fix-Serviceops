@@ -6,12 +6,12 @@ This record is sanitized. Do not include passwords, bearer tokens, Telegram bot 
 
 - Environment: Aeza VPS test production environment.
 - Repository branch: `main`.
-- Revision: `9c65409`.
+- Revision: `81af2ae`.
 - Web hostname: `coffeefix-demo.online`.
 - API hostname: `api.coffeefix-demo.online`.
 - n8n UI hostname, if exposed: not configured yet.
 - Operator: repository operator.
-- Final decision: Pending.
+- Final decision: Go for current pet-project public demo posture.
 
 ## Baseline Access
 

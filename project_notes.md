@@ -23,17 +23,17 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 16:
 
 ## Active Focus
 
-Phase 17 public demo and launch closure, with roadmap context preserved for Phase 17a and Phases 18-24 after the post-Phase-16 review, external inspection, and real-domain demo check.
+Phase 17a demo performance and hero image optimization, after Phase 17 closed the current pet-project public demo posture on the real domain.
 
-Phase 17 detailed implementation plan is ready at `docs/execution-plans/detailed/17-public-demo-and-launch-closure-implementation.md`. Execute it task-by-task before marking the public demo ready. Keep the review gate in `docs/review/subagent-review-protocol.md`.
+Phase 17a needs a detailed implementation plan before changing frontend assets or performance behavior. Use `docs/execution-plans/phases/17a-demo-performance-and-hero-image-optimization.md` as the slice map and keep the review gate in `docs/review/subagent-review-protocol.md`.
 
 ## Next Steps
 
-1. Execute `docs/execution-plans/detailed/17-public-demo-and-launch-closure-implementation.md`.
-2. Domain/HTTPS routing for web/API is configured, direct public `3001`/`8000` access is blocked, and Dokploy `3000` is restricted to `80.91.223.6`; keep this recorded in `docs/operations/public-demo-launch-evidence.md`.
-3. Rerun staff-route smoke with disposable staff credentials, keep local `telegram-bot` stopped while production polling uses the shared Telegram bot token, and repeat deployment smoke checks after the real database transfer.
-4. After Phase 17, optimize first-load public demo hero/static asset performance before portfolio packaging, then proceed through frontend decomposition, owner dashboard/SLA, operational n8n automation, procurement lite, technician recommendation, and AI assistant tools.
-5. Keep repository docs, tests, production Compose config, and operations scripts passing after changes.
+1. Create a Phase 17a detailed implementation plan before changing frontend assets.
+2. Measure the current first-load hero/static asset behavior on local build and `https://coffeefix-demo.online`.
+3. Optimize the hero image delivery with smaller responsive assets while preserving the current visual result.
+4. Run web test, lint, and build checks, then record before/after evidence.
+5. After Phase 17a, proceed to portfolio packaging/demo mode, frontend decomposition, owner dashboard/SLA, operational n8n automation, procurement lite, technician recommendation, and AI assistant tools.
 
 ## Current Entry Points
 
@@ -48,6 +48,8 @@ Phase 17 detailed implementation plan is ready at `docs/execution-plans/detailed
 - Documentation audit before Phase 14: `docs/review/documentation-audit-2026-06-15.md`
 - Documentation audit after Phase 14: `docs/review/documentation-audit-2026-06-15-current-state.md`
 - Documentation audit after Phase 16 and production hardening: `docs/review/documentation-audit-2026-06-16.md`
+- Phase 17 review: `docs/review/phase-17-review.md`
+- Public demo launch evidence: `docs/operations/public-demo-launch-evidence.md`
 - Aeza VPS launch smoke evidence: `docs/operations/launch-smoke-evidence-2026-06-15-vps.md`
 - Self-hosted n8n VPS evidence: `docs/operations/self-hosted-n8n-vps-evidence-2026-06-16.md`
 - Review protocol: `docs/review/subagent-review-protocol.md`

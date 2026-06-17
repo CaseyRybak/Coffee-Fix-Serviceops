@@ -51,9 +51,9 @@
 - `docs/execution-plans/detailed/14-operational-hardening-implementation.md`: completed detailed plan for observability, audit expansion, restore dry-runs, incident response, and diagnostics.
 - `docs/execution-plans/detailed/15-scheduling-depth-implementation.md`: completed detailed plan for structured appointment windows, dispatcher scheduling, technician schedule visibility, and public-safe appointment snapshots.
 - `docs/execution-plans/detailed/16-inventory-reservations-implementation.md`: completed detailed plan for part reservations, stock movements, compatibility records, low-stock visibility, and technician reserved-parts consumption.
-- `docs/execution-plans/detailed/17-public-demo-and-launch-closure-implementation.md`: current detailed plan for public demo routing, HTTPS, port posture, smoke evidence, and Phase 17 handoff.
-- `docs/execution-plans/phases/17-public-demo-and-launch-closure.md`: next slice map for public demo routing, HTTPS, port posture, and production smoke evidence.
-- `docs/execution-plans/phases/17a-demo-performance-and-hero-image-optimization.md`: future slice map for first-load public demo hero/static asset optimization before portfolio packaging.
+- `docs/execution-plans/detailed/17-public-demo-and-launch-closure-implementation.md`: completed detailed plan for public demo routing, HTTPS, port posture, smoke evidence, and Phase 17 handoff.
+- `docs/execution-plans/phases/17-public-demo-and-launch-closure.md`: completed slice map for public demo routing, HTTPS, port posture, and production smoke evidence.
+- `docs/execution-plans/phases/17a-demo-performance-and-hero-image-optimization.md`: active slice map for first-load public demo hero/static asset optimization before portfolio packaging.
 - `docs/execution-plans/phases/18-portfolio-packaging-and-demo-mode.md`: future slice map for portfolio README, screenshots, demo scenarios, and safe demo data.
 - `docs/execution-plans/phases/19-frontend-workspace-decomposition.md`: future slice map for splitting the large frontend before more staff workspaces are added.
 - `docs/execution-plans/phases/20-owner-dashboard-and-sla-foundation.md`: future slice map for owner dashboard metrics, SLA deadlines, overdue state, and daily report data.
@@ -78,6 +78,7 @@
 - `docs/review/phase-14-review.md`: Phase 14 review artifact for operational hardening.
 - `docs/review/phase-15-review.md`: Phase 15 review artifact for scheduling depth.
 - `docs/review/phase-16-review.md`: Phase 16 review artifact for inventory reservations.
+- `docs/review/phase-17-review.md`: Phase 17 review artifact for public demo and launch closure.
 - `docs/review/documentation-audit-2026-06-07.md`: documentation consistency and quality audit after Phase 10.
 - `docs/review/documentation-audit-2026-06-10.md`: documentation consistency and quality audit after Phase 13.
 - `docs/review/documentation-audit-2026-06-15.md`: documentation readiness audit before Phase 14 implementation.
@@ -96,6 +97,7 @@
 - `docs/operations/launch-smoke-evidence.md`: first-launch evidence template for production smoke checks and go/no-go decisions.
 - `docs/operations/launch-smoke-evidence-2026-06-15-vps.md`: sanitized Aeza VPS/Dokploy test deployment evidence with smoke, n8n callback, backup, and restore-drill results.
 - `docs/operations/self-hosted-n8n-vps-evidence-2026-06-16.md`: sanitized handoff evidence for the self-hosted VPS n8n runtime, private Compose webhook URLs, Telegram polling ownership, and current port posture.
+- `docs/operations/public-demo-launch-evidence.md`: sanitized Phase 17 public demo evidence for domain, HTTPS, direct-port guard, Dokploy access, smoke, n8n, Telegram, backup, and restore-readiness checks.
 - `docs/operations/smoke-tests.md`: manual and scripted deployment smoke-test checklist.
 - `docs/operations/operational-diagnostics.md`: structured-log fields, request tracing, log queries, read-only PostgreSQL checks, and evidence redaction rules.
 - `docs/operations/incident-response.md`: first-line incident checklist for degraded API, web, PostgreSQL, Redis, worker, Telegram, n8n, notifications, AI/RAG, and restore decisions.
