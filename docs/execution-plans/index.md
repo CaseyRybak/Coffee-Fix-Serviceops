@@ -12,7 +12,7 @@ Before executing any phase, create a detailed implementation plan for that speci
 
 The active phase points to the next phase ready for implementation planning or execution. `phases/` contains all phase slice maps, not only active work.
 
-Post-Phase-16 roadmap context is preserved in `roadmap-after-phase-16.md`. Use it to reconstruct the reasoning behind Phases 17-24 before creating any detailed implementation plan.
+Post-Phase-16 roadmap context is preserved in `roadmap-after-phase-16.md`. Use it to reconstruct the reasoning behind Phases 17-24, including the inserted Phase 17a performance slice, before creating any detailed implementation plan.
 
 ## Detailed Plans
 
@@ -20,7 +20,7 @@ Detailed implementation plans are created just in time in `detailed/`.
 
 Current detailed plan: `detailed/17-public-demo-and-launch-closure-implementation.md`.
 
-Create later detailed implementation plans just in time before each future phase. Do not pre-write detailed plans for Phases 18-24 until their turn starts and the current code has been re-read.
+Create later detailed implementation plans just in time before each future phase. Do not pre-write detailed plans for Phase 17a or Phases 18-24 until their turn starts and the current code has been re-read.
 
 Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`, `detailed/04-dispatcher-mvp-implementation.md`, `detailed/05-staff-access-and-roles-implementation.md`, `detailed/06-knowledge-base-rag-implementation.md`, `detailed/07-ai-agent-workflows-implementation.md`, `detailed/08-technician-and-inventory-implementation.md`, `detailed/09-staff-admin-and-user-management-implementation.md`, `detailed/10-deployment-and-operations-implementation.md`, `detailed/11-production-launch-readiness-implementation.md`, `detailed/12-notification-automation-implementation.md`, `detailed/13-live-ai-provider-and-knowledge-base-content-implementation.md`, `detailed/14-operational-hardening-implementation.md`, `detailed/15-scheduling-depth-implementation.md`, `detailed/16-inventory-reservations-implementation.md`.
 
@@ -44,13 +44,14 @@ Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `d
 16. `phases/15-scheduling-depth.md`: appointment windows, rescheduling, technician availability, and schedule views.
 17. `phases/16-inventory-reservations.md`: part reservations, stock movement history, compatibility hints, and low-stock visibility.
 18. `phases/17-public-demo-and-launch-closure.md`: domain/HTTPS demo access, port posture, secret rotation, and production smoke evidence.
-19. `phases/18-portfolio-packaging-and-demo-mode.md`: portfolio README, screenshots, demo scenarios, and safe demo data.
-20. `phases/19-frontend-workspace-decomposition.md`: frontend module split before new dashboard, procurement, and assistant screens.
-21. `phases/20-owner-dashboard-and-sla-foundation.md`: owner dashboard metrics, SLA deadlines, overdue state, and daily report data.
-22. `phases/21-operational-n8n-automation.md`: SLA reminders, red alerts, owner daily reports, and low-stock alerts.
-23. `phases/22-procurement-lite.md`: suppliers, purchase requests, approval states, low-stock drafts, and receiving stock movements.
-24. `phases/23-technician-profiles-and-recommendation.md`: technician profiles, skills, regions, workload, and explainable recommendations.
-25. `phases/24-ai-assistant-with-tools.md`: bounded staff AI assistant with safe tool use and human confirmation.
+19. `phases/17a-demo-performance-and-hero-image-optimization.md`: first-load public demo hero/static asset optimization before screenshots and portfolio packaging.
+20. `phases/18-portfolio-packaging-and-demo-mode.md`: portfolio README, screenshots, demo scenarios, and safe demo data.
+21. `phases/19-frontend-workspace-decomposition.md`: frontend module split before new dashboard, procurement, and assistant screens.
+22. `phases/20-owner-dashboard-and-sla-foundation.md`: owner dashboard metrics, SLA deadlines, overdue state, and daily report data.
+23. `phases/21-operational-n8n-automation.md`: SLA reminders, red alerts, owner daily reports, and low-stock alerts.
+24. `phases/22-procurement-lite.md`: suppliers, purchase requests, approval states, low-stock drafts, and receiving stock movements.
+25. `phases/23-technician-profiles-and-recommendation.md`: technician profiles, skills, regions, workload, and explainable recommendations.
+26. `phases/24-ai-assistant-with-tools.md`: bounded staff AI assistant with safe tool use and human confirmation.
 
 ## Review
 

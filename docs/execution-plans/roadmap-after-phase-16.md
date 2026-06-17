@@ -25,6 +25,7 @@ The main gap is not the core MVP. The main gap is public demonstration readiness
 ## Confirmed Gaps
 
 - Public demo is not ready enough to rely on. Direct IP/port access is temporary, domains/HTTPS are not complete, and direct test ports still need closure or replacement by proper routing.
+- First public-page load is visually slowed by large hero image assets, which should be optimized before portfolio screenshots and demo packaging are finalized.
 - README and portfolio packaging are internal-developer oriented, not recruiter/employer oriented.
 - Frontend is concentrated in very large `App.tsx` and `styles.css` files, which raises change risk before adding dashboard, reports, procurement, and assistant surfaces.
 - n8n currently automates notification delivery, but not broader operational automation such as SLA reminders, owner reports, low-stock alerts, or purchase approvals.
@@ -39,12 +40,13 @@ The main gap is not the core MVP. The main gap is public demonstration readiness
 The next work should happen in this order:
 
 1. Make the project safely demonstrable before adding more product surface.
-2. Package the project as a portfolio case while the current functionality is still fresh and strong.
-3. Decompose the frontend before adding several large staff-facing screens.
-4. Add SLA and owner metrics before automating SLA notifications.
-5. Add procurement before building assistant tools that create purchase drafts.
-6. Add technician profiles and explainable recommendations before AI recommends technicians.
-7. Add tool-using AI last, after the underlying tools have meaningful domain APIs to call.
+2. Fix first-load public demo performance before capturing screenshots and packaging the portfolio case.
+3. Package the project as a portfolio case while the current functionality is still fresh and strong.
+4. Decompose the frontend before adding several large staff-facing screens.
+5. Add SLA and owner metrics before automating SLA notifications.
+6. Add procurement before building assistant tools that create purchase drafts.
+7. Add technician profiles and explainable recommendations before AI recommends technicians.
+8. Add tool-using AI last, after the underlying tools have meaningful domain APIs to call.
 
 This avoids building AI or automation around incomplete domain models and avoids growing an already large frontend file into a harder-to-maintain bottleneck.
 
@@ -53,6 +55,10 @@ This avoids building AI or automation around incomplete domain models and avoids
 ### Phase 17: Public Demo And Launch Closure
 
 Close the public demonstration and launch-readiness gaps: domains, HTTPS, routing, direct port closure, Dokploy restriction, secret rotation, live smoke evidence, and Telegram polling ownership.
+
+### Phase 17a: Demo Performance And Hero Image Optimization
+
+Optimize the public demo's first-load hero/static asset behavior after the domain and HTTPS route is stable, so portfolio screenshots and demo walkthroughs are captured against the faster version.
 
 ### Phase 18: Portfolio Packaging And Demo Mode
 
