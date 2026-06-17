@@ -104,12 +104,10 @@ The public demo has sanitized evidence for HTTPS routing, direct-port posture, D
 
 ## Roadmap
 
-Completed slices include public intake/status, staff RBAC, dispatcher workflow, AI/RAG suggestions, technician workflow, inventory reservations, scheduling depth, notification automation, production deployment artifacts, public demo closure, and portfolio packaging.
+Completed slices include public intake/status, staff RBAC, dispatcher workflow, AI/RAG suggestions, technician workflow, inventory reservations, scheduling depth, notification automation, production deployment artifacts, public demo closure, portfolio packaging, frontend workspace decomposition, and the owner dashboard/SLA foundation.
 
 Next slices are intentionally scoped:
 
-- frontend workspace decomposition;
-- owner dashboard and SLA foundation;
 - broader operational n8n automation;
 - procurement lite;
 - richer technician profiles and recommendations;

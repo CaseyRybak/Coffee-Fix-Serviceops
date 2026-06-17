@@ -177,6 +177,76 @@ export interface StaffAuditListResponse {
   items: StaffAuditEvent[];
 }
 
+export type SlaState = "on_track" | "near_deadline" | "overdue" | "inactive";
+
+export interface OwnerSlaSnapshot {
+  request_number: string;
+  state: SlaState;
+  deadline_at: string | null;
+  hours_remaining: number | null;
+  is_overdue: boolean;
+  is_near_deadline: boolean;
+}
+
+export interface OwnerDashboardMetrics {
+  new_requests: number;
+  in_progress_requests: number;
+  waiting_for_parts_requests: number;
+  completed_requests: number;
+  overdue_requests: number;
+  near_deadline_requests: number;
+}
+
+export interface OwnerSlaRiskItem {
+  request_number: string;
+  status: RequestStatus;
+  urgency: Urgency;
+  customer_name: string;
+  machine_label: string;
+  latest_event_title: string;
+  sla: OwnerSlaSnapshot;
+}
+
+export interface TechnicianWorkloadItem {
+  technician_identifier: string;
+  active_requests: number;
+  scheduled_visits: number;
+  waiting_for_parts: number;
+}
+
+export interface IssueGroupItem {
+  label: string;
+  count: number;
+}
+
+export interface LowStockRiskItem {
+  part_id: number;
+  sku: string;
+  name: string;
+  unit: string;
+  available_quantity: number;
+  low_stock_threshold: number | null;
+}
+
+export interface OwnerDashboardResponse {
+  generated_at: string;
+  metrics: OwnerDashboardMetrics;
+  sla_risks: OwnerSlaRiskItem[];
+  technician_workload: TechnicianWorkloadItem[];
+  top_issue_groups: IssueGroupItem[];
+  low_stock_risk: LowStockRiskItem[];
+}
+
+export interface OwnerDailyReportResponse {
+  report_date: string;
+  generated_at: string;
+  summary: OwnerDashboardMetrics;
+  highlights: string[];
+  sla_risks: OwnerSlaRiskItem[];
+  low_stock_risk: LowStockRiskItem[];
+  dashboard_url: string;
+}
+
 export interface TechnicianCandidate {
   username: string;
   display_name: string;

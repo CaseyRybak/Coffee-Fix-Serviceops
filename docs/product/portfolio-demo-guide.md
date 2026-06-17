@@ -207,9 +207,10 @@ Recommended screenshots:
 7. Dispatcher scheduling panel or schedule list.
 8. Technician workspace with fake assigned visit.
 9. Inventory catalog and reservation panel.
-10. Sanitized n8n workflow canvas or repository workflow docs.
-11. Telegram notification using fake request data and redacted chat identity.
-12. Operations evidence page showing HTTPS, port posture, smoke checks, and backup readiness.
+10. Owner dashboard with fake request data, SLA risk metrics, workload, issue groups, and low-stock risk.
+11. Sanitized n8n workflow canvas or repository workflow docs.
+12. Telegram notification using fake request data and redacted chat identity.
+13. Operations evidence page showing HTTPS, port posture, smoke checks, and backup readiness.
 
 Redact:
 
@@ -248,11 +249,16 @@ python3 tools/operations/test_smoke_script_contract.py
 python3 tools/operations/test_production_compose_contract.py
 ```
 
+## What Is Internal But Shipped
+
+The owner dashboard and SLA foundation are shipped as an admin-only internal surface at `/owner`. Demo it only with disposable admin credentials and fake operational data. Public reviewers without staff access should use screenshots or a guided private review window rather than public links.
+
+Phase 20 also exposes protected daily-report data for later automation, but Phase 21 owns sending owner reports and alerts through n8n.
+
 ## What Not To Demo As Shipped
 
-These are roadmap items, not completed Phase 18 capabilities:
+These are roadmap items, not completed capabilities:
 
-- owner dashboard and SLA reporting;
 - SLA reminder and owner daily report automation;
 - procurement and supplier workflows;
 - richer technician profile recommendations;

@@ -130,3 +130,22 @@ Public status snapshots may expose the current appointment window label, start, 
 ## Phase 16 Inventory Boundary
 
 Inventory reservations and stock movements can be tied to service request numbers for staff operations, but service requests do not expose reservation details publicly. Public status snapshots must not reveal part ids, reserved quantities, available stock, low-stock thresholds, stock movement history, or inventory notes.
+
+## Phase 20 SLA And Owner Dashboard Boundary
+
+Phase 20 adds an internal SLA policy derived from service-request urgency, lifecycle status, and request creation time. SLA is computed rather than stored as a separate lifecycle field:
+
+- `today` requests are due 8 hours after creation and become near-deadline in the last 2 hours.
+- `one_two_days` requests are due 48 hours after creation and become near-deadline in the last 8 hours.
+- `planned` requests are due 120 hours after creation and become near-deadline in the last 24 hours.
+- `completed`, `closed`, `cancelled`, and `warranty_case` requests are inactive for SLA.
+
+The owner dashboard is an internal admin-only view. It may aggregate request counts, overdue and near-deadline requests, waiting-for-parts requests, technician workload, top issue groups, and low-stock risk. Public status snapshots must not expose SLA state, owner dashboard metrics, technician workload, stock quantities, low-stock thresholds, internal risk labels, daily report data, or dashboard URLs.
+
+Phase 20 headline dashboard metrics are intentionally narrow:
+
+- `new_requests` counts only requests currently in `new`.
+- `in_progress_requests` counts technician/visit execution states: `technician_assigned`, `visit_scheduled`, `diagnostics`, `waiting_for_parts`, and `repair_in_progress`.
+- `waiting_for_parts_requests` counts only current `waiting_for_parts`.
+- `completed_requests` counts `completed` and `closed`.
+- `needs_clarification` and `awaiting_assignment` still participate in SLA risk, but they are not folded into the Phase 20 headline workload totals. Phase 21 should add explicit alert buckets for clarification and assignment backlog before automating owner reports or reminders from those categories.

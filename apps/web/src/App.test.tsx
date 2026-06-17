@@ -7,6 +7,7 @@ import { App } from "./App";
 import { AdminPage, ProtectedAdminPage, buildAdminStaffChangeRequests } from "./features/admin/AdminPage";
 import { DispatcherPage, ProtectedDispatcherPage, filterDispatcherItems } from "./features/dispatcher/DispatcherPage";
 import { ProtectedInventoryPage } from "./features/inventory/InventoryPage";
+import { OwnerDashboardPage, ProtectedOwnerDashboardPage } from "./features/owner/OwnerDashboardPage";
 import { StatusPage } from "./features/public/StatusPage";
 import { StaffLoginPage } from "./features/staff-auth/StaffLoginPage";
 import { StaffWorkspacePage } from "./features/staff-auth/StaffWorkspacePage";
@@ -38,6 +39,8 @@ import {
   buildInventoryPartCompatibilityPath,
   buildInventoryPartsPath,
   buildInventoryStockPath,
+  buildOwnerDailyReportPath,
+  buildOwnerDashboardPath,
   buildServiceRequestPayload,
   buildStatusLookupPath,
   buildTechnicianDetailPath,
@@ -57,6 +60,7 @@ import {
 } from "./shared/api";
 import { buildInventoryCompatibilityLabel, buildInventoryPartSpecLabel } from "./shared/formatters";
 import { buildInventorySkuSuggestion } from "./shared/inventory";
+import type { OwnerDashboardResponse } from "./shared/types";
 import {
   buildStaffLoginPath,
   getStoredStaffSession,
@@ -569,11 +573,15 @@ describe("App", () => {
     );
     assert.equal(
       resolveStaffLandingPath({ username: "admin@coffeefix.local", roles: ["admin"] }, null),
-      "/admin",
+      "/staff/workspace",
     );
     assert.equal(
       resolveStaffLandingPath({ username: "admin@coffeefix.local", roles: ["admin"] }, "/admin"),
       "/admin",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "admin@coffeefix.local", roles: ["admin"] }, "/owner"),
+      "/owner",
     );
     assert.equal(
       resolveStaffLandingPath({ username: "lead@coffeefix.local", roles: ["admin", "dispatcher"] }, "/dispatcher"),
@@ -1392,6 +1400,102 @@ describe("App", () => {
     assert.doesNotMatch(html, /class="header-cta"/);
     assert.doesNotMatch(html, /Оставить заявку/);
     assert.doesNotMatch(html, /Вызвать мастера/);
+  });
+
+  it("renders admin owner dashboard workspace card and route helpers", () => {
+    const html = renderToStaticMarkup(
+      <StaffWorkspacePage
+        initialSession={{
+          accessToken: "admin-token",
+          username: "owner@coffeefix.local",
+          roles: ["admin"],
+        }}
+      />,
+    );
+
+    assert.equal(buildOwnerDashboardPath(), "/owner/dashboard");
+    assert.equal(buildOwnerDailyReportPath(), "/owner/daily-report");
+    assert.match(html, /Панель владельца/);
+    assert.match(html, /href="\/owner"/);
+  });
+
+  it("renders owner dashboard SLA, workload, issue, and low-stock metrics", () => {
+    const initialDashboard: OwnerDashboardResponse = {
+      generated_at: "2026-06-17T12:00:00+00:00",
+      metrics: {
+        new_requests: 1,
+        in_progress_requests: 2,
+        waiting_for_parts_requests: 1,
+        completed_requests: 1,
+        overdue_requests: 1,
+        near_deadline_requests: 1,
+      },
+      sla_risks: [
+        {
+          request_number: "CFX-20260617-000001",
+          status: "new",
+          urgency: "today",
+          customer_name: "Anna Petrova",
+          machine_label: "Jura E8",
+          latest_event_title: "Заявка создана",
+          sla: {
+            request_number: "CFX-20260617-000001",
+            state: "overdue",
+            deadline_at: "2026-06-17T11:00:00+00:00",
+            hours_remaining: -1,
+            is_overdue: true,
+            is_near_deadline: false,
+          },
+        },
+      ],
+      technician_workload: [
+        {
+          technician_identifier: "technician@coffeefix.local",
+          active_requests: 2,
+          scheduled_visits: 1,
+          waiting_for_parts: 1,
+        },
+      ],
+      top_issue_groups: [{ label: "no coffee flow", count: 2 }],
+      low_stock_risk: [
+        {
+          part_id: 1,
+          sku: "FLOW-METER",
+          name: "Flow meter",
+          unit: "pcs",
+          available_quantity: 1,
+          low_stock_threshold: 2,
+        },
+      ],
+    };
+    const html = renderToStaticMarkup(
+      <OwnerDashboardPage
+        initialSession={{
+          accessToken: "admin-token",
+          username: "owner@coffeefix.local",
+          roles: ["admin"],
+        }}
+        initialDashboard={initialDashboard}
+      />,
+    );
+
+    assert.match(html, /Панель владельца/);
+    assert.match(html, /Новые заявки/);
+    assert.match(html, /Просрочены/);
+    assert.match(html, /CFX-20260617-000001/);
+    assert.match(html, /Anna Petrova/);
+    assert.match(html, /technician@coffeefix.local/);
+    assert.match(html, /no coffee flow/);
+    assert.match(html, /FLOW-METER/);
+    assert.match(html, /Доступно 1 pcs/);
+    assert.doesNotMatch(html, /internal-notes/);
+  });
+
+  it("protects owner dashboard for admin sessions", () => {
+    const html = renderToStaticMarkup(<ProtectedOwnerDashboardPage initialSession={null} />);
+
+    assert.match(html, /Требуется вход администратора/);
+    assert.match(html, /href="\/staff\/login\?next=%2Fowner"/);
   });
 
   it("keeps dispatcher notification delivery status in a collapsed technical log", () => {

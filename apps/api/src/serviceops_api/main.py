@@ -50,6 +50,8 @@ from serviceops_api.notifications.repository import (
     create_notification_repository,
 )
 from serviceops_api.notifications.use_cases import LinkTelegramOptIn, NotificationPublisher, RecordN8nDeliveryResult
+from serviceops_api.owner_dashboard.api import create_owner_dashboard_router
+from serviceops_api.owner_dashboard.use_cases import GetOwnerDailyReport, GetOwnerDashboard
 from serviceops_api.service_requests.api import (
     create_dispatcher_router,
     create_public_status_router,
@@ -272,6 +274,14 @@ def create_app(
             staff_dependency=require_staff_role("inventory", authenticator),
             read_dependency=require_staff_any_role({"admin", "inventory", "technician"}, authenticator),
             low_stock_dependency=require_staff_any_role({"admin", "dispatcher", "inventory"}, authenticator),
+        )
+    )
+    owner_dashboard = GetOwnerDashboard(repository, inventory_store)
+    app.include_router(
+        create_owner_dashboard_router(
+            owner_dashboard,
+            GetOwnerDailyReport(owner_dashboard),
+            staff_dependency=require_staff_role("admin", authenticator),
         )
     )
     app.include_router(

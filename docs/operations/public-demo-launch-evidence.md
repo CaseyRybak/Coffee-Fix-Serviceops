@@ -76,10 +76,11 @@ This record is sanitized. Do not include passwords, bearer tokens, Telegram bot 
 - Mobile WebP: `hero-coffee-service-wide-mobile.webp`, `800x497`, `45,770` bytes.
 - Browser selection verified locally with Playwright: desktop viewport selected the desktop WebP, mobile viewport selected the mobile WebP.
 - Visual check: desktop and mobile screenshots confirmed the same hero composition without cropping.
-- Production note: redeploy `main` after commit `dfa6028` before expecting the public domain to serve the optimized assets.
+- Preload decision: do not add an explicit hero preload in this slice. The `picture` element is in the first viewport, uses small responsive WebP assets, and avoids forcing the desktop asset onto mobile; revisit preload only if deployed browser evidence still shows a visible hero delay.
+- Production check on 2026-06-17: `https://coffeefix-demo.online/` returned HTTP 200, desktop WebP returned HTTP 200 with `content-type: image/webp` and `content-length: 118892`, mobile WebP returned HTTP 200 with `content-type: image/webp` and `content-length: 45770`.
 
 ## Go/No-Go
 
 - Decision: Go for current pet-project public demo posture.
-- Remaining blockers: None for Phase 17 pet-project demo posture.
+- Remaining blockers: None for Phase 17 pet-project demo posture. Phase 17a local optimization and live-domain asset availability are verified; repeat browser selection checks after the next web redeploy if hero assets change again.
 - Follow-up owner: Pending.

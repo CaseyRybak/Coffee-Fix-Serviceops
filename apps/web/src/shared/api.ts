@@ -201,6 +201,14 @@ export function buildInventoryLowStockPath(): string {
   return "/inventory/low-stock";
 }
 
+export function buildOwnerDashboardPath(): string {
+  return "/owner/dashboard";
+}
+
+export function buildOwnerDailyReportPath(): string {
+  return "/owner/daily-report";
+}
+
 export function buildAdminStaffPath(): string {
   return "/admin/staff";
 }

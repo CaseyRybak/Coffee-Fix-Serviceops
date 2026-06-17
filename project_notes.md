@@ -4,7 +4,7 @@ This is the current operating dashboard. Historical phase chronology and older d
 
 ## Current Status
 
-Coffee Fix ServiceOps has completed implementation slices through Phase 16:
+Coffee Fix ServiceOps has completed implementation slices through Phase 20:
 
 - Public repair intake, request numbers, public status snapshots, clarification answers, and Telegram opt-in link contracts.
 - Dispatcher, staff login/RBAC, admin staff management, technician assigned-visit workflow, and inventory basics.
@@ -23,20 +23,21 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 16:
 - Phase 17/17a public demo closure: real domain and HTTPS routes for web/API are configured, direct public test ports are blocked externally, Dokploy is restricted to the operator IP, staff-route smoke passed, n8n/Telegram/backup/restore-readiness evidence is recorded, and the public hero image now uses responsive desktop/mobile WebP assets with PNG fallback.
 - Phase 18 portfolio packaging and demo-mode policy: README is now portfolio-oriented, `docs/product/portfolio-demo-guide.md` documents safe demo scenarios, screenshot guidance, disposable credential policy, fake-data rules, and production-safe reset guidance, and `docs/review/phase-18-review.md` records the closure review.
 - Phase 19 frontend workspace decomposition: the large web entry file has been split into public, staff-auth, dispatcher, technician, inventory, admin, and shared frontend modules; shared API path builders, staff auth helpers, type definitions, formatters, inventory helpers, and UI primitives now live outside `apps/web/src/App.tsx`; web tests, TypeScript lint, and production build passed.
+- Phase 20 owner dashboard and SLA foundation: SLA deadlines, near-deadline, overdue, and inactive states are derived from urgency/status/creation time; admin-only owner dashboard and daily-report APIs aggregate request workload, waiting-for-parts, technician workload, top issue groups, SLA risk, and low-stock risk; the web app now has an admin owner dashboard at `/owner`; public status snapshots remain free of SLA diagnostics, staff workload, inventory quantities, and internal risk labels.
 
 ## Active Focus
 
-Phase 20 owner dashboard and SLA foundation, after Phase 19 reduced frontend change risk before adding owner dashboard, procurement, recommendation, or assistant screens.
+Phase 21 operational n8n automation, using the Phase 20 owner daily-report and dashboard APIs as the source of truth for SLA reminders, red alerts, owner reports, and low-stock alerts.
 
-Phase 20 needs a detailed implementation plan before adding SLA, owner/admin dashboard metrics, daily report payloads, and dashboard UI. Use `docs/execution-plans/phases/20-owner-dashboard-and-sla-foundation.md` as the slice map and keep the review gate in `docs/review/subagent-review-protocol.md`.
+Phase 21 needs a detailed implementation plan before changing n8n workflow exports, webhook contracts, or notification automation code. Use `docs/execution-plans/phases/21-operational-n8n-automation.md` as the slice map and keep the review gate in `docs/review/subagent-review-protocol.md`.
 
 ## Next Steps
 
-1. Create a Phase 20 detailed implementation plan before changing SLA/dashboard code.
-2. Read the Phase 20 slice map and relevant service-request, scheduling, inventory, technician, and notification domain docs before planning.
-3. Add owner/admin dashboard and SLA foundation without exposing SLA diagnostics, staff workload, inventory quantities, or internal risk labels publicly.
+1. Create a Phase 21 detailed implementation plan before changing n8n automation code.
+2. Read the Phase 21 slice map, Phase 20 dashboard/daily-report implementation, and notifications/operations docs before planning.
+3. Add SLA reminders, red alerts, owner daily reports, and low-stock automation without letting n8n own lifecycle status, staff identity, inventory counts, or repair decisions.
 4. Keep demo data and credentials safe for portfolio review: use fake customer data, disposable staff accounts, deterministic AI defaults, and no production database reset.
-5. After Phase 20, proceed to operational n8n automation, procurement lite, technician recommendation, and AI assistant tools.
+5. After Phase 21, proceed to procurement lite, technician recommendation, and AI assistant tools.
 
 ## Current Entry Points
 
@@ -55,6 +56,7 @@ Phase 20 needs a detailed implementation plan before adding SLA, owner/admin das
 - Phase 17a review: `docs/review/phase-17a-review.md`
 - Phase 18 review: `docs/review/phase-18-review.md`
 - Phase 19 review: `docs/review/phase-19-review.md`
+- Phase 20 review: `docs/review/phase-20-review.md`
 - Portfolio demo guide: `docs/product/portfolio-demo-guide.md`
 - Public demo launch evidence: `docs/operations/public-demo-launch-evidence.md`
 - Aeza VPS launch smoke evidence: `docs/operations/launch-smoke-evidence-2026-06-15-vps.md`
@@ -90,6 +92,7 @@ Phase 20 needs a detailed implementation plan before adding SLA, owner/admin das
 - The backend remains a modular monolith with DDD/hexagonal boundaries.
 - Hand-written SQL migrations plus sqlite/psycopg repositories are the current persistence approach; SQLAlchemy/Alembic are deferred choices.
 - Public status snapshots must remain customer-safe and must not expose internal notes, AI internals, staff data, audit data, technician internal details, or inventory metadata.
+- Owner dashboard and SLA data are admin-only internal operations data. Public status snapshots must not expose SLA state, overdue labels, near-deadline labels, daily report data, staff workload, inventory quantities, low-stock thresholds, or internal risk labels.
 - Staff workspaces are role-protected; public navigation still does not expose staff login, dispatcher, admin, technician, or inventory routes.
 - Production deployment uses `docker-compose.production.yml`; local Compose remains localhost-only.
 - Repository deployment now uses a single `main` branch; the temporary `production` and phase deployment branches were removed after `main` was fast-forwarded to the deployed revision.

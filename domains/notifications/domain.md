@@ -35,3 +35,9 @@ Current production-relevant artifacts are:
 - Smoke-test hooks for configured n8n webhook checks.
 
 Source-of-truth service-request state remains in the ServiceOps API and PostgreSQL. n8n can automate delivery and operational routing, but it must not own lifecycle status, staff identity, customer answers, inventory counts, or repair decisions.
+
+## Phase 20 Daily Report Payload Boundary
+
+Phase 20 exposes owner daily report data through the protected ServiceOps API only. The payload summarizes owner dashboard metrics, SLA risks, and low-stock risk so Phase 21 can build n8n owner reports and reminders from an API source of truth.
+
+Phase 20 does not send owner reports, SLA reminders, red alerts, or low-stock alerts. n8n automation remains responsible only after Phase 21, and it must continue to treat ServiceOps API data as read-only operational input rather than owning request lifecycle, staff identity, inventory quantities, or repair decisions.

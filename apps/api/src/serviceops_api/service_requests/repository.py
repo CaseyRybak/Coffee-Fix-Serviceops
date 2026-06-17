@@ -552,6 +552,55 @@ class ServiceRequestRepository:
         ).fetchall()
         return [self._dispatcher_list_item(row) for row in rows]
 
+    def list_owner_dashboard_requests(self) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            """
+            SELECT
+                sr.id,
+                sr.request_number,
+                sr.status,
+                sr.urgency,
+                sr.problem,
+                sr.created_at,
+                sr.assigned_technician_name,
+                c.name AS customer_name,
+                m.brand,
+                m.model,
+                (
+                    SELECT se.title
+                    FROM status_events se
+                    WHERE se.service_request_id = sr.id
+                    ORDER BY se.id DESC
+                    LIMIT 1
+                ) AS latest_event_title,
+                (
+                    SELECT COUNT(*)
+                    FROM request_appointments ra
+                    WHERE ra.service_request_id = sr.id AND ra.status = 'scheduled'
+                ) AS scheduled_visit_count
+            FROM service_requests sr
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            ORDER BY sr.id DESC
+            """
+        ).fetchall()
+        return [
+            {
+                "request_number": row["request_number"],
+                "status": row["status"],
+                "urgency": row["urgency"],
+                "problem": row["problem"],
+                "created_at": row["created_at"],
+                "assigned_technician_name": row["assigned_technician_name"],
+                "customer_name": row["customer_name"],
+                "brand": row["brand"],
+                "model": row["model"],
+                "latest_event_title": row["latest_event_title"] or "",
+                "scheduled_visit_count": int(row["scheduled_visit_count"]),
+            }
+            for row in rows
+        ]
+
     def get_dispatcher_request(self, request_number: str) -> dict[str, Any]:
         request = self._connection.execute(
             """
@@ -1879,6 +1928,55 @@ class PostgresServiceRequestRepository:
             """
         ).fetchall()
         return [self._dispatcher_list_item(row) for row in rows]
+
+    def list_owner_dashboard_requests(self) -> list[dict[str, Any]]:
+        rows = self._connect().execute(
+            """
+            SELECT
+                sr.id,
+                sr.request_number,
+                sr.status,
+                sr.urgency,
+                sr.problem,
+                sr.created_at,
+                sr.assigned_technician_name,
+                c.name AS customer_name,
+                m.brand,
+                m.model,
+                (
+                    SELECT se.title
+                    FROM status_events se
+                    WHERE se.service_request_id = sr.id
+                    ORDER BY se.id DESC
+                    LIMIT 1
+                ) AS latest_event_title,
+                (
+                    SELECT COUNT(*)
+                    FROM request_appointments ra
+                    WHERE ra.service_request_id = sr.id AND ra.status = 'scheduled'
+                ) AS scheduled_visit_count
+            FROM service_requests sr
+            JOIN customers c ON c.id = sr.customer_id
+            JOIN machines m ON m.id = sr.machine_id
+            ORDER BY sr.id DESC
+            """
+        ).fetchall()
+        return [
+            {
+                "request_number": row["request_number"],
+                "status": row["status"],
+                "urgency": row["urgency"],
+                "problem": row["problem"],
+                "created_at": self._format_timestamp(row["created_at"]),
+                "assigned_technician_name": row["assigned_technician_name"],
+                "customer_name": row["customer_name"],
+                "brand": row["brand"],
+                "model": row["model"],
+                "latest_event_title": row["latest_event_title"] or "",
+                "scheduled_visit_count": int(row["scheduled_visit_count"]),
+            }
+            for row in rows
+        ]
 
     def get_dispatcher_request(self, request_number: str) -> dict[str, Any]:
         request = self._connect().execute(

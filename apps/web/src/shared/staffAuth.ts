@@ -52,6 +52,7 @@ export function resolveStaffLandingPath(staff: { roles: StaffRole[]; username?: 
     { prefix: "/technician", role: "technician" },
     { prefix: "/inventory", role: "inventory" },
     { prefix: "/admin", role: "admin" },
+    { prefix: "/owner", role: "admin" },
   ];
   const safeNext = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : null;
   const matchingRoute = safeNext ? routeRoles.find((route) => safeNext.startsWith(route.prefix)) : undefined;
@@ -60,6 +61,6 @@ export function resolveStaffLandingPath(staff: { roles: StaffRole[]; username?: 
   if (staff.roles.includes("dispatcher")) return "/dispatcher";
   if (staff.roles.includes("technician")) return "/technician";
   if (staff.roles.includes("inventory")) return "/inventory";
-  if (staff.roles.includes("admin")) return "/admin";
+  if (staff.roles.includes("admin")) return staffWorkspacePath;
   return "/staff/login";
 }

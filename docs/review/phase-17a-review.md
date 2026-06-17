@@ -4,7 +4,7 @@ Date: 2026-06-17
 
 ## Reviewer Role
 
-Phase closure review for the small public-demo performance slice. The operator explicitly treated Phase 17a as a simple direct fix, so no separate detailed implementation plan was created for this slice.
+Phase closure review for the small public-demo performance slice. The operator explicitly instructed the worker not to create a separate detailed implementation plan for Phase 17a, so this slice intentionally used the phase map plus review artifact as the durable record.
 
 ## Files Reviewed
 
@@ -42,8 +42,9 @@ None.
 
 ## Non-Blocking Issues
 
-- Production redeploy is still required before the live domain can serve the optimized assets.
+- Live-domain HEAD checks on 2026-06-17 confirmed the public web route and both WebP assets are available from `https://coffeefix-demo.online`; repeat browser selection checks after future web redeploys that touch hero assets.
 - The original PNG remains as a browser fallback. It is not expected to be downloaded by modern browsers that support WebP.
+- No separate detailed implementation plan was created for Phase 17a by direct operator instruction. This is not a Phase 17a finding or score penalty; future slices should still follow the normal detailed-plan policy unless the operator explicitly overrides it again.
 
 ## Suggested Follow-Up Slice
 
@@ -59,4 +60,4 @@ Completed:
 
 ## Final Recommendation
 
-Phase 17a is closed. The public hero image now uses responsive WebP assets for desktop and mobile while preserving the original PNG fallback and the existing visual composition. Proceed to Phase 18 after redeploying the current `main` branch to the public demo environment.
+Phase 17a is closed for the current public demo posture. The public hero image now uses responsive WebP assets for desktop and mobile while preserving the original PNG fallback and the existing visual composition, and the optimized WebP assets are available on the live domain.

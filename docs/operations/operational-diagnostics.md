@@ -77,6 +77,9 @@ nc -vz <vps-ip> 3001
 nc -vz <vps-ip> 8000
 nc -vz <vps-ip> 2377
 nc -vz <vps-ip> 7946
+nc -vz <vps-ip> 5432
+nc -vz <vps-ip> 5678
+nc -vz <vps-ip> 6379
 ```
 
 Current expected interpretation for the single-node Dokploy VPS:
@@ -85,6 +88,7 @@ Current expected interpretation for the single-node Dokploy VPS:
 - `3000`: Dokploy admin surface; restrict to trusted IP/VPN before launch.
 - `3001` and `8000`: temporary direct web/API test ports; close after domain routing is ready.
 - `5678`: n8n must not be directly published; API should call `http://n8n:5678` on the Compose network.
+- `5432` and `6379`: PostgreSQL and Redis must stay private to the Compose network.
 - `2377` and `7946`: Docker Swarm/internal networking listeners can exist because Dokploy initializes Swarm, but they should not be externally reachable and should not have public firewall allow rules in a single-node setup.
 
 ## jq Filters
