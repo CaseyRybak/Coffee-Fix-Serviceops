@@ -72,6 +72,16 @@ Do not use local development staff credentials, default passwords, or local URLs
 7. Keep PostgreSQL and Redis without public routes.
 8. Deploy the Compose app.
 
+The repository `docker-compose.production.yml` is the source of truth for the current Dokploy production overlay. It intentionally includes the Traefik labels for `coffeefix-demo.online` and `api.coffeefix-demo.online`, attaches `api`, `web`, and `n8n` to `dokploy-network`, and keeps `n8n` without a direct public port. Do not hand-edit these routing labels on the server as a persistent fix; update the repository and redeploy from `main` instead.
+
+After every server deployment from git, verify the checkout is clean:
+
+```bash
+git status --short
+```
+
+Expected output is empty. A dirty `docker-compose.production.yml` means the production routing overlay has drifted from the repository and must be reconciled before the next release.
+
 ## Public Port Posture
 
 Expected production posture:

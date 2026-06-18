@@ -46,6 +46,22 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    labels:
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-web.rule=Host(`api.coffeefix-demo.online`)
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-web.entrypoints=web
+      - traefik.http.services.coffeefixserviceops-coffeefixserviceops-up3whl-2-web.loadbalancer.server.port=8000
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-web.service=coffeefixserviceops-coffeefixserviceops-up3whl-2-web
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-web.middlewares=redirect-to-https@file
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure.rule=Host(`api.coffeefix-demo.online`)
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure.entrypoints=websecure
+      - traefik.http.services.coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure.loadbalancer.server.port=8000
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure.service=coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure.tls.certresolver=letsencrypt
+      - traefik.enable=true
+    networks:
+      - dokploy-network
+      - default
 
   web:
     build:
@@ -59,6 +75,22 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    labels:
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-web.rule=Host(`coffeefix-demo.online`)
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-web.entrypoints=web
+      - traefik.http.services.coffeefixserviceops-coffeefixserviceops-up3whl-1-web.loadbalancer.server.port=80
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-web.service=coffeefixserviceops-coffeefixserviceops-up3whl-1-web
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-web.middlewares=redirect-to-https@file
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure.rule=Host(`coffeefix-demo.online`)
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure.entrypoints=websecure
+      - traefik.http.services.coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure.loadbalancer.server.port=80
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure.service=coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure.tls.certresolver=letsencrypt
+      - traefik.enable=true
+    networks:
+      - dokploy-network
+      - default
 
   worker:
     build:
