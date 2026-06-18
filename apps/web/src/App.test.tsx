@@ -73,6 +73,7 @@ import type { OwnerDashboardResponse } from "./shared/types";
 import {
   buildStaffLoginPath,
   getStoredStaffSession,
+  redirectOnStaffAuthFailure,
   isStaffAuthFailureStatus,
   resolveStaffLandingPath,
   staffAuthHeaders,
@@ -537,6 +538,35 @@ describe("App", () => {
     assert.equal(isStaffAuthFailureStatus(403), true);
     assert.equal(isStaffAuthFailureStatus(409), false);
     assert.equal(isStaffAuthFailureStatus(500), false);
+  });
+
+  it("clears stale staff sessions and redirects to login on auth failures", () => {
+    const storage = new Map<string, string>();
+    const fakeStorage = {
+      get length() {
+        return storage.size;
+      },
+      clear: () => storage.clear(),
+      getItem: (key: string) => storage.get(key) ?? null,
+      key: (index: number) => Array.from(storage.keys())[index] ?? null,
+      setItem: (key: string, value: string) => {
+        storage.set(key, value);
+      },
+      removeItem: (key: string) => {
+        storage.delete(key);
+      },
+    } as Storage;
+    const fakeLocation = { href: "" };
+    fakeStorage.setItem(
+      "serviceops.staffSession",
+      JSON.stringify({ accessToken: "expired", username: "inventory@coffeefix.local", roles: ["inventory"] }),
+    );
+
+    assert.equal(redirectOnStaffAuthFailure(401, "/inventory", fakeStorage, fakeLocation), true);
+
+    assert.equal(fakeStorage.getItem("serviceops.staffSession"), null);
+    assert.equal(fakeLocation.href, "/staff/login?next=%2Finventory");
+    assert.equal(redirectOnStaffAuthFailure(500, "/inventory", fakeStorage, fakeLocation), false);
   });
 
   it("builds admin staff management API paths", () => {

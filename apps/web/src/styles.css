@@ -852,6 +852,7 @@ p {
   margin-top: 2px;
 }
 
+.procurement-draft-actions,
 .procurement-form .submit-button,
 .procurement-actions .secondary-status-button,
 .procurement-edit-form .secondary-status-button,
@@ -863,6 +864,23 @@ p {
   white-space: normal;
 }
 
+.procurement-draft-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 10px;
+  align-items: stretch;
+  margin-top: 2px;
+}
+
+.procurement-draft-actions .submit-button,
+.procurement-draft-actions .procurement-low-stock-button {
+  justify-self: stretch;
+  width: 100%;
+  min-height: 44px;
+  padding-inline: 14px;
+}
+
 .procurement-form .submit-button svg,
 .procurement-actions .secondary-status-button svg,
 .procurement-edit-form .secondary-status-button svg,
@@ -871,10 +889,6 @@ p {
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
-}
-
-.wide-procurement-action {
-  width: fit-content;
 }
 
 .procurement-low-stock-button {
@@ -3714,6 +3728,10 @@ select:focus {
 
   .procurement-actions {
     justify-content: flex-start;
+  }
+
+  .procurement-draft-actions {
+    grid-template-columns: 1fr;
   }
 
   .appointment-card {

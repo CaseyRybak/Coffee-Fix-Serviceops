@@ -22,7 +22,7 @@ import {
 } from "../../shared/api";
 import { buildInventoryCompatibilityLabel, buildInventoryPartSpecLabel, formatCompactDateTime, formatInventoryQuantity, inventoryMovementLabel } from "../../shared/formatters";
 import { buildInventoryFactualKey, buildInventorySkuSuggestion, inventoryPartSearchText, normalizeInventoryIdentity, uniqueInventoryValues } from "../../shared/inventory";
-import { buildStaffLoginPath, clearStaffSession, getStoredStaffSession, staffAuthHeaders, staffHasRole } from "../../shared/staffAuth";
+import { buildStaffLoginPath, clearStaffSession, getStoredStaffSession, redirectOnStaffAuthFailure, staffAuthHeaders, staffHasRole } from "../../shared/staffAuth";
 import type {
   InventoryCompatibilityLevel,
   InventoryMovementListResponse,
@@ -122,6 +122,7 @@ export function InventoryPage({
   const [loading, setLoading] = useState(false);
   const isInventoryStaff = staffHasRole(session ?? null, "inventory");
   const isAdminStaff = staffHasRole(session ?? null, "admin");
+  const cabinetPath = procurementOnly ? "/procurement" : "/inventory";
 
   const brandOptions = uniqueInventoryValues(parts.items.map((part) => part.brand));
   const modelOptions = uniqueInventoryValues(
@@ -156,37 +157,44 @@ export function InventoryPage({
   const lowStockCount = parts.items.filter((part) => part.is_low_stock).length;
   const reservedPartsCount = parts.items.filter((part) => part.reserved_quantity > 0).length;
 
+  function ensureStaffResponse(response: Response, context: string): void {
+    if (redirectOnStaffAuthFailure(response.status, cabinetPath)) {
+      throw new Error("Staff session expired");
+    }
+    if (!response.ok) throw new Error(`${context} failed with ${response.status}`);
+  }
+
   async function loadParts() {
     const response = await fetch(`${apiBaseUrl()}${buildInventoryPartsPath()}`, { headers: staffAuthHeaders(session) });
-    if (!response.ok) throw new Error(`Inventory parts failed with ${response.status}`);
+    ensureStaffResponse(response, "Inventory parts");
     const body = (await response.json()) as InventoryPartListResponse;
     setParts(body);
   }
 
   async function loadReservations() {
     const response = await fetch(`${apiBaseUrl()}${buildInventoryReservationsPath()}`, { headers: staffAuthHeaders(session) });
-    if (!response.ok) throw new Error(`Inventory reservations failed with ${response.status}`);
+    ensureStaffResponse(response, "Inventory reservations");
     const body = (await response.json()) as InventoryReservationListResponse;
     setReservations(body);
   }
 
   async function loadMovements() {
     const response = await fetch(`${apiBaseUrl()}${buildInventoryMovementsPath()}`, { headers: staffAuthHeaders(session) });
-    if (!response.ok) throw new Error(`Inventory movements failed with ${response.status}`);
+    ensureStaffResponse(response, "Inventory movements");
     const body = (await response.json()) as InventoryMovementListResponse;
     setMovements(body);
   }
 
   async function loadSuppliers() {
     const response = await fetch(`${apiBaseUrl()}${buildInventoryProcurementSuppliersPath()}`, { headers: staffAuthHeaders(session) });
-    if (!response.ok) throw new Error(`Procurement suppliers failed with ${response.status}`);
+    ensureStaffResponse(response, "Procurement suppliers");
     const body = (await response.json()) as ProcurementSupplierListResponse;
     setSuppliers(body);
   }
 
   async function loadPurchaseRequests() {
     const response = await fetch(`${apiBaseUrl()}${buildInventoryProcurementPurchaseRequestsPath()}`, { headers: staffAuthHeaders(session) });
-    if (!response.ok) throw new Error(`Purchase requests failed with ${response.status}`);
+    ensureStaffResponse(response, "Purchase requests");
     const body = (await response.json()) as PurchaseRequestListResponse;
     setPurchaseRequests(body);
   }
@@ -247,7 +255,7 @@ export function InventoryPage({
         setMessage("Позиция не добавлена: такая фактическая запчасть уже есть или была в каталоге.");
         return;
       }
-      if (!response.ok) throw new Error(`Create part failed with ${response.status}`);
+      ensureStaffResponse(response, "Create part");
       const createdPart = (await response.json()) as InventoryPartItem;
       if (Number(initialStockCount) > 0 || initialLowStockThreshold.trim()) {
         const stockResponse = await fetch(`${apiBaseUrl()}${buildInventoryStockPath(createdPart.part_id)}`, {
@@ -258,7 +266,7 @@ export function InventoryPage({
             low_stock_threshold: initialLowStockThreshold ? Number(initialLowStockThreshold) : undefined,
           }),
         });
-        if (!stockResponse.ok) throw new Error(`Initial stock failed with ${stockResponse.status}`);
+        ensureStaffResponse(stockResponse, "Initial stock");
       }
       setSku("");
       setSkuEdited(false);
@@ -299,7 +307,7 @@ export function InventoryPage({
           note: compatibilityRowNote.trim() || undefined,
         }),
       });
-      if (!response.ok) throw new Error(`Compatibility failed with ${response.status}`);
+      ensureStaffResponse(response, "Compatibility");
       setCompatibilityPartId("");
       setCompatibilityLevel("exact_model");
       setCompatibilityBrand("");
@@ -329,7 +337,7 @@ export function InventoryPage({
           low_stock_threshold: lowStockThreshold ? Number(lowStockThreshold) : undefined,
         }),
       });
-      if (!response.ok) throw new Error(`Stock update failed with ${response.status}`);
+      ensureStaffResponse(response, "Stock update");
       setStockPartId("");
       setStockCount("0");
       setLowStockThreshold("");
@@ -357,7 +365,7 @@ export function InventoryPage({
           note: reservationNote.trim() || undefined,
         }),
       });
-      if (!response.ok) throw new Error(`Reservation failed with ${response.status}`);
+      ensureStaffResponse(response, "Reservation");
       setReservationRequest("");
       setReservationPartId("");
       setReservationQuantity("1");
@@ -380,7 +388,7 @@ export function InventoryPage({
         headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
         body: JSON.stringify({ note: "Released from inventory workspace" }),
       });
-      if (!response.ok) throw new Error(`Release reservation failed with ${response.status}`);
+      ensureStaffResponse(response, "Release reservation");
       await refreshInventory();
       setMessage("Резерв снят.");
     } catch {
@@ -406,7 +414,7 @@ export function InventoryPage({
           note: supplierNote.trim() || undefined,
         }),
       });
-      if (!response.ok) throw new Error(`Create supplier failed with ${response.status}`);
+      ensureStaffResponse(response, "Create supplier");
       const createdSupplier = (await response.json()) as { supplier_id: number };
       setSupplierName("");
       setSupplierContact("");
@@ -438,6 +446,7 @@ export function InventoryPage({
         }),
       });
       if (!response.ok) {
+        ensureStaffResponse(response, "Create purchase request");
         const body = (await response.json().catch(() => null)) as { detail?: string } | null;
         throw new Error(body?.detail || `Create purchase request failed with ${response.status}`);
       }
@@ -468,6 +477,7 @@ export function InventoryPage({
         body: JSON.stringify({ supplier_id: Number(purchaseSupplierId), note: "Черновик из низких остатков" }),
       });
       if (!response.ok) {
+        ensureStaffResponse(response, "Low-stock draft");
         const body = (await response.json().catch(() => null)) as { detail?: string } | null;
         throw new Error(body?.detail || `Low-stock draft failed with ${response.status}`);
       }
@@ -492,7 +502,7 @@ export function InventoryPage({
         headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
         body: JSON.stringify(body),
       });
-      if (!response.ok) throw new Error(`Purchase action failed with ${response.status}`);
+      ensureStaffResponse(response, "Purchase action");
       await refreshInventory();
       setMessage(`${successMessage}: PR-${purchaseRequest.purchase_request_id}.`);
     } catch {
@@ -512,7 +522,7 @@ export function InventoryPage({
         headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
         body: JSON.stringify([{ part_id: Number(editPartId), quantity: Number(editQuantity), note: editNote.trim() || undefined }]),
       });
-      if (!response.ok) throw new Error(`Draft item update failed with ${response.status}`);
+      ensureStaffResponse(response, "Draft item update");
       setEditPurchaseRequestId(null);
       setEditPartId("");
       setEditQuantity("1");
@@ -964,20 +974,22 @@ export function InventoryPage({
                         </select>
                         <input value={purchaseQuantity} onChange={(event) => setPurchaseQuantity(event.target.value)} placeholder="Количество" type="number" min="1" required />
                         <input value={purchaseNote} onChange={(event) => setPurchaseNote(event.target.value)} placeholder="Комментарий" />
-                        <button className="submit-button" type="submit" disabled={loading}>
-                          <FilePlus2 aria-hidden="true" />
-                          Создать черновик
-                        </button>
+                        <div className="procurement-draft-actions">
+                          <button className="submit-button" type="submit" disabled={loading}>
+                            <FilePlus2 aria-hidden="true" />
+                            Создать черновик
+                          </button>
+                          <button
+                            className="secondary-status-button procurement-low-stock-button"
+                            type="button"
+                            onClick={() => void createLowStockDraft()}
+                            disabled={loading || !suppliers.items.length}
+                          >
+                            <PackageCheck aria-hidden="true" />
+                            Создать из низких остатков
+                          </button>
+                        </div>
                       </form>
-                      <button
-                        className="secondary-status-button wide-procurement-action procurement-low-stock-button"
-                        type="button"
-                        onClick={() => void createLowStockDraft()}
-                        disabled={loading || !suppliers.items.length}
-                      >
-                        <PackageCheck aria-hidden="true" />
-                        Создать из низких остатков
-                      </button>
                       <small>
                         {purchaseSupplierId
                           ? lowStockCount

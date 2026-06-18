@@ -42,6 +42,18 @@ export function isStaffAuthFailureStatus(status: number): boolean {
   return status === 401 || status === 403;
 }
 
+export function redirectOnStaffAuthFailure(
+  status: number,
+  nextPath: string,
+  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  location: Pick<Location, "href"> | undefined = typeof window !== "undefined" ? window.location : undefined,
+): boolean {
+  if (!isStaffAuthFailureStatus(status)) return false;
+  clearStaffSession(storage);
+  if (location) location.href = buildStaffLoginPath(nextPath);
+  return true;
+}
+
 export function staffHasRole(session: StaffSession | null, role: StaffRole): boolean {
   return Boolean(session?.roles.includes(role));
 }
