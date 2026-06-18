@@ -867,7 +867,7 @@ p {
 .procurement-draft-actions {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  grid-template-columns: max-content minmax(210px, 1fr);
   gap: 10px;
   align-items: stretch;
   margin-top: 2px;
@@ -879,6 +879,11 @@ p {
   width: 100%;
   min-height: 44px;
   padding-inline: 14px;
+  white-space: nowrap;
+}
+
+.procurement-draft-actions .procurement-low-stock-button {
+  font-size: 0.82rem;
 }
 
 .procurement-form .submit-button svg,
@@ -3728,10 +3733,6 @@ select:focus {
 
   .procurement-actions {
     justify-content: flex-start;
-  }
-
-  .procurement-draft-actions {
-    grid-template-columns: 1fr;
   }
 
   .appointment-card {
