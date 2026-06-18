@@ -26,8 +26,8 @@ Set these values in Dokploy before exposing the app:
 
 ```bash
 SERVICEOPS_ENVIRONMENT=production
-SERVICEOPS_WEB_HOST=serviceops.example.com
-SERVICEOPS_API_HOST=api.serviceops.example.com
+SERVICEOPS_TRAEFIK_WEB_HOST=serviceops.example.com
+SERVICEOPS_TRAEFIK_API_HOST=api.serviceops.example.com
 SERVICEOPS_PUBLIC_WEB_BASE_URL=https://serviceops.example.com
 SERVICEOPS_PUBLIC_API_BASE_URL=https://api.serviceops.example.com
 SERVICEOPS_CORS_ALLOWED_ORIGINS=https://serviceops.example.com
@@ -74,7 +74,7 @@ Do not use local development staff credentials, default passwords, or local URLs
 7. Keep PostgreSQL and Redis without public routes.
 8. Deploy the Compose app.
 
-The repository `docker-compose.production.yml` is the source of truth for the current Dokploy production overlay. It intentionally includes the Traefik labels for `SERVICEOPS_WEB_HOST` and `SERVICEOPS_API_HOST`, defaults those hosts to the current demo domains, attaches `api`, `web`, and `n8n` to `dokploy-network`, and keeps API, web, and n8n without direct public host ports. Do not hand-edit these routing labels on the server as a persistent fix; update the repository and redeploy from `main` instead.
+The repository `docker-compose.production.yml` is the source of truth for the current Dokploy production overlay. It intentionally includes the Traefik labels for `SERVICEOPS_TRAEFIK_WEB_HOST` and `SERVICEOPS_TRAEFIK_API_HOST`, defaults those hosts to the current demo domains, attaches `api`, `web`, and `n8n` to `dokploy-network`, and keeps API, web, and n8n without direct public host ports. Do not hand-edit these routing labels on the server as a persistent fix; update the repository and redeploy from `main` instead.
 
 After every server deployment from git, verify the checkout is clean:
 

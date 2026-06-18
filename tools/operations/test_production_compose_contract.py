@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -35,12 +36,12 @@ def test_production_compose_tracks_dokploy_routing_overlay() -> None:
     n8n = _service_block(compose, "n8n")
 
     assert "traefik.docker.network=dokploy-network" in api
-    assert "Host(`${SERVICEOPS_API_HOST:-api.coffeefix-demo.online}`)" in api
+    assert "Host(`${SERVICEOPS_TRAEFIK_API_HOST:-api.coffeefix-demo.online}`)" in api
     assert "dokploy-network" in api
     assert "ports:" not in api
 
     assert "traefik.docker.network=dokploy-network" in web
-    assert "Host(`${SERVICEOPS_WEB_HOST:-coffeefix-demo.online}`)" in web
+    assert "Host(`${SERVICEOPS_TRAEFIK_WEB_HOST:-coffeefix-demo.online}`)" in web
     assert "dokploy-network" in web
     assert "ports:" not in web
 
@@ -48,7 +49,29 @@ def test_production_compose_tracks_dokploy_routing_overlay() -> None:
     assert "dokploy-network:\n    external: true" in compose
 
 
+def test_production_compose_renders_demo_hosts_with_example_env() -> None:
+    result = subprocess.run(
+        [
+            "docker",
+            "compose",
+            "--env-file",
+            str(ROOT / ".env.example"),
+            "-f",
+            str(ROOT / "docker-compose.production.yml"),
+            "config",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "Host(`api.coffeefix-demo.online`)" in result.stdout
+    assert "Host(`coffeefix-demo.online`)" in result.stdout
+    assert "Host(`0.0.0.0`)" not in result.stdout
+
+
 if __name__ == "__main__":
     test_production_telegram_bot_runs_with_default_compose_profile()
     test_production_n8n_does_not_publish_direct_port()
     test_production_compose_tracks_dokploy_routing_overlay()
+    test_production_compose_renders_demo_hosts_with_example_env()
