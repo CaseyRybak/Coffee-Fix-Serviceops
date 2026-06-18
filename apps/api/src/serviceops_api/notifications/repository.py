@@ -111,14 +111,31 @@ class SqliteNotificationRepository:
         return cursor.rowcount == 1
 
     def record_callback_result(self, payload: DeliveryResultPayload) -> bool:
+        existing = self.get_by_event_id(payload.event_id)
+        attempt_count = payload.attempt_count
+        if existing is not None:
+            attempt_count = max(int(existing.get("attempt_count") or 1), payload.attempt_count)
         return self.record_delivery_result(
             event_id=payload.event_id,
             status=payload.status,
             channel=payload.channel,
             provider_message_id=payload.provider_message_id,
             error=payload.error,
-            attempt_count=payload.attempt_count,
+            attempt_count=attempt_count,
         )
+
+    def get_by_event_id(self, event_id: str) -> dict[str, Any] | None:
+        row = self._connection.execute(
+            """
+            SELECT
+                event_id, event_type, request_number, status, channel, provider_message_id,
+                error, attempt_count, created_at, updated_at
+            FROM notification_delivery_attempts
+            WHERE event_id = ?
+            """,
+            (event_id,),
+        ).fetchone()
+        return None if row is None else dict(row)
 
     def list_for_request(self, request_number: str) -> list[dict[str, Any]]:
         rows = self._connection.execute(
@@ -205,14 +222,37 @@ class PostgresNotificationRepository:
         return cursor.rowcount == 1
 
     def record_callback_result(self, payload: DeliveryResultPayload) -> bool:
+        existing = self.get_by_event_id(payload.event_id)
+        attempt_count = payload.attempt_count
+        if existing is not None:
+            attempt_count = max(int(existing.get("attempt_count") or 1), payload.attempt_count)
         return self.record_delivery_result(
             event_id=payload.event_id,
             status=payload.status,
             channel=payload.channel,
             provider_message_id=payload.provider_message_id,
             error=payload.error,
-            attempt_count=payload.attempt_count,
+            attempt_count=attempt_count,
         )
+
+    def get_by_event_id(self, event_id: str) -> dict[str, Any] | None:
+        row = self._connect().execute(
+            """
+            SELECT
+                event_id, event_type, request_number, status, channel, provider_message_id,
+                error, attempt_count, created_at, updated_at
+            FROM notification_delivery_attempts
+            WHERE event_id = %s
+            """,
+            (event_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            **row,
+            "created_at": str(row["created_at"]),
+            "updated_at": str(row["updated_at"]),
+        }
 
     def list_for_request(self, request_number: str) -> list[dict[str, Any]]:
         rows = self._connect().execute(

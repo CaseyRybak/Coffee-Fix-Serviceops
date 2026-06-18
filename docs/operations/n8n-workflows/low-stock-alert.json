@@ -1,0 +1,189 @@
+{
+  "workflow": {
+    "name": "ServiceOps - Low Stock Alert",
+    "active": false,
+    "isArchived": false,
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true
+    },
+    "connections": {
+      "Hourly Schedule": {
+        "main": [
+          [
+            {
+              "node": "Fetch Low Stock Alerts",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Low Stock Alerts": {
+        "main": [
+          [
+            {
+              "node": "Format Low Stock Messages",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Low Stock Messages": {
+        "main": [
+          [
+            {
+              "node": "Send Telegram Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Telegram Message": {
+        "main": [
+          [
+            {
+              "node": "Report Delivery Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodes": [
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210031",
+        "name": "Hourly Schedule",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "hoursInterval": 4
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210032",
+        "name": "Fetch Low Stock Alerts",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          240,
+          0
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $env.SERVICEOPS_API_BASE_URL + \"/notifications/n8n/operations/low-stock-alerts\" }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-ServiceOps-Callback-Secret",
+                "value": "={{ $env.SERVICEOPS_N8N_CALLBACK_SECRET }}"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210033",
+        "name": "Format Low Stock Messages",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          480,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const response = items[0].json;\nconst nl = String.fromCharCode(10);\nreturn (response.items || []).map((item) => ({ json: { event_id: item.event_id, chat_id: $env.SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID, text: ['Low stock alert', '', 'SKU: ' + item.sku, 'Part: ' + item.name, 'Available: ' + item.available_quantity + ' ' + item.unit, 'Threshold: ' + (item.low_stock_threshold ?? 'not set'), '', 'Inventory: ' + item.dashboard_url].join(nl) } }));"
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210034",
+        "name": "Send Telegram Message",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          720,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ \"https://api.telegram.org/bot\" + $env.SERVICEOPS_TELEGRAM_BOT_TOKEN + \"/sendMessage\" }}",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { chat_id: $json.chat_id, text: $json.text, disable_web_page_preview: true } }}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210035",
+        "name": "Report Delivery Result",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          960,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.SERVICEOPS_API_BASE_URL + \"/notifications/n8n/delivery-results\" }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-ServiceOps-Callback-Secret",
+                "value": "={{ $env.SERVICEOPS_N8N_CALLBACK_SECRET }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { event_id: $(\"Format Low Stock Messages\").item.json.event_id, status: $json.statusCode >= 200 && $json.statusCode < 300 ? \"sent\" : \"failed\", channel: \"telegram\", provider_message_id: $json.body && $json.body.result ? String($json.body.result.message_id) : \"\", error: $json.statusCode >= 200 && $json.statusCode < 300 ? \"\" : JSON.stringify($json.body), attempt_count: 1 } }}",
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 10000
+          }
+        }
+      }
+    ]
+  }
+}

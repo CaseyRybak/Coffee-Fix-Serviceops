@@ -1,0 +1,189 @@
+{
+  "workflow": {
+    "name": "ServiceOps - Owner Daily Report",
+    "active": false,
+    "isArchived": false,
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true
+    },
+    "connections": {
+      "Daily Schedule": {
+        "main": [
+          [
+            {
+              "node": "Fetch Owner Daily Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Owner Daily Report": {
+        "main": [
+          [
+            {
+              "node": "Format Owner Report",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Owner Report": {
+        "main": [
+          [
+            {
+              "node": "Send Telegram Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Telegram Message": {
+        "main": [
+          [
+            {
+              "node": "Report Delivery Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodes": [
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210021",
+        "name": "Daily Schedule",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "days",
+                "triggerAtHour": 9
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210022",
+        "name": "Fetch Owner Daily Report",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          240,
+          0
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $env.SERVICEOPS_API_BASE_URL + \"/notifications/n8n/operations/owner-daily-report\" }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-ServiceOps-Callback-Secret",
+                "value": "={{ $env.SERVICEOPS_N8N_CALLBACK_SECRET }}"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210023",
+        "name": "Format Owner Report",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          480,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const response = items[0].json;\nconst nl = String.fromCharCode(10);\nreturn (response.items || []).map((item) => { const report = item.report || {}; const summary = report.summary || {}; const highlights = report.highlights || []; return { json: { event_id: item.event_id, chat_id: $env.SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID, text: ['Owner daily report: ' + (report.report_date || response.window_key), '', ...highlights, '', 'New: ' + (summary.new_requests ?? 0), 'In progress: ' + (summary.in_progress_requests ?? 0), 'Overdue: ' + (summary.overdue_requests ?? 0), 'Near deadline: ' + (summary.near_deadline_requests ?? 0), 'Waiting parts: ' + (summary.waiting_for_parts_requests ?? 0), '', 'Dashboard: ' + (report.dashboard_url || '/owner')].join(nl) } }; });"
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210024",
+        "name": "Send Telegram Message",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          720,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ \"https://api.telegram.org/bot\" + $env.SERVICEOPS_TELEGRAM_BOT_TOKEN + \"/sendMessage\" }}",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { chat_id: $json.chat_id, text: $json.text, disable_web_page_preview: true } }}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210025",
+        "name": "Report Delivery Result",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          960,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.SERVICEOPS_API_BASE_URL + \"/notifications/n8n/delivery-results\" }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-ServiceOps-Callback-Secret",
+                "value": "={{ $env.SERVICEOPS_N8N_CALLBACK_SECRET }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { event_id: $(\"Format Owner Report\").item.json.event_id, status: $json.statusCode >= 200 && $json.statusCode < 300 ? \"sent\" : \"failed\", channel: \"telegram\", provider_message_id: $json.body && $json.body.result ? String($json.body.result.message_id) : \"\", error: $json.statusCode >= 200 && $json.statusCode < 300 ? \"\" : JSON.stringify($json.body), attempt_count: 1 } }}",
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 10000
+          }
+        }
+      }
+    ]
+  }
+}

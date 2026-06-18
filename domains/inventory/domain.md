@@ -57,6 +57,12 @@ Stock visibility:
 - Low-stock checks use available quantity against an optional `low_stock_threshold`.
 - Dispatchers can view a read-only low-stock list, but inventory create/update/reserve/release actions remain restricted to staff with the `inventory` role.
 
+## Phase 21 Low-Stock Automation Boundary
+
+Phase 21 allows n8n to send low-stock alerts from backend-owned owner dashboard data. The alert payload may include part id, SKU, part name, unit, available quantity, low-stock threshold, and an internal dashboard URL for staff follow-up.
+
+n8n must not recalculate stock, reserve parts, adjust counts, create purchase requests, receive stock, change compatibility records, or expose stock movement notes beyond the intended staff alert. Procurement remains deferred to Phase 22.
+
 Still deferred:
 
 - Multi-warehouse stock.

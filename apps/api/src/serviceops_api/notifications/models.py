@@ -10,6 +10,10 @@ NotificationEventType = Literal[
     "service_request.status_changed",
     "service_request.clarification_requested",
     "service_request.customer_answered",
+    "operational.sla_reminder",
+    "operational.red_alert",
+    "operational.owner_daily_report",
+    "operational.low_stock_alert",
 ]
 DeliveryStatus = Literal["queued", "sent", "failed", "retried"]
 
@@ -68,3 +72,56 @@ class TelegramOptInLinkResponse(BaseModel):
     machine_label: str
     public_status_url: str
     message: str
+
+
+class OperationalRequestAlertItem(BaseModel):
+    event_id: str
+    request_number: str
+    status: str
+    urgency: str
+    customer_name: str
+    machine_label: str
+    sla_state: str
+    deadline_at: str | None
+    hours_remaining: float | None
+    dashboard_url: str = "/owner"
+
+
+class OperationalLowStockAlertItem(BaseModel):
+    event_id: str
+    part_id: int
+    sku: str
+    name: str
+    unit: str
+    available_quantity: int
+    low_stock_threshold: int | None
+    dashboard_url: str = "/owner"
+
+
+class OperationalOwnerDailyReportItem(BaseModel):
+    event_id: str
+    report: dict[str, Any]
+
+
+class OperationalRequestAlertResponse(BaseModel):
+    automation: Literal["sla_reminder", "red_alert"]
+    generated_at: str
+    window_key: str
+    items: list[OperationalRequestAlertItem]
+    suppressed_count: int = 0
+
+
+class OperationalLowStockAlertResponse(BaseModel):
+    automation: Literal["low_stock_alert"]
+    generated_at: str
+    window_key: str
+    items: list[OperationalLowStockAlertItem]
+    suppressed_count: int = 0
+
+
+class OperationalOwnerDailyReportResponse(BaseModel):
+    automation: Literal["owner_daily_report"]
+    generated_at: str
+    window_key: str
+    items: list[OperationalOwnerDailyReportItem]
+    suppressed_count: int = 0

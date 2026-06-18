@@ -130,6 +130,25 @@ WHERE request_number = 'CFX-20260615-000001'
 ORDER BY id;
 ```
 
+Operational n8n automation attempts:
+
+```sql
+SELECT event_id, event_type, request_number, status, provider_message_id, attempt_count, updated_at
+FROM notification_delivery_attempts
+WHERE event_type LIKE 'operational.%'
+ORDER BY id DESC
+LIMIT 50;
+```
+
+Duplicate-suppression check for one operational window:
+
+```sql
+SELECT event_id, event_type, request_number, status, updated_at
+FROM notification_delivery_attempts
+WHERE event_id LIKE 'operational:sla_reminder:2026-06-17T12:%'
+ORDER BY event_id;
+```
+
 Staff audit events for a request or staff user:
 
 ```sql

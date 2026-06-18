@@ -148,4 +148,10 @@ Phase 20 headline dashboard metrics are intentionally narrow:
 - `in_progress_requests` counts technician/visit execution states: `technician_assigned`, `visit_scheduled`, `diagnostics`, `waiting_for_parts`, and `repair_in_progress`.
 - `waiting_for_parts_requests` counts only current `waiting_for_parts`.
 - `completed_requests` counts `completed` and `closed`.
-- `needs_clarification` and `awaiting_assignment` still participate in SLA risk, but they are not folded into the Phase 20 headline workload totals. Phase 21 should add explicit alert buckets for clarification and assignment backlog before automating owner reports or reminders from those categories.
+- `needs_clarification` and `awaiting_assignment` still participate in SLA risk, but they are not folded into the Phase 20 headline workload totals. Explicit clarification and assignment backlog buckets remain a future dashboard/reporting refinement.
+
+## Phase 21 Operational n8n Boundary
+
+Phase 21 exposes SLA reminder and red-alert payloads to n8n through protected notification automation endpoints. The payloads are derived from the Phase 20 SLA policy and owner dashboard data; they do not store a new service-request lifecycle field and do not let n8n mutate request state.
+
+Operational alert payloads may include request number, lifecycle status, urgency, customer name, machine label, SLA state, deadline, hours remaining, and an internal dashboard URL. They must not expose public status snapshots, customer phone numbers, Telegram chat ids, free-form status titles, internal notes, staff audit details, AI/provider payloads, scheduling capacity diagnostics, or inventory quantities.

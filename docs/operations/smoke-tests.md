@@ -125,6 +125,25 @@ curl -fsS -X POST "$N8N_TEST_WEBHOOK_URL" \
 
 Expected: n8n receives the payload and the workflow execution succeeds.
 
+## n8n Operational Automation Preview
+
+After API and n8n secrets are configured, preview the Phase 21 operational payloads without creating duplicate-suppression records:
+
+```bash
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/notifications/n8n/operations/sla-reminders?mark_sent=false" \
+  -H "X-ServiceOps-Callback-Secret: $SERVICEOPS_N8N_CALLBACK_SECRET"
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/notifications/n8n/operations/red-alerts?mark_sent=false" \
+  -H "X-ServiceOps-Callback-Secret: $SERVICEOPS_N8N_CALLBACK_SECRET"
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/notifications/n8n/operations/owner-daily-report?mark_sent=false" \
+  -H "X-ServiceOps-Callback-Secret: $SERVICEOPS_N8N_CALLBACK_SECRET"
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/notifications/n8n/operations/low-stock-alerts?mark_sent=false" \
+  -H "X-ServiceOps-Callback-Secret: $SERVICEOPS_N8N_CALLBACK_SECRET"
+```
+
+Expected: each response contains `automation`, `generated_at`, `window_key`, `items`, and `suppressed_count`. Evidence may record item counts and sanitized `event_id` values, but must not record callback secrets, Telegram bot tokens, customer phone numbers, Telegram chat ids, raw internal notes, provider bodies, or staff audit details.
+
+To test duplicate suppression in a disposable local environment, call one endpoint twice with the same explicit `window_key` and default `mark_sent=true`. Expected: first call returns matching `items`; second call returns an empty `items` list and `suppressed_count` equal to the suppressed item count.
+
 ## Backup Check
 
 On a non-production database or during a controlled maintenance window:

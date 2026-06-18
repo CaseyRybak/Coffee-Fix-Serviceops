@@ -49,7 +49,12 @@ from serviceops_api.notifications.repository import (
     SqliteNotificationRepository,
     create_notification_repository,
 )
-from serviceops_api.notifications.use_cases import LinkTelegramOptIn, NotificationPublisher, RecordN8nDeliveryResult
+from serviceops_api.notifications.use_cases import (
+    LinkTelegramOptIn,
+    NotificationPublisher,
+    OperationalN8nAutomation,
+    RecordN8nDeliveryResult,
+)
 from serviceops_api.owner_dashboard.api import create_owner_dashboard_router
 from serviceops_api.owner_dashboard.use_cases import GetOwnerDailyReport, GetOwnerDashboard
 from serviceops_api.service_requests.api import (
@@ -178,6 +183,8 @@ def create_app(
     suggestion_provider = create_ai_suggestion_provider(settings)
     authenticator = staff_authenticator or StaffAuthenticator(settings, staff_account_store)
     get_public_status = GetPublicStatus(repository)
+    owner_dashboard = GetOwnerDashboard(repository, inventory_store)
+    owner_daily_report = GetOwnerDailyReport(owner_dashboard)
     app.include_router(create_staff_auth_router(authenticator))
     app.include_router(
         create_staff_management_router(
@@ -243,6 +250,7 @@ def create_app(
             n8n_callback_secret if n8n_callback_secret is not None else settings.n8n_callback_secret,
             LinkTelegramOptIn(repository),
             telegram_bot_api_secret if telegram_bot_api_secret is not None else settings.telegram_bot_api_secret,
+            OperationalN8nAutomation(owner_dashboard, owner_daily_report, notification_store),
         )
     )
     app.include_router(
@@ -276,11 +284,10 @@ def create_app(
             low_stock_dependency=require_staff_any_role({"admin", "dispatcher", "inventory"}, authenticator),
         )
     )
-    owner_dashboard = GetOwnerDashboard(repository, inventory_store)
     app.include_router(
         create_owner_dashboard_router(
             owner_dashboard,
-            GetOwnerDailyReport(owner_dashboard),
+            owner_daily_report,
             staff_dependency=require_staff_role("admin", authenticator),
         )
     )

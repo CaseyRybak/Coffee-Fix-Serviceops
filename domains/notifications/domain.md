@@ -41,3 +41,11 @@ Source-of-truth service-request state remains in the ServiceOps API and PostgreS
 Phase 20 exposes owner daily report data through the protected ServiceOps API only. The payload summarizes owner dashboard metrics, SLA risks, and low-stock risk so Phase 21 can build n8n owner reports and reminders from an API source of truth.
 
 Phase 20 does not send owner reports, SLA reminders, red alerts, or low-stock alerts. n8n automation remains responsible only after Phase 21, and it must continue to treat ServiceOps API data as read-only operational input rather than owning request lifecycle, staff identity, inventory quantities, or repair decisions.
+
+## Phase 21 Operational Automation Boundary
+
+Phase 21 adds scheduled n8n operational automation for SLA reminders, red alerts, owner daily reports, and low-stock alerts. n8n calls protected ServiceOps API endpoints under `/notifications/n8n/operations/*` with the callback secret and receives backend-owned alert/report payloads.
+
+Operational idempotency uses delivery-attempt `event_id` values such as `operational:sla_reminder:<window_key>:<request_number>` and `operational:low_stock_alert:<window_key>:part-<part_id>`. Repeated scheduled calls for the same window suppress duplicate items while keeping evidence in notification delivery persistence.
+
+n8n may format and send Telegram messages and call the delivery-result callback. It must not calculate SLA state, change service-request status, modify inventory counts, create purchase requests, resolve staff identity, or expose customer phone numbers, Telegram chat ids, raw internal notes, AI/provider payloads, webhook secrets, or staff audit details.

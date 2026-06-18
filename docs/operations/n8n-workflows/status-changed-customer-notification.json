@@ -2,11 +2,9 @@
   "workflow": {
     "id": "0njpM50BqmqJeZE2",
     "name": "ServiceOps - Status Changed Customer Notification",
-    "active": true,
+    "active": false,
     "isArchived": false,
     "versionId": "f3331eea-5c0f-47c9-b2cb-f80898965aa8",
-    "activeVersionId": "f3331eea-5c0f-47c9-b2cb-f80898965aa8",
-    "triggerCount": 1,
     "createdAt": "2026-06-10T10:54:30.054Z",
     "updatedAt": "2026-06-15T20:41:32.821Z",
     "settings": {
@@ -153,171 +151,12 @@
         }
       }
     ],
-    "activeVersion": {
-      "nodes": [
-        {
-          "id": "fef2fa35-8980-43bb-a1f6-0c3a9b052f4c",
-          "name": "ServiceOps Webhook",
-          "type": "n8n-nodes-base.webhook",
-          "typeVersion": 2.1,
-          "position": [
-            0,
-            0
-          ],
-          "parameters": {
-            "httpMethod": "POST",
-            "path": "serviceops/status-changed",
-            "authentication": "none",
-            "responseMode": "onReceived",
-            "options": {
-              "responseCode": {
-                "values": {
-                  "responseCode": 200
-                }
-              }
-            }
-          },
-          "webhookId": "88a04f5a-a6cf-44be-8524-ea09810e1946"
-        },
-        {
-          "id": "a91ca400-e4bb-4980-b019-14c9aea34db4",
-          "name": "Validate Secret And Format Status Notification",
-          "type": "n8n-nodes-base.code",
-          "typeVersion": 2,
-          "position": [
-            224,
-            0
-          ],
-          "parameters": {
-            "mode": "runOnceForEachItem",
-            "language": "javaScript",
-            "jsCode": "const secret = $json.headers['x-serviceops-webhook-secret'] || $json.headers['X-ServiceOps-Webhook-Secret'];\nconst expectedSecret = $env.SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET;\nif (secret !== expectedSecret) { throw new Error('Invalid ServiceOps webhook secret'); }\nconst event = $json.body;\nconst payload = event.payload || {};\nconst statusLabels = {\n  new: 'Новая заявка',\n  needs_clarification: 'Нужно уточнение',\n  awaiting_assignment: 'Ожидает назначения мастера',\n  technician_assigned: 'Мастер назначен',\n  visit_scheduled: 'Визит запланирован',\n  diagnostics: 'Диагностика',\n  waiting_for_parts: 'Ожидаем запчасти',\n  repair_in_progress: 'Ремонт в работе',\n  completed: 'Ремонт завершен',\n  closed: 'Заявка закрыта',\n  warranty_case: 'Гарантийный случай',\n  cancelled: 'Заявка отменена',\n};\nconst nl = String.fromCharCode(10);\nconst text = [\n  'Статус заявки изменился',\n  '',\n  'Заявка: ' + payload.request_number,\n  'Новый статус: ' + (statusLabels[payload.new_status] || payload.new_status || 'Не указан'),\n  '',\n  'Страница статуса:',\n  payload.public_status_url,\n].join(nl);\nreturn { event_id: event.event_id, event_type: event.event_type, request_number: event.request_number, chat_id: payload.telegram_chat_id || payload.telegram_handle, text };"
-          }
-        },
-        {
-          "id": "23e49e92-f2df-4e31-963f-f0abcd4f7b0a",
-          "name": "Send Telegram Message",
-          "type": "n8n-nodes-base.httpRequest",
-          "typeVersion": 4.4,
-          "position": [
-            448,
-            0
-          ],
-          "parameters": {
-            "method": "POST",
-            "url": "={{ \"https://api.telegram.org/bot\" + $env.SERVICEOPS_TELEGRAM_BOT_TOKEN + \"/sendMessage\" }}",
-            "sendBody": true,
-            "contentType": "json",
-            "specifyBody": "json",
-            "jsonBody": "={{ { chat_id: $json.chat_id, text: $json.text, disable_web_page_preview: true } }}",
-            "options": {
-              "response": {
-                "response": {
-                  "fullResponse": true,
-                  "neverError": true,
-                  "responseFormat": "json"
-                }
-              },
-              "timeout": 10000
-            }
-          }
-        },
-        {
-          "id": "6a5ac1fa-dc8f-4c79-ad0f-74c39067cefb",
-          "name": "Report Delivery Result",
-          "type": "n8n-nodes-base.httpRequest",
-          "typeVersion": 4.4,
-          "position": [
-            672,
-            0
-          ],
-          "parameters": {
-            "method": "POST",
-            "url": "={{ $env.SERVICEOPS_API_BASE_URL + \"/notifications/n8n/delivery-results\" }}",
-            "sendHeaders": true,
-            "headerParameters": {
-              "parameters": [
-                {
-                  "name": "X-ServiceOps-Callback-Secret",
-                  "value": "={{ $env.SERVICEOPS_N8N_CALLBACK_SECRET }}"
-                }
-              ]
-            },
-            "sendBody": true,
-            "contentType": "json",
-            "specifyBody": "json",
-            "jsonBody": "={{ { event_id: $(\"Validate Secret And Format Status Notification\").item.json.event_id, status: $json.statusCode >= 200 && $json.statusCode < 300 ? \"sent\" : \"failed\", channel: \"telegram\", provider_message_id: $json.body && $json.body.result ? String($json.body.result.message_id) : \"\", error: $json.statusCode >= 200 && $json.statusCode < 300 ? \"\" : JSON.stringify($json.body), attempt_count: 1 } }}",
-            "options": {
-              "response": {
-                "response": {
-                  "neverError": true,
-                  "responseFormat": "json"
-                }
-              },
-              "timeout": 10000
-            }
-          }
-        }
-      ],
-      "connections": {
-        "ServiceOps Webhook": {
-          "main": [
-            [
-              {
-                "node": "Validate Secret And Format Status Notification",
-                "type": "main",
-                "index": 0
-              }
-            ]
-          ]
-        },
-        "Validate Secret And Format Status Notification": {
-          "main": [
-            [
-              {
-                "node": "Send Telegram Message",
-                "type": "main",
-                "index": 0
-              }
-            ]
-          ]
-        },
-        "Send Telegram Message": {
-          "main": [
-            [
-              {
-                "node": "Report Delivery Result",
-                "type": "main",
-                "index": 0
-              }
-            ]
-          ]
-        }
-      }
-    },
     "tags": [],
     "meta": {
       "aiBuilderAssisted": true,
       "builderVariant": "mcp"
     },
     "parentFolderId": null,
-    "description": "Coffee Fix ServiceOps Phase 12 notification workflow.",
-    "scopes": [
-      "workflow:create",
-      "workflow:delete",
-      "workflow:execute",
-      "workflow:execute-chat",
-      "workflow:list",
-      "workflow:move",
-      "workflow:publish",
-      "workflow:read",
-      "workflow:share",
-      "workflow:unpublish",
-      "workflow:unshare",
-      "workflow:update",
-      "workflow:updateRedactionSetting"
-    ],
-    "canExecute": true
-  },
-  "triggerInfo": "This workflow has the following trigger(s):\n\n\nWebhook trigger(s):\n\n\n\t\t\t\t<trigger 1>\n\t\t\t\t\t - Node name: ServiceOps Webhook\n\t\t\t\t\t - Base URL: https://caseyrybak.app.n8n.cloud/\n\t\t\t\t\t - Production path: /webhook/serviceops/status-changed\n\t\t\t\t\t - Test path: /webhook-test/serviceops/status-changed\n\t\t\t\t\t - HTTP Method: POST\n\t\t\t\t\t - Response Mode: Webhook is configured to respond immediately with the message \"Workflow got started.\"\n\t\t\t\t\t - No credentials required for this webhook.\n\t\t\t\t</trigger 1>"
+    "description": "Coffee Fix ServiceOps Phase 12 notification workflow."
+  }
 }

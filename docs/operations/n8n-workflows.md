@@ -55,6 +55,13 @@ Created through the n8n MCP API during Phase 12 and now imported into the self-h
 - `ServiceOps - Clarification Customer Notification`: `bJWa9A1ALnypyE2V`
 - `ServiceOps - Customer Answered Dispatcher Alert`: `PVYG8clWqn9opv1l`
 
+Phase 21 adds inactive repository exports for scheduled operational automation. These scheduled workflows are not part of the June 16 production evidence until an operator imports them, runs the preview/activation checklist below, and publishes them in the target n8n instance. Workflow ids are assigned by the target n8n instance at import time:
+
+- `ServiceOps - SLA Reminder Alert`: `docs/operations/n8n-workflows/sla-reminder-alert.json`
+- `ServiceOps - Red Alert`: `docs/operations/n8n-workflows/red-alert.json`
+- `ServiceOps - Owner Daily Report`: `docs/operations/n8n-workflows/owner-daily-report.json`
+- `ServiceOps - Low Stock Alert`: `docs/operations/n8n-workflows/low-stock-alert.json`
+
 Repository exports are stored in `docs/operations/n8n-workflows/`.
 
 The earlier n8n Cloud workflows are no longer the production path. Keep them only as historical setup context or remove them after the self-hosted path has passed the full launch smoke.
@@ -67,7 +74,7 @@ The self-hosted n8n container should not publish `5678` directly to the internet
 
 Production evidence from June 16, 2026:
 
-- All four workflow exports listed above were imported, published, and active on the VPS n8n service.
+- The four event-notification workflow exports from Phase 12 were imported, published, and active on the VPS n8n service.
 - `CFX-20260616-000008` verified the request-created path end-to-end: API event emission, self-hosted n8n execution, Telegram delivery, and backend delivery-result callback with final status `sent`.
 - Full dispatcher clarification smoke still needs production staff credentials; the local smoke covers the protected opt-in simulation plus clarification delivery path.
 
@@ -170,6 +177,40 @@ Steps:
 3. Send to `SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID`.
 4. Call backend delivery-result callback.
 
+## Scheduled Operational Workflows
+
+Phase 21 operational workflows are pull-based: n8n calls ServiceOps API on a schedule, and the API returns only the new alert/report items for that idempotency window. ServiceOps remains the source of truth for SLA state, dashboard metrics, low-stock risk, inventory counts, and staff identity.
+
+All operational endpoints require the existing callback secret header:
+
+```text
+X-ServiceOps-Callback-Secret: <SERVICEOPS_N8N_CALLBACK_SECRET>
+```
+
+Operational API paths:
+
+- `GET /notifications/n8n/operations/sla-reminders`: near-deadline SLA items.
+- `GET /notifications/n8n/operations/red-alerts`: overdue SLA items.
+- `GET /notifications/n8n/operations/owner-daily-report`: one daily owner report item.
+- `GET /notifications/n8n/operations/low-stock-alerts`: low-stock part items.
+
+Common query parameters:
+
+- `now`: optional ISO timestamp for deterministic smoke tests.
+- `window_key`: optional idempotency window. Use an hourly value for SLA/low-stock alerts and a date for owner daily reports. Custom values must be 1-80 characters and contain only letters, numbers, `_`, `.`, `:`, or `-`.
+- `mark_sent`: defaults to `true`. Set `false` for smoke previews that must not create idempotency records.
+
+Each returned item includes an `event_id` shaped as:
+
+- `operational:sla_reminder:<window_key>:<request_number>`
+- `operational:red_alert:<window_key>:<request_number>`
+- `operational:owner_daily_report:<window_key>:report`
+- `operational:low_stock_alert:<window_key>:part-<part_id>`
+
+When `mark_sent=true`, the API records a queued delivery attempt using that `event_id`. Repeated calls for an already queued or sent item/window return an empty `items` list and increment `suppressed_count`, preventing scheduled workflow spam. Failed or retried attempts can be returned again for the same window so n8n can recover from transient delivery errors. n8n should call the normal delivery-result callback after Telegram delivery.
+
+Operational payloads must remain staff-safe and must not include customer phone numbers, Telegram chat ids, internal notes, raw AI prompts, provider payloads, webhook secrets, staff audit details, or inventory mutation internals.
+
 ## Backend Callback
 
 Path: `POST /notifications/n8n/delivery-results`
@@ -216,6 +257,15 @@ The n8n callback target is environment-based inside the workflow exports:
 SERVICEOPS_API_BASE_URL=http://api:8000
 ```
 
+Scheduled operational workflow exports use the same callback target and secret:
+
+```bash
+SERVICEOPS_API_BASE_URL=http://api:8000
+SERVICEOPS_N8N_CALLBACK_SECRET=<same callback value as the API>
+SERVICEOPS_TELEGRAM_BOT_TOKEN=<bot token>
+SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID=<dispatcher or owner operations chat id>
+```
+
 The project may use the same Telegram bot and staff chat in local and production while it remains a pet project. Keep those values only in ignored environment files or deployment secrets, never in workflow exports or committed docs.
 
 Only one polling instance may use a Telegram bot token at a time. While production polling is active with the shared bot token, keep the local `telegram-bot` service stopped. Otherwise local polling can consume a production `/start <token>` message and make the opt-in link fail against the local API.
@@ -237,9 +287,11 @@ for path in src.glob("*.json"):
     workflow = data["workflow"]
     workflow["active"] = False
     workflow.pop("activeVersion", None)
+    workflow.pop("activeVersionId", None)
     workflow.pop("triggerInfo", None)
     workflow.pop("scopes", None)
     workflow.pop("canExecute", None)
+    workflow.pop("triggerCount", None)
     (dst / path.name).write_text(json.dumps(workflow, ensure_ascii=False, indent=2) + "\n")
 PY
 
@@ -254,6 +306,10 @@ docker compose exec -T n8n n8n publish:workflow --id=PVYG8clWqn9opv1l
 docker compose restart n8n
 ```
 
+The four Phase 21 scheduled workflow ids are assigned during import. Publish them from the n8n UI after import, or publish by the ids printed by `n8n import:workflow`. Keep them inactive until the API secret, Telegram bot token, and staff/owner chat id are configured.
+
+Do not import raw repository export files directly. Use the preparation script above so repository metadata such as stale active flags, active versions, trigger info, scopes, and execution permissions is removed before import.
+
 Use a clean destination path when re-importing. If `docker compose cp` copies a directory into an existing directory, n8n can accidentally import stale JSON from the parent path.
 
 Run the local notification smoke after `api` and `n8n` are up. Start `telegram-bot` locally only when production polling is intentionally stopped or when a separate development bot token is configured:
@@ -266,3 +322,27 @@ SERVICEOPS_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 python3 tools/operations/lo
 ```
 
 The smoke creates a local request, links a Telegram opt-in through the protected bot endpoint, asks a dispatcher clarification, and waits until the clarification delivery callback becomes `sent`. It simulates the Telegram `/start <token>` link step because a local script cannot make a real Telegram user send `/start` automatically.
+
+For operational workflow previews that must not create duplicate-suppression records:
+
+```bash
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/notifications/n8n/operations/owner-daily-report?mark_sent=false" \
+  -H "X-ServiceOps-Callback-Secret: $SERVICEOPS_N8N_CALLBACK_SECRET"
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/notifications/n8n/operations/sla-reminders?mark_sent=false" \
+  -H "X-ServiceOps-Callback-Secret: $SERVICEOPS_N8N_CALLBACK_SECRET"
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/notifications/n8n/operations/red-alerts?mark_sent=false" \
+  -H "X-ServiceOps-Callback-Secret: $SERVICEOPS_N8N_CALLBACK_SECRET"
+curl -fsS "$SERVICEOPS_PUBLIC_API_BASE_URL/notifications/n8n/operations/low-stock-alerts?mark_sent=false" \
+  -H "X-ServiceOps-Callback-Secret: $SERVICEOPS_N8N_CALLBACK_SECRET"
+```
+
+Expected: JSON response with `automation`, `generated_at`, `window_key`, `items`, and `suppressed_count`. Preview evidence must not include callback secrets, Telegram bot tokens, customer phone numbers, Telegram chat ids, raw internal notes, or provider payloads.
+
+Before activating Phase 21 scheduled workflows in production:
+
+1. Configure n8n environment variables: `SERVICEOPS_API_BASE_URL`, `SERVICEOPS_N8N_CALLBACK_SECRET`, `SERVICEOPS_TELEGRAM_BOT_TOKEN`, and `SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID`.
+2. Import the sanitized inactive workflow files and confirm the four scheduled workflows remain inactive after import.
+3. Run all four `mark_sent=false` API previews and record only safe fields: `automation`, `generated_at`, `window_key`, item counts, `suppressed_count`, and sanitized sample `event_id` values.
+4. Execute each workflow manually against the staff/owner chat with a disposable `window_key` if the workflow supports an override, or during a controlled maintenance window if it uses the default window.
+5. Verify `notification_delivery_attempts` rows show the operational `event_id`, final callback status, channel, provider message id when available, and expected attempt count.
+6. Activate schedules only after the manual execution evidence is clean.

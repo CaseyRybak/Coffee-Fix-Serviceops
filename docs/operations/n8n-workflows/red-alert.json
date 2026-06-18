@@ -1,0 +1,189 @@
+{
+  "workflow": {
+    "name": "ServiceOps - Red Alert",
+    "active": false,
+    "isArchived": false,
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true
+    },
+    "connections": {
+      "Hourly Schedule": {
+        "main": [
+          [
+            {
+              "node": "Fetch Red Alerts",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Red Alerts": {
+        "main": [
+          [
+            {
+              "node": "Format Red Alert Messages",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Red Alert Messages": {
+        "main": [
+          [
+            {
+              "node": "Send Telegram Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Telegram Message": {
+        "main": [
+          [
+            {
+              "node": "Report Delivery Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodes": [
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210011",
+        "name": "Hourly Schedule",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "hoursInterval": 1
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210012",
+        "name": "Fetch Red Alerts",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          240,
+          0
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $env.SERVICEOPS_API_BASE_URL + \"/notifications/n8n/operations/red-alerts\" }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-ServiceOps-Callback-Secret",
+                "value": "={{ $env.SERVICEOPS_N8N_CALLBACK_SECRET }}"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210013",
+        "name": "Format Red Alert Messages",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          480,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const response = items[0].json;\nconst nl = String.fromCharCode(10);\nreturn (response.items || []).map((item) => ({ json: { event_id: item.event_id, chat_id: $env.SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID, text: ['RED ALERT: overdue SLA', '', 'Заявка: ' + item.request_number, 'Клиент: ' + item.customer_name, 'Кофемашина: ' + item.machine_label, 'Статус: ' + item.status, 'Срок был: ' + (item.deadline_at || 'не указан'), '', 'Dashboard: ' + item.dashboard_url].join(nl) } }));"
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210014",
+        "name": "Send Telegram Message",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          720,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ \"https://api.telegram.org/bot\" + $env.SERVICEOPS_TELEGRAM_BOT_TOKEN + \"/sendMessage\" }}",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { chat_id: $json.chat_id, text: $json.text, disable_web_page_preview: true } }}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "7f3f1654-b1cf-4248-9e5c-000000210015",
+        "name": "Report Delivery Result",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          960,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.SERVICEOPS_API_BASE_URL + \"/notifications/n8n/delivery-results\" }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-ServiceOps-Callback-Secret",
+                "value": "={{ $env.SERVICEOPS_N8N_CALLBACK_SECRET }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ { event_id: $(\"Format Red Alert Messages\").item.json.event_id, status: $json.statusCode >= 200 && $json.statusCode < 300 ? \"sent\" : \"failed\", channel: \"telegram\", provider_message_id: $json.body && $json.body.result ? String($json.body.result.message_id) : \"\", error: $json.statusCode >= 200 && $json.statusCode < 300 ? \"\" : JSON.stringify($json.body), attempt_count: 1 } }}",
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            },
+            "timeout": 10000
+          }
+        }
+      }
+    ]
+  }
+}

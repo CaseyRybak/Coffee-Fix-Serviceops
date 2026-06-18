@@ -55,6 +55,8 @@ SERVICEOPS_BACKUP_DIR=/var/backups/serviceops
 
 The production API and n8n services should call each other through private Compose service names. `N8N_WEBHOOK_URL` controls generated public n8n URLs for the UI/runtime, but the ServiceOps backend webhook targets should remain `http://n8n:5678/...` when n8n runs in the same Compose app.
 
+Phase 21 scheduled operational workflows call the API through `SERVICEOPS_API_BASE_URL` and authenticate with `SERVICEOPS_N8N_CALLBACK_SECRET`. They do not need separate webhook URL variables because n8n pulls `GET /notifications/n8n/operations/sla-reminders`, `/red-alerts`, `/owner-daily-report`, and `/low-stock-alerts` from the API.
+
 For live AI, set the OpenAI-compatible values from `docs/operations/ai-providers.md` in Dokploy. Do not commit provider API keys to `.env.example`, screenshots, smoke evidence, or workflow exports.
 
 Do not use local development staff credentials, default passwords, or local URLs in production.
@@ -175,6 +177,8 @@ Minimum go/no-go evidence before enabling DNS or public traffic:
 Before public traffic, also complete the restore dry-run evidence in `docs/operations/backup-restore.md` and record request trace evidence with `docs/operations/operational-diagnostics.md`.
 
 Self-hosted n8n production evidence from June 16, 2026 is recorded in `docs/operations/self-hosted-n8n-vps-evidence-2026-06-16.md`. That evidence verifies the request-created Telegram path on `CFX-20260616-000008`; a full dispatcher clarification smoke still requires disposable production staff credentials.
+
+After importing the Phase 21 scheduled workflow exports, run `mark_sent=false` previews for the four operational endpoints before activating schedules. Record only safe fields: `automation`, `generated_at`, `window_key`, item counts, `suppressed_count`, and sanitized sample `event_id` values.
 
 ## AI Provider Go/No-Go
 
