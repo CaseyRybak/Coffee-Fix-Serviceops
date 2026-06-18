@@ -34,8 +34,6 @@ services:
       SERVICEOPS_TELEGRAM_BOT_USERNAME: ${SERVICEOPS_TELEGRAM_BOT_USERNAME:?set SERVICEOPS_TELEGRAM_BOT_USERNAME}
     expose:
       - "8000"
-    ports:
-      - "${SERVICEOPS_API_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,12 +46,12 @@ services:
       retries: 5
     labels:
       - traefik.docker.network=dokploy-network
-      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-web.rule=Host(`api.coffeefix-demo.online`)
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-web.rule=Host(`${SERVICEOPS_API_HOST:-api.coffeefix-demo.online}`)
       - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-web.entrypoints=web
       - traefik.http.services.coffeefixserviceops-coffeefixserviceops-up3whl-2-web.loadbalancer.server.port=8000
       - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-web.service=coffeefixserviceops-coffeefixserviceops-up3whl-2-web
       - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-web.middlewares=redirect-to-https@file
-      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure.rule=Host(`api.coffeefix-demo.online`)
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure.rule=Host(`${SERVICEOPS_API_HOST:-api.coffeefix-demo.online}`)
       - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure.entrypoints=websecure
       - traefik.http.services.coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure.loadbalancer.server.port=8000
       - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure.service=coffeefixserviceops-coffeefixserviceops-up3whl-2-websecure
@@ -70,19 +68,17 @@ services:
         VITE_SERVICEOPS_API_BASE_URL: ${SERVICEOPS_PUBLIC_API_BASE_URL:?set SERVICEOPS_PUBLIC_API_BASE_URL}
     expose:
       - "80"
-    ports:
-      - "${SERVICEOPS_WEB_PORT:-3000}:80"
     depends_on:
       api:
         condition: service_healthy
     labels:
       - traefik.docker.network=dokploy-network
-      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-web.rule=Host(`coffeefix-demo.online`)
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-web.rule=Host(`${SERVICEOPS_WEB_HOST:-coffeefix-demo.online}`)
       - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-web.entrypoints=web
       - traefik.http.services.coffeefixserviceops-coffeefixserviceops-up3whl-1-web.loadbalancer.server.port=80
       - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-web.service=coffeefixserviceops-coffeefixserviceops-up3whl-1-web
       - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-web.middlewares=redirect-to-https@file
-      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure.rule=Host(`coffeefix-demo.online`)
+      - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure.rule=Host(`${SERVICEOPS_WEB_HOST:-coffeefix-demo.online}`)
       - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure.entrypoints=websecure
       - traefik.http.services.coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure.loadbalancer.server.port=80
       - traefik.http.routers.coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure.service=coffeefixserviceops-coffeefixserviceops-up3whl-1-websecure

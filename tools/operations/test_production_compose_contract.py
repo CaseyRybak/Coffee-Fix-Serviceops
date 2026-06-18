@@ -35,12 +35,14 @@ def test_production_compose_tracks_dokploy_routing_overlay() -> None:
     n8n = _service_block(compose, "n8n")
 
     assert "traefik.docker.network=dokploy-network" in api
-    assert "Host(`api.coffeefix-demo.online`)" in api
+    assert "Host(`${SERVICEOPS_API_HOST:-api.coffeefix-demo.online}`)" in api
     assert "dokploy-network" in api
+    assert "ports:" not in api
 
     assert "traefik.docker.network=dokploy-network" in web
-    assert "Host(`coffeefix-demo.online`)" in web
+    assert "Host(`${SERVICEOPS_WEB_HOST:-coffeefix-demo.online}`)" in web
     assert "dokploy-network" in web
+    assert "ports:" not in web
 
     assert "dokploy-network" in n8n
     assert "dokploy-network:\n    external: true" in compose
