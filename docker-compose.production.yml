@@ -145,7 +145,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - default
+      - dokploy-network
 
 volumes:
   postgres-data:
   n8n-data:
+
+networks:
+  dokploy-network:
+    external: true
