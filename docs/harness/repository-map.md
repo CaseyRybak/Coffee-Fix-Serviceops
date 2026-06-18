@@ -54,14 +54,18 @@
 - `docs/execution-plans/detailed/16-inventory-reservations-implementation.md`: completed detailed plan for part reservations, stock movements, compatibility records, low-stock visibility, and technician reserved-parts consumption.
 - `docs/execution-plans/detailed/17-public-demo-and-launch-closure-implementation.md`: completed detailed plan for public demo routing, HTTPS, port posture, smoke evidence, and Phase 17 handoff.
 - `docs/execution-plans/detailed/18-portfolio-packaging-and-demo-mode-implementation.md`: completed detailed plan for portfolio README, safe demo policy, reviewer walkthrough, and screenshot guidance.
+- `docs/execution-plans/detailed/19-frontend-workspace-decomposition-implementation.md`: completed detailed plan for frontend workspace decomposition.
+- `docs/execution-plans/detailed/20-owner-dashboard-and-sla-foundation-implementation.md`: completed detailed plan for owner dashboard metrics, SLA deadlines, and daily report data.
+- `docs/execution-plans/detailed/21-operational-n8n-automation-implementation.md`: completed detailed plan for SLA reminders, red alerts, owner daily reports, and low-stock alerts.
+- `docs/execution-plans/detailed/22-procurement-lite-implementation.md`: completed detailed plan for suppliers, purchase requests, approval states, low-stock drafts, and receiving stock movements.
 - `docs/execution-plans/phases/17-public-demo-and-launch-closure.md`: completed slice map for public demo routing, HTTPS, port posture, and production smoke evidence.
 - `docs/execution-plans/phases/17a-demo-performance-and-hero-image-optimization.md`: completed slice map for first-load public demo hero/static asset optimization before portfolio packaging.
 - `docs/execution-plans/phases/18-portfolio-packaging-and-demo-mode.md`: completed slice map for portfolio README, screenshots, demo scenarios, and safe demo data.
-- `docs/execution-plans/phases/19-frontend-workspace-decomposition.md`: active slice map for splitting the large frontend before more staff workspaces are added.
-- `docs/execution-plans/phases/20-owner-dashboard-and-sla-foundation.md`: future slice map for owner dashboard metrics, SLA deadlines, overdue state, and daily report data.
-- `docs/execution-plans/phases/21-operational-n8n-automation.md`: future slice map for SLA reminders, red alerts, owner daily reports, and low-stock alerts.
-- `docs/execution-plans/phases/22-procurement-lite.md`: future slice map for suppliers, purchase requests, approval states, low-stock drafts, and receiving stock movements.
-- `docs/execution-plans/phases/23-technician-profiles-and-recommendation.md`: future slice map for technician profiles, skills, regions, workload, and explainable recommendations.
+- `docs/execution-plans/phases/19-frontend-workspace-decomposition.md`: completed slice map for splitting the large frontend before more staff workspaces are added.
+- `docs/execution-plans/phases/20-owner-dashboard-and-sla-foundation.md`: completed slice map for owner dashboard metrics, SLA deadlines, overdue state, and daily report data.
+- `docs/execution-plans/phases/21-operational-n8n-automation.md`: completed slice map for SLA reminders, red alerts, owner daily reports, and low-stock alerts.
+- `docs/execution-plans/phases/22-procurement-lite.md`: completed slice map for suppliers, purchase requests, approval states, low-stock drafts, and receiving stock movements.
+- `docs/execution-plans/phases/23-technician-profiles-and-recommendation.md`: active slice map for technician profiles, skills, regions, workload, and explainable recommendations.
 - `docs/execution-plans/phases/24-ai-assistant-with-tools.md`: future slice map for a bounded staff AI assistant with safe tool use and human confirmation.
 - `docs/execution-plans/completed/`: reserved archive directory for completed phase plans if the project later moves them out of `detailed/`.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.

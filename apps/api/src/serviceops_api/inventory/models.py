@@ -6,8 +6,16 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 ReservationStatus = Literal["active", "released", "consumed"]
-StockMovementType = Literal["manual_adjustment", "reservation_created", "reservation_adjusted", "release", "consumption"]
+StockMovementType = Literal[
+    "manual_adjustment",
+    "reservation_created",
+    "reservation_adjusted",
+    "release",
+    "consumption",
+    "procurement_receipt",
+]
 CompatibilityLevel = Literal["exact_model", "series", "generic_group"]
+PurchaseRequestStatus = Literal["draft", "pending_approval", "approved", "ordered", "received", "cancelled"]
 
 
 def _clean_required(value: str) -> str:
@@ -193,6 +201,87 @@ class StockMovementRecord(BaseModel):
 
 class StockMovementListResponse(BaseModel):
     items: list[StockMovementRecord]
+
+
+class SupplierPayload(BaseModel):
+    name: str = Field(min_length=1, max_length=180)
+    contact_name: str | None = Field(default=None, max_length=120)
+    phone: str | None = Field(default=None, max_length=80)
+    email: str | None = Field(default=None, max_length=180)
+    note: str | None = Field(default=None, max_length=500)
+
+    _clean_name = field_validator("name")(_clean_required)
+    _clean_contact_name = field_validator("contact_name")(_clean_optional)
+    _clean_phone = field_validator("phone")(_clean_optional)
+    _clean_email = field_validator("email")(_clean_optional)
+    _clean_note = field_validator("note")(_clean_optional)
+
+
+class SupplierRecord(SupplierPayload):
+    supplier_id: int
+    active: bool = True
+    created_at: str
+    updated_at: str
+
+
+class SupplierListResponse(BaseModel):
+    items: list[SupplierRecord]
+
+
+class PurchaseRequestItemPayload(BaseModel):
+    part_id: int = Field(gt=0)
+    quantity: int = Field(gt=0)
+    note: str | None = Field(default=None, max_length=500)
+
+    _clean_note = field_validator("note")(_clean_optional)
+
+
+class CreatePurchaseRequestPayload(BaseModel):
+    supplier_id: int = Field(gt=0)
+    items: list[PurchaseRequestItemPayload] = Field(min_length=1)
+    note: str | None = Field(default=None, max_length=500)
+
+    _clean_note = field_validator("note")(_clean_optional)
+
+
+class LowStockPurchaseDraftPayload(BaseModel):
+    supplier_id: int = Field(gt=0)
+    note: str | None = Field(default=None, max_length=500)
+
+    _clean_note = field_validator("note")(_clean_optional)
+
+
+class PurchaseRequestActionPayload(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
+
+    _clean_note = field_validator("note")(_clean_optional)
+
+
+class PurchaseRequestItemRecord(BaseModel):
+    item_id: int
+    purchase_request_id: int
+    part_id: int
+    sku: str
+    part_name: str
+    unit: str
+    quantity: int
+    note: str | None = None
+
+
+class PurchaseRequestRecord(BaseModel):
+    purchase_request_id: int
+    supplier_id: int
+    supplier_name: str
+    status: PurchaseRequestStatus
+    note: str | None = None
+    actor: str
+    items: list[PurchaseRequestItemRecord] = Field(default_factory=list)
+    created_at: str
+    updated_at: str
+
+
+class PurchaseRequestListResponse(BaseModel):
+    items: list[PurchaseRequestRecord]
 
 
 class RecordPartsUsedPayload(BaseModel):

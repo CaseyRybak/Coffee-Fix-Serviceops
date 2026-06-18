@@ -442,7 +442,7 @@ export interface InventoryMovement {
   part_id: number;
   sku: string;
   part_name: string;
-  movement_type: "manual_adjustment" | "reservation_created" | "reservation_adjusted" | "release" | "consumption";
+  movement_type: "manual_adjustment" | "reservation_created" | "reservation_adjusted" | "release" | "consumption" | "procurement_receipt";
   quantity: number;
   quantity_on_hand_after: number;
   reserved_quantity_after: number;
@@ -456,4 +456,49 @@ export interface InventoryMovement {
 
 export interface InventoryMovementListResponse {
   items: InventoryMovement[];
+}
+
+export type PurchaseRequestStatus = "draft" | "pending_approval" | "approved" | "ordered" | "received" | "cancelled";
+
+export interface ProcurementSupplier {
+  supplier_id: number;
+  name: string;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  note: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProcurementSupplierListResponse {
+  items: ProcurementSupplier[];
+}
+
+export interface PurchaseRequestItem {
+  item_id: number;
+  purchase_request_id: number;
+  part_id: number;
+  sku: string;
+  part_name: string;
+  unit: string;
+  quantity: number;
+  note: string | null;
+}
+
+export interface PurchaseRequest {
+  purchase_request_id: number;
+  supplier_id: number;
+  supplier_name: string;
+  status: PurchaseRequestStatus;
+  note: string | null;
+  actor: string;
+  items: PurchaseRequestItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PurchaseRequestListResponse {
+  items: PurchaseRequest[];
 }

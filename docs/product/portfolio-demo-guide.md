@@ -255,12 +255,12 @@ The owner dashboard and SLA foundation are shipped as an admin-only internal sur
 
 Phase 20 also exposes protected daily-report data for later automation, but Phase 21 owns sending owner reports and alerts through n8n.
 
+Phase 22 procurement is shipped as an internal inventory/admin workflow at `/inventory#procurement`. Demo it only with disposable inventory/admin credentials and fake suppliers, parts, and purchase requests; do not show procurement data in public customer status pages.
+
 ## What Not To Demo As Shipped
 
 These are roadmap items, not completed capabilities:
 
-- SLA reminder and owner daily report automation;
-- procurement and supplier workflows;
 - richer technician profile recommendations;
 - tool-using staff AI assistant;
 - billing, payments, telephony, GPS routing, multi-tenant SaaS, or customer accounts.

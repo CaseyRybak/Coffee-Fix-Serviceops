@@ -1,6 +1,6 @@
 import { ProtectedAdminPage } from "./features/admin/AdminPage";
 import { ProtectedDispatcherPage } from "./features/dispatcher/DispatcherPage";
-import { ProtectedInventoryPage } from "./features/inventory/InventoryPage";
+import { ProtectedInventoryPage, ProtectedProcurementPage } from "./features/inventory/InventoryPage";
 import { ProtectedOwnerDashboardPage } from "./features/owner/OwnerDashboardPage";
 import { PublicLandingPage } from "./features/public/PublicLandingPage";
 import { StatusPage } from "./features/public/StatusPage";
@@ -11,7 +11,7 @@ import { staffWorkspacePath } from "./shared/staffAuth";
 
 export { AdminPage, ProtectedAdminPage, buildAdminStaffChangeRequests } from "./features/admin/AdminPage";
 export { DispatcherPage, ProtectedDispatcherPage, filterDispatcherItems } from "./features/dispatcher/DispatcherPage";
-export { InventoryPage, ProtectedInventoryPage } from "./features/inventory/InventoryPage";
+export { InventoryPage, ProtectedInventoryPage, ProtectedProcurementPage } from "./features/inventory/InventoryPage";
 export { OwnerDashboardPage, ProtectedOwnerDashboardPage } from "./features/owner/OwnerDashboardPage";
 export { PublicLandingPage, SuccessState, getNextFormStep, validateIntakeStep } from "./features/public/PublicLandingPage";
 export { StatusPage } from "./features/public/StatusPage";
@@ -28,6 +28,7 @@ export function App() {
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   const isDispatcherRoute = pathname.startsWith("/dispatcher");
   const isTechnicianRoute = pathname.startsWith("/technician");
+  const isProcurementRoute = pathname.startsWith("/procurement");
   const isInventoryRoute = pathname.startsWith("/inventory");
   const isAdminRoute = pathname.startsWith("/admin");
   const isOwnerRoute = pathname.startsWith("/owner");
@@ -42,6 +43,7 @@ export function App() {
   if (isOwnerRoute) return <ProtectedOwnerDashboardPage />;
   if (isDispatcherRoute) return <ProtectedDispatcherPage />;
   if (isTechnicianRoute) return <ProtectedTechnicianPage />;
+  if (isProcurementRoute) return <ProtectedProcurementPage />;
   if (isInventoryRoute) return <ProtectedInventoryPage />;
   if (isStatusRoute) return <StatusPage />;
 

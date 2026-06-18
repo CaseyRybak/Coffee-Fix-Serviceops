@@ -12,46 +12,53 @@ import type { StaffRole, StaffSession } from "../../shared/types";
 import { WorkspaceHeader } from "../../shared/ui";
 
 const staffWorkspaceCards: Array<{
-  role: StaffRole;
+  roles: StaffRole[];
   href: string;
   title: string;
   copy: string;
   Icon: LucideIcon;
 }> = [
   {
-    role: "dispatcher",
+    roles: ["dispatcher"],
     href: "/dispatcher",
     title: "Диспетчерская",
     copy: "Заявки, уточнения, статусы, расписание и назначение мастеров.",
     Icon: ClipboardList,
   },
   {
-    role: "technician",
+    roles: ["technician"],
     href: "/technician",
     title: "Кабинет мастера",
     copy: "Назначенные выезды, диагностика, результат ремонта и использованные детали.",
     Icon: Wrench,
   },
   {
-    role: "inventory",
+    roles: ["inventory"],
     href: "/inventory",
     title: "Склад",
     copy: "Каталог запчастей, остатки, совместимость, резервы и движения.",
     Icon: Package,
   },
   {
-    role: "admin",
+    roles: ["admin"],
     href: "/admin",
     title: "Администрирование",
     copy: "Учетные записи сотрудников, роли, доступы и аудит действий.",
     Icon: Shield,
   },
   {
-    role: "admin",
+    roles: ["admin"],
     href: "/owner",
     title: "Панель владельца",
     copy: "SLA, просрочки, загрузка мастеров, ожидание запчастей и складские риски.",
     Icon: BarChart3,
+  },
+  {
+    roles: ["inventory", "admin"],
+    href: "/procurement",
+    title: "Согласование закупок",
+    copy: "Поставщики, заявки на закупку и администраторское согласование.",
+    Icon: Package,
   },
 ];
 
@@ -92,7 +99,7 @@ export function StaffWorkspacePage({
     if (typeof window !== "undefined") window.location.href = buildStaffLoginPath(staffWorkspacePath);
   }
 
-  const availableCards = staffWorkspaceCards.filter((card) => staffHasRole(session, card.role));
+  const availableCards = staffWorkspaceCards.filter((card) => card.roles.some((role) => staffHasRole(session, role)));
 
   if (!session) {
     return (
@@ -128,8 +135,8 @@ export function StaffWorkspacePage({
             </div>
           </div>
           <div className="staff-workspace-grid">
-            {availableCards.map(({ role, href, title, copy, Icon }) => (
-              <a className="staff-workspace-card" href={href} key={role}>
+            {availableCards.map(({ href, title, copy, Icon }) => (
+              <a className="staff-workspace-card" href={href} key={href}>
                 <Icon aria-hidden="true" />
                 <strong>{title}</strong>
                 <span>{copy}</span>

@@ -201,6 +201,42 @@ export function buildInventoryLowStockPath(): string {
   return "/inventory/low-stock";
 }
 
+export function buildInventoryProcurementSuppliersPath(): string {
+  return "/inventory/procurement/suppliers";
+}
+
+export function buildInventoryProcurementPurchaseRequestsPath(): string {
+  return "/inventory/procurement/purchase-requests";
+}
+
+export function buildInventoryProcurementLowStockDraftPath(): string {
+  return "/inventory/procurement/purchase-requests/low-stock-draft";
+}
+
+export function buildInventoryProcurementPurchaseRequestItemsPath(purchaseRequestId: number): string {
+  return `/inventory/procurement/purchase-requests/${purchaseRequestId}/items`;
+}
+
+export function buildInventoryProcurementPurchaseRequestSubmitPath(purchaseRequestId: number): string {
+  return `/inventory/procurement/purchase-requests/${purchaseRequestId}/submit`;
+}
+
+export function buildInventoryProcurementPurchaseRequestApprovePath(purchaseRequestId: number): string {
+  return `/inventory/procurement/purchase-requests/${purchaseRequestId}/approve`;
+}
+
+export function buildInventoryProcurementPurchaseRequestMarkOrderedPath(purchaseRequestId: number): string {
+  return `/inventory/procurement/purchase-requests/${purchaseRequestId}/mark-ordered`;
+}
+
+export function buildInventoryProcurementPurchaseRequestReceivePath(purchaseRequestId: number): string {
+  return `/inventory/procurement/purchase-requests/${purchaseRequestId}/receive`;
+}
+
+export function buildInventoryProcurementPurchaseRequestCancelPath(purchaseRequestId: number): string {
+  return `/inventory/procurement/purchase-requests/${purchaseRequestId}/cancel`;
+}
+
 export function buildOwnerDashboardPath(): string {
   return "/owner/dashboard";
 }

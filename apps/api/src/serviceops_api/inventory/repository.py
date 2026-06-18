@@ -18,6 +18,7 @@ TECHNICIAN_INVENTORY_MIGRATION_PATH = MIGRATIONS_DIR / "0004_technician_inventor
 INVENTORY_RESERVATIONS_MIGRATION_PATH = MIGRATIONS_DIR / "0008_inventory_reservations.sql"
 PART_COMPATIBILITY_MIGRATION_PATH = MIGRATIONS_DIR / "0009_part_compatibility.sql"
 INVENTORY_RUSSIAN_CATALOG_MIGRATION_PATH = MIGRATIONS_DIR / "0010_inventory_russian_catalog.sql"
+PROCUREMENT_LITE_MIGRATION_PATH = MIGRATIONS_DIR / "0013_procurement_lite.sql"
 
 
 class InsufficientStockError(ValueError):
@@ -26,6 +27,10 @@ class InsufficientStockError(ValueError):
 
 class DuplicatePartError(ValueError):
     """Raised when a new catalog part duplicates an existing factual part."""
+
+
+class InvalidPurchaseRequestTransitionError(ValueError):
+    """Raised when a purchase request status transition is not allowed."""
 
 
 class InventoryStore(Protocol):
@@ -79,6 +84,53 @@ class InventoryStore(Protocol):
 
     def add_compatibility(self, part_id: int, payload: Any) -> dict[str, object]:
         """Add compatibility metadata for a part."""
+
+    def create_supplier(self, payload: Any, actor: str) -> dict[str, object]:
+        """Persist a procurement supplier."""
+
+    def list_suppliers(self) -> list[dict[str, object]]:
+        """Return active and inactive procurement suppliers."""
+
+    def create_purchase_request(
+        self,
+        supplier_id: int,
+        items: list[Any],
+        note: str | None,
+        actor: str,
+    ) -> dict[str, object]:
+        """Create a draft purchase request."""
+
+    def list_purchase_requests(self) -> list[dict[str, object]]:
+        """Return purchase requests."""
+
+    def get_purchase_request(self, purchase_request_id: int) -> dict[str, object]:
+        """Return a purchase request with items."""
+
+    def replace_purchase_request_items(
+        self,
+        purchase_request_id: int,
+        items: list[Any],
+        actor: str,
+    ) -> dict[str, object]:
+        """Replace items on a draft purchase request."""
+
+    def submit_purchase_request(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        """Submit a draft purchase request for approval."""
+
+    def approve_purchase_request(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        """Approve a pending purchase request."""
+
+    def mark_purchase_request_ordered(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        """Mark an approved purchase request as ordered."""
+
+    def receive_purchase_request(self, purchase_request_id: int, actor: str, note: str | None = None) -> dict[str, object]:
+        """Receive an ordered purchase request into stock."""
+
+    def cancel_purchase_request(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        """Cancel a purchase request before it is received."""
+
+    def create_low_stock_purchase_draft(self, supplier_id: int, actor: str, note: str | None = None) -> dict[str, object]:
+        """Create a purchase draft from current low-stock parts."""
 
 
 class SqliteInventoryRepository:
@@ -169,6 +221,37 @@ class SqliteInventoryRepository:
                 machine_family TEXT,
                 note TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS procurement_suppliers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                contact_name TEXT,
+                phone TEXT,
+                email TEXT,
+                note TEXT,
+                active INTEGER NOT NULL DEFAULT 1,
+                actor TEXT NOT NULL DEFAULT 'inventory',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS purchase_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                supplier_id INTEGER NOT NULL REFERENCES procurement_suppliers(id),
+                status TEXT NOT NULL CHECK (status IN ('draft', 'pending_approval', 'approved', 'ordered', 'received', 'cancelled')),
+                note TEXT,
+                actor TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS purchase_request_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                purchase_request_id INTEGER NOT NULL REFERENCES purchase_requests(id) ON DELETE CASCADE,
+                part_id INTEGER NOT NULL REFERENCES parts_catalog(id),
+                quantity INTEGER NOT NULL CHECK (quantity > 0),
+                note TEXT
             );
             """
         )
@@ -529,6 +612,280 @@ class SqliteInventoryRepository:
             )
         return self._get_compatibility(int(cursor.lastrowid))
 
+    def create_supplier(self, payload: Any, actor: str) -> dict[str, object]:
+        with self._connection:
+            cursor = self._connection.execute(
+                """
+                INSERT INTO procurement_suppliers (name, contact_name, phone, email, note, actor)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (payload.name, payload.contact_name, payload.phone, payload.email, payload.note, actor),
+            )
+        return self._get_supplier(int(cursor.lastrowid))
+
+    def list_suppliers(self) -> list[dict[str, object]]:
+        rows = self._connection.execute(
+            """
+            SELECT *
+            FROM procurement_suppliers
+            ORDER BY active DESC, name, id
+            """
+        ).fetchall()
+        return [self._supplier_row(row) for row in rows]
+
+    def create_purchase_request(
+        self,
+        supplier_id: int,
+        items: list[Any],
+        note: str | None,
+        actor: str,
+    ) -> dict[str, object]:
+        self._get_supplier(supplier_id)
+        self._validate_purchase_items(items)
+        with self._connection:
+            cursor = self._connection.execute(
+                """
+                INSERT INTO purchase_requests (supplier_id, status, note, actor)
+                VALUES (?, 'draft', ?, ?)
+                """,
+                (supplier_id, note, actor),
+            )
+            purchase_request_id = int(cursor.lastrowid)
+            self._insert_purchase_items(purchase_request_id, items)
+        return self.get_purchase_request(purchase_request_id)
+
+    def list_purchase_requests(self) -> list[dict[str, object]]:
+        rows = self._connection.execute(
+            """
+            SELECT pr.*, ps.name AS supplier_name
+            FROM purchase_requests pr
+            JOIN procurement_suppliers ps ON ps.id = pr.supplier_id
+            ORDER BY pr.id DESC
+            """
+        ).fetchall()
+        return [self._purchase_request_row(row) for row in rows]
+
+    def get_purchase_request(self, purchase_request_id: int) -> dict[str, object]:
+        row = self._connection.execute(
+            """
+            SELECT pr.*, ps.name AS supplier_name
+            FROM purchase_requests pr
+            JOIN procurement_suppliers ps ON ps.id = pr.supplier_id
+            WHERE pr.id = ?
+            """,
+            (purchase_request_id,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(str(purchase_request_id))
+        return self._purchase_request_row(row)
+
+    def replace_purchase_request_items(
+        self,
+        purchase_request_id: int,
+        items: list[Any],
+        actor: str,
+    ) -> dict[str, object]:
+        current = self.get_purchase_request(purchase_request_id)
+        if current["status"] != "draft":
+            raise InvalidPurchaseRequestTransitionError("Purchase request items can be edited only in draft status")
+        self._validate_purchase_items(items)
+        with self._connection:
+            self._connection.execute("DELETE FROM purchase_request_items WHERE purchase_request_id = ?", (purchase_request_id,))
+            self._insert_purchase_items(purchase_request_id, items)
+            self._touch_purchase_request(purchase_request_id, actor)
+        return self.get_purchase_request(purchase_request_id)
+
+    def submit_purchase_request(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        return self._transition_purchase_request(purchase_request_id, "draft", "pending_approval", actor)
+
+    def approve_purchase_request(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        return self._transition_purchase_request(purchase_request_id, "pending_approval", "approved", actor)
+
+    def mark_purchase_request_ordered(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        return self._transition_purchase_request(purchase_request_id, "approved", "ordered", actor)
+
+    def receive_purchase_request(self, purchase_request_id: int, actor: str, note: str | None = None) -> dict[str, object]:
+        current = self.get_purchase_request(purchase_request_id)
+        if current["status"] != "ordered":
+            raise InvalidPurchaseRequestTransitionError("Only ordered purchase requests can be received")
+        with self._connection:
+            for item in current["items"]:
+                part_id = int(item["part_id"])
+                quantity = int(item["quantity"])
+                self._connection.execute(
+                    """
+                    INSERT INTO stock_counts (part_id, quantity_on_hand, updated_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(part_id) DO UPDATE SET
+                        quantity_on_hand = stock_counts.quantity_on_hand + excluded.quantity_on_hand,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    (part_id, quantity),
+                )
+                movement_note = self._purchase_receipt_note(purchase_request_id, note)
+                self._insert_stock_movement(part_id, "procurement_receipt", quantity, None, None, actor, movement_note)
+            self._set_purchase_request_status(purchase_request_id, "received", actor)
+        return self.get_purchase_request(purchase_request_id)
+
+    def cancel_purchase_request(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        current = self.get_purchase_request(purchase_request_id)
+        if current["status"] not in {"draft", "pending_approval", "approved", "ordered"}:
+            raise InvalidPurchaseRequestTransitionError("Purchase request cannot be cancelled from its current status")
+        with self._connection:
+            self._set_purchase_request_status(purchase_request_id, "cancelled", actor)
+        return self.get_purchase_request(purchase_request_id)
+
+    def create_low_stock_purchase_draft(self, supplier_id: int, actor: str, note: str | None = None) -> dict[str, object]:
+        self._get_supplier(supplier_id)
+        low_stock_items = []
+        for part in self.list_parts():
+            threshold = part.get("low_stock_threshold")
+            if threshold is None or not bool(part.get("is_low_stock")):
+                continue
+            reorder_quantity = max(int(threshold) * 2 - int(part["available_quantity"]), 1)
+            low_stock_items.append(
+                {
+                    "part_id": int(part["part_id"]),
+                    "quantity": reorder_quantity,
+                    "note": "Created from low-stock inventory signal",
+                }
+            )
+        if not low_stock_items:
+            raise ValueError("No low-stock parts are available for purchase draft")
+        return self.create_purchase_request(
+            supplier_id,
+            low_stock_items,
+            note or "Low-stock purchase draft",
+            actor,
+        )
+
+    def _get_supplier(self, supplier_id: int) -> dict[str, object]:
+        row = self._connection.execute(
+            "SELECT * FROM procurement_suppliers WHERE id = ?",
+            (supplier_id,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(str(supplier_id))
+        return self._supplier_row(row)
+
+    def _supplier_row(self, row: sqlite3.Row) -> dict[str, object]:
+        return {
+            "supplier_id": row["id"],
+            "name": row["name"],
+            "contact_name": row["contact_name"],
+            "phone": row["phone"],
+            "email": row["email"],
+            "note": row["note"],
+            "active": bool(row["active"]),
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+
+    def _validate_purchase_items(self, items: list[Any]) -> None:
+        if not items:
+            raise ValueError("Purchase request requires at least one item")
+        for item in items:
+            self._get_part(int(item.part_id if hasattr(item, "part_id") else item["part_id"]))
+            quantity = int(item.quantity if hasattr(item, "quantity") else item["quantity"])
+            if quantity <= 0:
+                raise ValueError("Purchase request item quantity must be positive")
+
+    def _insert_purchase_items(self, purchase_request_id: int, items: list[Any]) -> None:
+        self._connection.executemany(
+            """
+            INSERT INTO purchase_request_items (purchase_request_id, part_id, quantity, note)
+            VALUES (?, ?, ?, ?)
+            """,
+            [
+                (
+                    purchase_request_id,
+                    int(item.part_id if hasattr(item, "part_id") else item["part_id"]),
+                    int(item.quantity if hasattr(item, "quantity") else item["quantity"]),
+                    item.note if hasattr(item, "note") else item.get("note"),
+                )
+                for item in items
+            ],
+        )
+
+    def _purchase_request_row(self, row: sqlite3.Row) -> dict[str, object]:
+        purchase_request_id = int(row["id"])
+        return {
+            "purchase_request_id": purchase_request_id,
+            "supplier_id": row["supplier_id"],
+            "supplier_name": row["supplier_name"],
+            "status": row["status"],
+            "note": row["note"],
+            "actor": row["actor"],
+            "items": self._list_purchase_items(purchase_request_id),
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+
+    def _list_purchase_items(self, purchase_request_id: int) -> list[dict[str, object]]:
+        rows = self._connection.execute(
+            """
+            SELECT pri.*, pc.sku, pc.name AS part_name, pc.unit
+            FROM purchase_request_items pri
+            JOIN parts_catalog pc ON pc.id = pri.part_id
+            WHERE pri.purchase_request_id = ?
+            ORDER BY pri.id
+            """,
+            (purchase_request_id,),
+        ).fetchall()
+        return [
+            {
+                "item_id": row["id"],
+                "purchase_request_id": row["purchase_request_id"],
+                "part_id": row["part_id"],
+                "sku": row["sku"],
+                "part_name": row["part_name"],
+                "unit": row["unit"],
+                "quantity": row["quantity"],
+                "note": row["note"],
+            }
+            for row in rows
+        ]
+
+    def _transition_purchase_request(
+        self,
+        purchase_request_id: int,
+        expected_status: str,
+        next_status: str,
+        actor: str,
+    ) -> dict[str, object]:
+        current = self.get_purchase_request(purchase_request_id)
+        if current["status"] != expected_status:
+            raise InvalidPurchaseRequestTransitionError(
+                f"Purchase request must be {expected_status} before it can move to {next_status}"
+            )
+        with self._connection:
+            self._set_purchase_request_status(purchase_request_id, next_status, actor)
+        return self.get_purchase_request(purchase_request_id)
+
+    def _set_purchase_request_status(self, purchase_request_id: int, status: str, actor: str) -> None:
+        self._connection.execute(
+            """
+            UPDATE purchase_requests
+            SET status = ?, actor = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (status, actor, purchase_request_id),
+        )
+
+    def _touch_purchase_request(self, purchase_request_id: int, actor: str) -> None:
+        self._connection.execute(
+            """
+            UPDATE purchase_requests
+            SET actor = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (actor, purchase_request_id),
+        )
+
+    def _purchase_receipt_note(self, purchase_request_id: int, note: str | None) -> str:
+        base = f"Purchase request #{purchase_request_id} received"
+        return base if note is None else f"{base}: {note}"
+
     def _get_reservation(self, reservation_id: int) -> dict[str, object]:
         row = self._connection.execute(
             """
@@ -818,6 +1175,7 @@ class PostgresInventoryRepository:
             INVENTORY_RESERVATIONS_MIGRATION_PATH,
             PART_COMPATIBILITY_MIGRATION_PATH,
             INVENTORY_RUSSIAN_CATALOG_MIGRATION_PATH,
+            PROCUREMENT_LITE_MIGRATION_PATH,
         ):
             connection.execute(migration_path.read_text(encoding="utf-8"))
         connection.commit()
@@ -1143,6 +1501,165 @@ class PostgresInventoryRepository:
             raise RuntimeError("compatibility insert did not return an id")
         self._connect().commit()
         return self._get_compatibility(int(row["id"]))
+
+    def create_supplier(self, payload: Any, actor: str) -> dict[str, object]:
+        row = self._connect().execute(
+            """
+            INSERT INTO procurement_suppliers (name, contact_name, phone, email, note, actor)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (payload.name, payload.contact_name, payload.phone, payload.email, payload.note, actor),
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("supplier insert did not return an id")
+        self._connect().commit()
+        return self._get_supplier(int(row["id"]))
+
+    def list_suppliers(self) -> list[dict[str, object]]:
+        rows = self._connect().execute(
+            """
+            SELECT *
+            FROM procurement_suppliers
+            ORDER BY active DESC, name, id
+            """
+        ).fetchall()
+        return [self._supplier_row(row) for row in rows]
+
+    def create_purchase_request(
+        self,
+        supplier_id: int,
+        items: list[Any],
+        note: str | None,
+        actor: str,
+    ) -> dict[str, object]:
+        self._get_supplier(supplier_id)
+        self._validate_purchase_items(items)
+        connection = self._connect()
+        with connection.transaction():
+            row = connection.execute(
+                """
+                INSERT INTO purchase_requests (supplier_id, status, note, actor)
+                VALUES (%s, 'draft', %s, %s)
+                RETURNING id
+                """,
+                (supplier_id, note, actor),
+            ).fetchone()
+            if row is None:
+                raise RuntimeError("purchase request insert did not return an id")
+            purchase_request_id = int(row["id"])
+            self._insert_purchase_items(connection, purchase_request_id, items)
+        return self.get_purchase_request(purchase_request_id)
+
+    def list_purchase_requests(self) -> list[dict[str, object]]:
+        rows = self._connect().execute(
+            """
+            SELECT pr.*, ps.name AS supplier_name
+            FROM purchase_requests pr
+            JOIN procurement_suppliers ps ON ps.id = pr.supplier_id
+            ORDER BY pr.id DESC
+            """
+        ).fetchall()
+        return [self._purchase_request_row(row) for row in rows]
+
+    def get_purchase_request(self, purchase_request_id: int) -> dict[str, object]:
+        row = self._connect().execute(
+            """
+            SELECT pr.*, ps.name AS supplier_name
+            FROM purchase_requests pr
+            JOIN procurement_suppliers ps ON ps.id = pr.supplier_id
+            WHERE pr.id = %s
+            """,
+            (purchase_request_id,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(str(purchase_request_id))
+        return self._purchase_request_row(row)
+
+    def replace_purchase_request_items(
+        self,
+        purchase_request_id: int,
+        items: list[Any],
+        actor: str,
+    ) -> dict[str, object]:
+        current = self.get_purchase_request(purchase_request_id)
+        if current["status"] != "draft":
+            raise InvalidPurchaseRequestTransitionError("Purchase request items can be edited only in draft status")
+        self._validate_purchase_items(items)
+        connection = self._connect()
+        with connection.transaction():
+            connection.execute("DELETE FROM purchase_request_items WHERE purchase_request_id = %s", (purchase_request_id,))
+            self._insert_purchase_items(connection, purchase_request_id, items)
+            self._touch_purchase_request(connection, purchase_request_id, actor)
+        return self.get_purchase_request(purchase_request_id)
+
+    def submit_purchase_request(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        return self._transition_purchase_request(purchase_request_id, "draft", "pending_approval", actor)
+
+    def approve_purchase_request(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        return self._transition_purchase_request(purchase_request_id, "pending_approval", "approved", actor)
+
+    def mark_purchase_request_ordered(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        return self._transition_purchase_request(purchase_request_id, "approved", "ordered", actor)
+
+    def receive_purchase_request(self, purchase_request_id: int, actor: str, note: str | None = None) -> dict[str, object]:
+        connection = self._connect()
+        with connection.transaction():
+            current = self._purchase_request_row(self._get_purchase_request_for_update(connection, purchase_request_id))
+            if current["status"] != "ordered":
+                raise InvalidPurchaseRequestTransitionError("Only ordered purchase requests can be received")
+            for item in current["items"]:
+                part_id = int(item["part_id"])
+                quantity = int(item["quantity"])
+                self._get_stock_count_for_update(connection, part_id)
+                connection.execute(
+                    """
+                    INSERT INTO stock_counts (part_id, quantity_on_hand, updated_at)
+                    VALUES (%s, %s, now())
+                    ON CONFLICT(part_id) DO UPDATE SET
+                        quantity_on_hand = stock_counts.quantity_on_hand + excluded.quantity_on_hand,
+                        updated_at = now()
+                    """,
+                    (part_id, quantity),
+                )
+                self._insert_stock_movement(
+                    part_id,
+                    "procurement_receipt",
+                    quantity,
+                    None,
+                    None,
+                    actor,
+                    self._purchase_receipt_note(purchase_request_id, note),
+                )
+            self._set_purchase_request_status(connection, purchase_request_id, "received", actor)
+        return self.get_purchase_request(purchase_request_id)
+
+    def cancel_purchase_request(self, purchase_request_id: int, actor: str) -> dict[str, object]:
+        connection = self._connect()
+        with connection.transaction():
+            current = self._purchase_request_row(self._get_purchase_request_for_update(connection, purchase_request_id))
+            if current["status"] not in {"draft", "pending_approval", "approved", "ordered"}:
+                raise InvalidPurchaseRequestTransitionError("Purchase request cannot be cancelled from its current status")
+            self._set_purchase_request_status(connection, purchase_request_id, "cancelled", actor)
+        return self.get_purchase_request(purchase_request_id)
+
+    def create_low_stock_purchase_draft(self, supplier_id: int, actor: str, note: str | None = None) -> dict[str, object]:
+        self._get_supplier(supplier_id)
+        low_stock_items = []
+        for part in self.list_parts():
+            threshold = part.get("low_stock_threshold")
+            if threshold is None or not bool(part.get("is_low_stock")):
+                continue
+            low_stock_items.append(
+                {
+                    "part_id": int(part["part_id"]),
+                    "quantity": max(int(threshold) * 2 - int(part["available_quantity"]), 1),
+                    "note": "Created from low-stock inventory signal",
+                }
+            )
+        if not low_stock_items:
+            raise ValueError("No low-stock parts are available for purchase draft")
+        return self.create_purchase_request(supplier_id, low_stock_items, note or "Low-stock purchase draft", actor)
 
     def _connect(self) -> psycopg.Connection[dict[str, Any]]:
         if self._connection is None or self._connection.closed:
@@ -1493,6 +2010,170 @@ class PostgresInventoryRepository:
             "actor": row["actor"],
             "created_at": self._format_timestamp(row["created_at"]),
         }
+
+    def _get_supplier(self, supplier_id: int) -> dict[str, object]:
+        row = self._connect().execute(
+            "SELECT * FROM procurement_suppliers WHERE id = %s",
+            (supplier_id,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(str(supplier_id))
+        return self._supplier_row(row)
+
+    def _supplier_row(self, row: dict[str, Any]) -> dict[str, object]:
+        return {
+            "supplier_id": row["id"],
+            "name": row["name"],
+            "contact_name": row["contact_name"],
+            "phone": row["phone"],
+            "email": row["email"],
+            "note": row["note"],
+            "active": bool(row["active"]),
+            "created_at": self._format_timestamp(row["created_at"]),
+            "updated_at": self._format_timestamp(row["updated_at"]),
+        }
+
+    def _validate_purchase_items(self, items: list[Any]) -> None:
+        if not items:
+            raise ValueError("Purchase request requires at least one item")
+        for item in items:
+            self._get_part(int(item.part_id if hasattr(item, "part_id") else item["part_id"]))
+            quantity = int(item.quantity if hasattr(item, "quantity") else item["quantity"])
+            if quantity <= 0:
+                raise ValueError("Purchase request item quantity must be positive")
+
+    def _insert_purchase_items(
+        self,
+        connection: psycopg.Connection[dict[str, Any]],
+        purchase_request_id: int,
+        items: list[Any],
+    ) -> None:
+        with connection.cursor() as cursor:
+            cursor.executemany(
+                """
+                INSERT INTO purchase_request_items (purchase_request_id, part_id, quantity, note)
+                VALUES (%s, %s, %s, %s)
+                """,
+                [
+                    (
+                        purchase_request_id,
+                        int(item.part_id if hasattr(item, "part_id") else item["part_id"]),
+                        int(item.quantity if hasattr(item, "quantity") else item["quantity"]),
+                        item.note if hasattr(item, "note") else item.get("note"),
+                    )
+                    for item in items
+                ],
+            )
+
+    def _purchase_request_row(self, row: dict[str, Any]) -> dict[str, object]:
+        purchase_request_id = int(row["id"])
+        return {
+            "purchase_request_id": purchase_request_id,
+            "supplier_id": row["supplier_id"],
+            "supplier_name": row["supplier_name"],
+            "status": row["status"],
+            "note": row["note"],
+            "actor": row["actor"],
+            "items": self._list_purchase_items(purchase_request_id),
+            "created_at": self._format_timestamp(row["created_at"]),
+            "updated_at": self._format_timestamp(row["updated_at"]),
+        }
+
+    def _list_purchase_items(self, purchase_request_id: int) -> list[dict[str, object]]:
+        rows = self._connect().execute(
+            """
+            SELECT pri.*, pc.sku, pc.name AS part_name, pc.unit
+            FROM purchase_request_items pri
+            JOIN parts_catalog pc ON pc.id = pri.part_id
+            WHERE pri.purchase_request_id = %s
+            ORDER BY pri.id
+            """,
+            (purchase_request_id,),
+        ).fetchall()
+        return [
+            {
+                "item_id": row["id"],
+                "purchase_request_id": row["purchase_request_id"],
+                "part_id": row["part_id"],
+                "sku": row["sku"],
+                "part_name": row["part_name"],
+                "unit": row["unit"],
+                "quantity": row["quantity"],
+                "note": row["note"],
+            }
+            for row in rows
+        ]
+
+    def _transition_purchase_request(
+        self,
+        purchase_request_id: int,
+        expected_status: str,
+        next_status: str,
+        actor: str,
+    ) -> dict[str, object]:
+        connection = self._connect()
+        with connection.transaction():
+            current = self._purchase_request_row(self._get_purchase_request_for_update(connection, purchase_request_id))
+            if current["status"] != expected_status:
+                raise InvalidPurchaseRequestTransitionError(
+                    f"Purchase request must be {expected_status} before it can move to {next_status}"
+                )
+            self._set_purchase_request_status(connection, purchase_request_id, next_status, actor)
+        return self.get_purchase_request(purchase_request_id)
+
+    def _get_purchase_request_for_update(
+        self,
+        connection: psycopg.Connection[dict[str, Any]],
+        purchase_request_id: int,
+    ) -> dict[str, Any]:
+        row = connection.execute(
+            """
+            SELECT pr.*, ps.name AS supplier_name
+            FROM purchase_requests pr
+            JOIN procurement_suppliers ps ON ps.id = pr.supplier_id
+            WHERE pr.id = %s
+            FOR UPDATE OF pr
+            """,
+            (purchase_request_id,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(str(purchase_request_id))
+        return row
+
+    def _set_purchase_request_status(
+        self,
+        connection: psycopg.Connection[dict[str, Any]],
+        purchase_request_id: int,
+        status: str,
+        actor: str,
+    ) -> None:
+        connection.execute(
+            """
+            UPDATE purchase_requests
+            SET status = %s, actor = %s, updated_at = now()
+            WHERE id = %s
+            """,
+            (status, actor, purchase_request_id),
+        )
+
+    def _touch_purchase_request(
+        self,
+        connection: psycopg.Connection[dict[str, Any]],
+        purchase_request_id: int,
+        actor: str,
+    ) -> None:
+        connection.execute(
+            """
+            UPDATE purchase_requests
+            SET actor = %s, updated_at = now()
+            WHERE id = %s
+            """,
+            (actor, purchase_request_id),
+        )
+
+    def _purchase_receipt_note(self, purchase_request_id: int, note: str | None) -> str:
+        base = f"Purchase request #{purchase_request_id} received"
+        return base if note is None else f"{base}: {note}"
 
     def _format_timestamp(self, value: Any) -> str:
         if hasattr(value, "isoformat"):

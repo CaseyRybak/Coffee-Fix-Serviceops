@@ -155,3 +155,9 @@ Phase 20 headline dashboard metrics are intentionally narrow:
 Phase 21 exposes SLA reminder and red-alert payloads to n8n through protected notification automation endpoints. The payloads are derived from the Phase 20 SLA policy and owner dashboard data; they do not store a new service-request lifecycle field and do not let n8n mutate request state.
 
 Operational alert payloads may include request number, lifecycle status, urgency, customer name, machine label, SLA state, deadline, hours remaining, and an internal dashboard URL. They must not expose public status snapshots, customer phone numbers, Telegram chat ids, free-form status titles, internal notes, staff audit details, AI/provider payloads, scheduling capacity diagnostics, or inventory quantities.
+
+## Phase 22 Procurement Boundary
+
+Procurement can be indirectly motivated by service-request work that waits for parts, but purchase requests belong to the inventory domain. Service-request public status snapshots must not expose suppliers, purchase request ids, purchase statuses, prices, stock quantities, low-stock thresholds, stock movement history, or procurement notes.
+
+Service-request lifecycle statuses such as `waiting_for_parts` remain customer-safe summaries. Internal procurement progress is visible only to authorized staff through inventory/procurement routes.

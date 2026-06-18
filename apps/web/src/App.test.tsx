@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { App } from "./App";
 import { AdminPage, ProtectedAdminPage, buildAdminStaffChangeRequests } from "./features/admin/AdminPage";
 import { DispatcherPage, ProtectedDispatcherPage, filterDispatcherItems } from "./features/dispatcher/DispatcherPage";
-import { ProtectedInventoryPage } from "./features/inventory/InventoryPage";
+import { ProtectedInventoryPage, ProtectedProcurementPage } from "./features/inventory/InventoryPage";
 import { OwnerDashboardPage, ProtectedOwnerDashboardPage } from "./features/owner/OwnerDashboardPage";
 import { StatusPage } from "./features/public/StatusPage";
 import { StaffLoginPage } from "./features/staff-auth/StaffLoginPage";
@@ -38,6 +38,15 @@ import {
   buildIgnoreAiSuggestionPath,
   buildInventoryPartCompatibilityPath,
   buildInventoryPartsPath,
+  buildInventoryProcurementLowStockDraftPath,
+  buildInventoryProcurementPurchaseRequestApprovePath,
+  buildInventoryProcurementPurchaseRequestCancelPath,
+  buildInventoryProcurementPurchaseRequestItemsPath,
+  buildInventoryProcurementPurchaseRequestMarkOrderedPath,
+  buildInventoryProcurementPurchaseRequestReceivePath,
+  buildInventoryProcurementPurchaseRequestsPath,
+  buildInventoryProcurementPurchaseRequestSubmitPath,
+  buildInventoryProcurementSuppliersPath,
   buildInventoryStockPath,
   buildOwnerDailyReportPath,
   buildOwnerDashboardPath,
@@ -503,6 +512,15 @@ describe("App", () => {
     assert.equal(buildInventoryPartsPath(), "/inventory/parts");
     assert.equal(buildInventoryStockPath(7), "/inventory/parts/7/stock");
     assert.equal(buildInventoryPartCompatibilityPath(7), "/inventory/parts/7/compatibility");
+    assert.equal(buildInventoryProcurementSuppliersPath(), "/inventory/procurement/suppliers");
+    assert.equal(buildInventoryProcurementPurchaseRequestsPath(), "/inventory/procurement/purchase-requests");
+    assert.equal(buildInventoryProcurementLowStockDraftPath(), "/inventory/procurement/purchase-requests/low-stock-draft");
+    assert.equal(buildInventoryProcurementPurchaseRequestItemsPath(9), "/inventory/procurement/purchase-requests/9/items");
+    assert.equal(buildInventoryProcurementPurchaseRequestSubmitPath(9), "/inventory/procurement/purchase-requests/9/submit");
+    assert.equal(buildInventoryProcurementPurchaseRequestApprovePath(9), "/inventory/procurement/purchase-requests/9/approve");
+    assert.equal(buildInventoryProcurementPurchaseRequestMarkOrderedPath(9), "/inventory/procurement/purchase-requests/9/mark-ordered");
+    assert.equal(buildInventoryProcurementPurchaseRequestReceivePath(9), "/inventory/procurement/purchase-requests/9/receive");
+    assert.equal(buildInventoryProcurementPurchaseRequestCancelPath(9), "/inventory/procurement/purchase-requests/9/cancel");
   });
 
   it("builds staff login paths and auth headers", () => {
@@ -584,6 +602,14 @@ describe("App", () => {
       "/owner",
     );
     assert.equal(
+      resolveStaffLandingPath({ username: "admin@coffeefix.local", roles: ["admin"] }, "/inventory"),
+      "/inventory",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "admin@coffeefix.local", roles: ["admin"] }, "/procurement"),
+      "/procurement",
+    );
+    assert.equal(
       resolveStaffLandingPath({ username: "lead@coffeefix.local", roles: ["admin", "dispatcher"] }, "/dispatcher"),
       "/dispatcher",
     );
@@ -660,6 +686,159 @@ describe("App", () => {
     assert.match(html, /href="\/inventory"/);
     assert.match(html, /Склад/);
     assert.doesNotMatch(html, /href="\/admin"/);
+  });
+
+  it("renders procurement as a separate inventory/admin cabinet, not inside the stock cabinet", () => {
+    const inventorySession = {
+      accessToken: "inventory-token",
+      username: "inventory@coffeefix.local",
+      roles: ["inventory" as const],
+    };
+    const workspaceHtml = renderToStaticMarkup(<StaffWorkspacePage initialSession={inventorySession} />);
+    const inventoryHtml = renderToStaticMarkup(<ProtectedInventoryPage initialSession={inventorySession} />);
+    const procurementHtml = renderToStaticMarkup(<ProtectedProcurementPage initialSession={inventorySession} />);
+
+    assert.match(workspaceHtml, /Согласование закупок/);
+    assert.match(workspaceHtml, /href="\/procurement"/);
+    assert.doesNotMatch(inventoryHtml, /id="procurement"/);
+    assert.doesNotMatch(inventoryHtml, /Создать черновик/);
+    assert.match(procurementHtml, /Согласование закупок/);
+    assert.match(procurementHtml, /Создать черновик/);
+  });
+
+  it("renders procurement as a focused workflow board with collapsible suppliers and clear actions", () => {
+    const html = renderToStaticMarkup(
+      <ProtectedProcurementPage
+        initialSession={{
+          accessToken: "inventory-token",
+          username: "inventory@coffeefix.local",
+          roles: ["inventory"],
+        }}
+        initialParts={{
+          items: [
+            {
+              part_id: 1,
+              sku: "VALVE-01",
+              name: "Steam valve",
+              brand: "Rocket",
+              model: "Appartamento",
+              unit: "pcs",
+              compatibility_note: null,
+              quantity_on_hand: 1,
+              reserved_quantity: 0,
+              available_quantity: 1,
+              low_stock_threshold: 3,
+              is_low_stock: true,
+              created_at: "2026-06-18 10:00:00",
+              stock_updated_at: "2026-06-18 10:00:00",
+              compatibility: [],
+              part_type: null,
+              parameter_label: null,
+              parameter_value: null,
+              parameter_unit: null,
+              factual_key: null,
+            },
+          ],
+        }}
+        initialSuppliers={{
+          items: [
+            {
+              supplier_id: 5,
+              name: "Supplier One",
+              contact_name: "Nora",
+              phone: "+101",
+              email: null,
+              note: null,
+              active: true,
+              created_at: "2026-06-18 10:00:00",
+              updated_at: "2026-06-18 10:00:00",
+            },
+          ],
+        }}
+        initialPurchaseRequests={{
+          items: [
+            {
+              purchase_request_id: 13,
+              supplier_id: 5,
+              supplier_name: "Supplier One",
+              status: "draft",
+              note: "Draft valves",
+              actor: "inventory",
+              created_at: "2026-06-18 10:05:00",
+              updated_at: "2026-06-18 10:05:00",
+              items: [
+                {
+                  item_id: 22,
+                  purchase_request_id: 13,
+                  part_id: 1,
+                  sku: "VALVE-01",
+                  part_name: "Steam valve",
+                  unit: "pcs",
+                  quantity: 2,
+                  note: null,
+                },
+              ],
+            },
+          ],
+        }}
+      />,
+    );
+
+    assert.match(html, /<details class="procurement-suppliers-panel">/);
+    assert.match(html, /<summary>[\s\S]*Поставщики/);
+    assert.match(html, /procurement-draft-panel/);
+    assert.match(html, /Создать из низких остатков/);
+    assert.match(html, /procurement-board/);
+    assert.match(html, /procurement-request-card/);
+    assert.match(html, /Отправить на согласование/);
+    assert.match(html, /Отменить заявку/);
+    assert.match(html, /Заменить строки/);
+  });
+
+  it("renders an admin procurement approval workspace card", () => {
+    const html = renderToStaticMarkup(
+      <StaffWorkspacePage
+        initialSession={{
+          accessToken: "admin-token",
+          username: "admin@coffeefix.local",
+          roles: ["admin"],
+        }}
+      />,
+    );
+
+    assert.match(html, /Согласование закупок/);
+    assert.match(html, /href="\/procurement"/);
+  });
+
+  it("routes procurement approval to a dedicated cabinet", () => {
+    const previousWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        location: {
+          origin: "http://localhost:3000",
+          pathname: "/procurement",
+          search: "",
+        },
+        localStorage: {
+          getItem: () =>
+            JSON.stringify({
+              accessToken: "admin-token",
+              username: "admin@coffeefix.local",
+              roles: ["admin"],
+            }),
+        },
+      },
+    });
+
+    try {
+      const html = renderToStaticMarkup(<App />);
+
+      assert.match(html, /Согласование закупок/);
+      assert.doesNotMatch(html, /<h1>Склад запчастей<\/h1>/);
+    } finally {
+      Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
+    }
   });
 
   it("routes the /staff/ entry to the workspace chooser for stored multi-role sessions", () => {
@@ -1204,6 +1383,47 @@ describe("App", () => {
             },
           ],
         }}
+        initialSuppliers={{
+          items: [
+            {
+              supplier_id: 5,
+              name: "Supplier One",
+              contact_name: "Nora",
+              phone: "+101",
+              email: null,
+              note: null,
+              active: true,
+              created_at: "2026-06-18 10:00:00",
+              updated_at: "2026-06-18 10:00:00",
+            },
+          ],
+        }}
+        initialPurchaseRequests={{
+          items: [
+            {
+              purchase_request_id: 12,
+              supplier_id: 5,
+              supplier_name: "Supplier One",
+              status: "draft",
+              note: "Low stock",
+              actor: "inventory",
+              created_at: "2026-06-18 10:05:00",
+              updated_at: "2026-06-18 10:05:00",
+              items: [
+                {
+                  item_id: 21,
+                  purchase_request_id: 12,
+                  part_id: 1,
+                  sku: "E61-GASKET-73",
+                  part_name: "Прокладка группы E61 73 мм",
+                  unit: "pcs",
+                  quantity: 4,
+                  note: null,
+                },
+              ],
+            },
+          ],
+        }}
       />,
     );
 
@@ -1214,8 +1434,8 @@ describe("App", () => {
     assert.match(html, /<summary>[\s\S]*Обновить остаток/);
     assert.match(html, /E61-GASKET-73/);
     assert.match(html, /Прокладка группы E61 73 мм/);
-    assert.match(html, /Доступно: 1 шт\./);
-    assert.match(html, /На складе: 4 · Резерв: 3/);
+    assert.match(html, /1 шт\./);
+    assert.match(html, /Склад 4 · Резерв 3/);
     assert.match(html, /низкий остаток/);
     assert.match(html, /inventory-part-card/);
     assert.match(html, /inventory-part-stock/);
@@ -1224,7 +1444,7 @@ describe("App", () => {
     assert.match(html, /<dt>Комментарий<\/dt><dd>Подходит для распространенных групп E61.<\/dd>/);
     assert.match(html, /Тип детали/);
     assert.match(html, /Добавить совместимость/);
-    assert.match(html, /inventory-compatibility-list[\s\S]*Совместимость/);
+    assert.match(html, /inventory-compatibility-list[\s\S]*Модель: Rocket · Appartamento/);
     assert.match(html, /Rocket · Appartamento/);
     assert.match(html, /Добавить позицию/);
     assert.match(html, /Артикул \/ SKU/);
@@ -1236,8 +1456,125 @@ describe("App", () => {
     assert.match(html, /Позиция для резерва/);
     assert.doesNotMatch(html, /placeholder="ID позиции"/);
     assert.match(html, /Создать резерв/);
+    assert.doesNotMatch(html, /id="procurement"/);
+    assert.doesNotMatch(html, /Supplier One/);
+    assert.doesNotMatch(html, /Создать черновик из низких остатков/);
+    assert.doesNotMatch(html, /PR-12/);
+    assert.doesNotMatch(html, /Заменить строки/);
     assert.match(html, /Движения склада/);
     assert.doesNotMatch(html, /class="service-bar"/);
+  });
+
+  it("renders a compact paginated inventory catalog", () => {
+    const parts = Array.from({ length: 12 }, (_, index) => {
+      const partNumber = index + 1;
+      return {
+        part_id: partNumber,
+        sku: `PAGE-PART-${String(partNumber).padStart(2, "0")}`,
+        name: `Позиция каталога ${partNumber}`,
+        brand: "Catalog",
+        model: `Model ${partNumber}`,
+        unit: "pcs",
+        compatibility_note: null,
+        part_type: "seal",
+        parameter_label: "diameter",
+        parameter_value: String(70 + partNumber),
+        parameter_unit: "mm",
+        factual_key: `seal|catalog|diameter|${70 + partNumber}|mm`,
+        compatibility: [],
+        created_at: "2026-06-07 12:00:00",
+        quantity_on_hand: partNumber,
+        reserved_quantity: 0,
+        available_quantity: partNumber,
+        low_stock_threshold: 2,
+        is_low_stock: false,
+        stock_updated_at: "2026-06-07 12:05:00",
+      };
+    });
+    const html = renderToStaticMarkup(
+      <ProtectedInventoryPage
+        initialSession={{
+          accessToken: "inventory-token",
+          username: "inventory@coffeefix.local",
+          roles: ["inventory"],
+        }}
+        initialParts={{ items: parts }}
+      />,
+    );
+
+    assert.match(html, /inventory-catalog-card compact-catalog/);
+    assert.match(html, /Показано 1-10 из 12/);
+    assert.match(html, /На странице/);
+    assert.match(html, /aria-label="Показывать 10 позиций"/);
+    assert.match(html, /aria-label="Показывать 50 позиций"/);
+    assert.match(html, /aria-label="Показывать 100 позиций"/);
+    assert.match(html, /PAGE-PART-01/);
+    assert.match(html, /PAGE-PART-10/);
+    assert.equal(html.match(/class="inventory-part-card"/g)?.length, 10);
+    assert.match(html, /Следующая/);
+    assert.ok(html.indexOf("PAGE-PART-10") < html.indexOf("inventory-catalog-footer"));
+    assert.ok(html.indexOf("inventory-catalog-footer") < html.indexOf("На странице"));
+    assert.ok(html.indexOf("inventory-catalog-footer") < html.indexOf("Следующая"));
+  });
+
+  it("renders admin procurement approval without inventory-only controls", () => {
+    const html = renderToStaticMarkup(
+      <ProtectedProcurementPage
+        initialSession={{
+          accessToken: "admin-token",
+          username: "admin@coffeefix.local",
+          roles: ["admin"],
+        }}
+        initialParts={{ items: [] }}
+        initialSuppliers={{
+          items: [
+            {
+              supplier_id: 5,
+              name: "Supplier One",
+              contact_name: "Nora",
+              phone: "+101",
+              email: null,
+              note: null,
+              active: true,
+              created_at: "2026-06-18 10:00:00",
+              updated_at: "2026-06-18 10:00:00",
+            },
+          ],
+        }}
+        initialPurchaseRequests={{
+          items: [
+            {
+              purchase_request_id: 13,
+              supplier_id: 5,
+              supplier_name: "Supplier One",
+              status: "pending_approval",
+              note: "Approve valves",
+              actor: "inventory",
+              created_at: "2026-06-18 10:05:00",
+              updated_at: "2026-06-18 10:05:00",
+              items: [
+                {
+                  item_id: 22,
+                  purchase_request_id: 13,
+                  part_id: 9,
+                  sku: "VALVE-01",
+                  part_name: "Steam valve",
+                  unit: "pcs",
+                  quantity: 2,
+                  note: null,
+                },
+              ],
+            },
+          ],
+        }}
+      />,
+    );
+
+    assert.match(html, /PR-13/);
+    assert.match(html, /Согласовать/);
+    assert.doesNotMatch(html, /Складские действия/);
+    assert.doesNotMatch(html, /Создать резерв/);
+    assert.doesNotMatch(html, /Обновить строки/);
   });
 
   it("builds an editable inventory SKU suggestion from part identity fields", () => {

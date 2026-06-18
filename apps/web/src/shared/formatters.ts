@@ -81,6 +81,7 @@ export function inventoryMovementLabel(type: InventoryMovement["movement_type"])
     reservation_adjusted: "Резерв изменен",
     release: "Резерв снят",
     consumption: "Списание",
+    procurement_receipt: "Приемка закупки",
   };
   return labels[type];
 }

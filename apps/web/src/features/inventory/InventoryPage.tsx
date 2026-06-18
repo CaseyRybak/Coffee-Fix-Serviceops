@@ -1,12 +1,21 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { LogIn, Shield } from "lucide-react";
+import { CheckCircle2, CircleSlash, FilePlus2, LogIn, PackageCheck, Send, Shield, Truck, XCircle } from "lucide-react";
 
 import {
   apiBaseUrl,
   buildInventoryMovementsPath,
   buildInventoryPartCompatibilityPath,
   buildInventoryPartsPath,
+  buildInventoryProcurementLowStockDraftPath,
+  buildInventoryProcurementPurchaseRequestApprovePath,
+  buildInventoryProcurementPurchaseRequestCancelPath,
+  buildInventoryProcurementPurchaseRequestItemsPath,
+  buildInventoryProcurementPurchaseRequestMarkOrderedPath,
+  buildInventoryProcurementPurchaseRequestReceivePath,
+  buildInventoryProcurementPurchaseRequestsPath,
+  buildInventoryProcurementPurchaseRequestSubmitPath,
+  buildInventoryProcurementSuppliersPath,
   buildInventoryReservationReleasePath,
   buildInventoryReservationsPath,
   buildInventoryStockPath,
@@ -20,22 +29,52 @@ import type {
   InventoryPartItem,
   InventoryPartListResponse,
   InventoryReservationListResponse,
+  ProcurementSupplierListResponse,
+  PurchaseRequest,
+  PurchaseRequestListResponse,
   StaffSession,
 } from "../../shared/types";
 import { WorkspaceHeader } from "../../shared/ui";
 
+const procurementStatusLabels: Record<PurchaseRequest["status"], string> = {
+  draft: "Черновик",
+  pending_approval: "На согласовании",
+  approved: "Согласовано",
+  ordered: "Заказано",
+  received: "Принято",
+  cancelled: "Отменено",
+};
+
+const procurementStatusTones: Record<PurchaseRequest["status"], string> = {
+  draft: "draft",
+  pending_approval: "pending",
+  approved: "approved",
+  ordered: "ordered",
+  received: "received",
+  cancelled: "cancelled",
+};
+const inventoryCatalogPageSizes = [10, 50, 100] as const;
+
 export function InventoryPage({
   initialParts,
+  initialSuppliers,
+  initialPurchaseRequests,
   session,
   onLogout,
+  procurementOnly = false,
 }: {
   initialParts?: InventoryPartListResponse;
+  initialSuppliers?: ProcurementSupplierListResponse;
+  initialPurchaseRequests?: PurchaseRequestListResponse;
   session?: StaffSession | null;
   onLogout?: () => void;
+  procurementOnly?: boolean;
 }) {
   const [parts, setParts] = useState<InventoryPartListResponse>(initialParts ?? { items: [] });
   const [reservations, setReservations] = useState<InventoryReservationListResponse>({ items: [] });
   const [movements, setMovements] = useState<InventoryMovementListResponse>({ items: [] });
+  const [suppliers, setSuppliers] = useState<ProcurementSupplierListResponse>(initialSuppliers ?? { items: [] });
+  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequestListResponse>(initialPurchaseRequests ?? { items: [] });
   const [sku, setSku] = useState("");
   const [skuEdited, setSkuEdited] = useState(false);
   const [name, setName] = useState("");
@@ -63,9 +102,26 @@ export function InventoryPage({
   const [reservationPartId, setReservationPartId] = useState("");
   const [reservationQuantity, setReservationQuantity] = useState("1");
   const [reservationNote, setReservationNote] = useState("");
+  const [supplierName, setSupplierName] = useState("");
+  const [supplierContact, setSupplierContact] = useState("");
+  const [supplierPhone, setSupplierPhone] = useState("");
+  const [supplierEmail, setSupplierEmail] = useState("");
+  const [supplierNote, setSupplierNote] = useState("");
+  const [purchaseSupplierId, setPurchaseSupplierId] = useState("");
+  const [purchasePartId, setPurchasePartId] = useState("");
+  const [purchaseQuantity, setPurchaseQuantity] = useState("1");
+  const [purchaseNote, setPurchaseNote] = useState("");
+  const [editPurchaseRequestId, setEditPurchaseRequestId] = useState<number | null>(null);
+  const [editPartId, setEditPartId] = useState("");
+  const [editQuantity, setEditQuantity] = useState("1");
+  const [editNote, setEditNote] = useState("");
   const [inventorySearch, setInventorySearch] = useState("");
+  const [inventoryPageSize, setInventoryPageSize] = useState<(typeof inventoryCatalogPageSizes)[number]>(10);
+  const [inventoryPage, setInventoryPage] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const isInventoryStaff = staffHasRole(session ?? null, "inventory");
+  const isAdminStaff = staffHasRole(session ?? null, "admin");
 
   const brandOptions = uniqueInventoryValues(parts.items.map((part) => part.brand));
   const modelOptions = uniqueInventoryValues(
@@ -89,6 +145,14 @@ export function InventoryPage({
   const visibleParts = inventorySearchTerm
     ? parts.items.filter((part) => inventoryPartSearchText(part).includes(inventorySearchTerm))
     : parts.items;
+  const inventoryTotalPages = Math.max(1, Math.ceil(visibleParts.length / inventoryPageSize));
+  const currentInventoryPage = Math.min(inventoryPage, inventoryTotalPages);
+  const inventoryStartIndex = visibleParts.length ? (currentInventoryPage - 1) * inventoryPageSize : 0;
+  const inventoryEndIndex = Math.min(inventoryStartIndex + inventoryPageSize, visibleParts.length);
+  const paginatedParts = visibleParts.slice(inventoryStartIndex, inventoryEndIndex);
+  const inventoryRangeLabel = visibleParts.length
+    ? `Показано ${inventoryStartIndex + 1}-${inventoryEndIndex} из ${visibleParts.length}`
+    : "Показано 0 из 0";
   const lowStockCount = parts.items.filter((part) => part.is_low_stock).length;
   const reservedPartsCount = parts.items.filter((part) => part.reserved_quantity > 0).length;
 
@@ -113,8 +177,25 @@ export function InventoryPage({
     setMovements(body);
   }
 
+  async function loadSuppliers() {
+    const response = await fetch(`${apiBaseUrl()}${buildInventoryProcurementSuppliersPath()}`, { headers: staffAuthHeaders(session) });
+    if (!response.ok) throw new Error(`Procurement suppliers failed with ${response.status}`);
+    const body = (await response.json()) as ProcurementSupplierListResponse;
+    setSuppliers(body);
+  }
+
+  async function loadPurchaseRequests() {
+    const response = await fetch(`${apiBaseUrl()}${buildInventoryProcurementPurchaseRequestsPath()}`, { headers: staffAuthHeaders(session) });
+    if (!response.ok) throw new Error(`Purchase requests failed with ${response.status}`);
+    const body = (await response.json()) as PurchaseRequestListResponse;
+    setPurchaseRequests(body);
+  }
+
   async function refreshInventory() {
-    await Promise.all([loadParts(), loadReservations(), loadMovements()]);
+    const loaders = [loadParts()];
+    if (isInventoryStaff) loaders.push(loadReservations(), loadMovements());
+    if (isInventoryStaff || isAdminStaff) loaders.push(loadSuppliers(), loadPurchaseRequests());
+    await Promise.all(loaders);
   }
 
   useEffect(() => {
@@ -126,6 +207,16 @@ export function InventoryPage({
     if (skuEdited) return;
     setSku(suggestedSku);
   }, [skuEdited, suggestedSku]);
+
+  useEffect(() => {
+    setInventoryPage(1);
+  }, [inventorySearchTerm, inventoryPageSize, parts.items.length]);
+
+  useEffect(() => {
+    if (!procurementOnly) return;
+    if (purchaseSupplierId && suppliers.items.some((supplier) => String(supplier.supplier_id) === purchaseSupplierId)) return;
+    if (suppliers.items.length === 1) setPurchaseSupplierId(String(suppliers.items[0].supplier_id));
+  }, [procurementOnly, purchaseSupplierId, suppliers.items]);
 
   async function submitPart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -299,6 +390,142 @@ export function InventoryPage({
     }
   }
 
+  async function submitSupplier(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${buildInventoryProcurementSuppliersPath()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
+        body: JSON.stringify({
+          name: supplierName.trim(),
+          contact_name: supplierContact.trim() || undefined,
+          phone: supplierPhone.trim() || undefined,
+          email: supplierEmail.trim() || undefined,
+          note: supplierNote.trim() || undefined,
+        }),
+      });
+      if (!response.ok) throw new Error(`Create supplier failed with ${response.status}`);
+      const createdSupplier = (await response.json()) as { supplier_id: number };
+      setSupplierName("");
+      setSupplierContact("");
+      setSupplierPhone("");
+      setSupplierEmail("");
+      setSupplierNote("");
+      setPurchaseSupplierId(String(createdSupplier.supplier_id));
+      await refreshInventory();
+      setMessage("Поставщик добавлен.");
+    } catch {
+      setMessage("Не удалось добавить поставщика.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitPurchaseRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${buildInventoryProcurementPurchaseRequestsPath()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
+        body: JSON.stringify({
+          supplier_id: Number(purchaseSupplierId),
+          items: [{ part_id: Number(purchasePartId), quantity: Number(purchaseQuantity), note: purchaseNote.trim() || undefined }],
+          note: purchaseNote.trim() || undefined,
+        }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(body?.detail || `Create purchase request failed with ${response.status}`);
+      }
+      setPurchaseSupplierId("");
+      setPurchasePartId("");
+      setPurchaseQuantity("1");
+      setPurchaseNote("");
+      await refreshInventory();
+      setMessage("Черновик закупки создан.");
+    } catch {
+      setMessage("Не удалось создать закупку.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function createLowStockDraft() {
+    if (!purchaseSupplierId) {
+      setMessage("Выберите поставщика для черновика закупки.");
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${buildInventoryProcurementLowStockDraftPath()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
+        body: JSON.stringify({ supplier_id: Number(purchaseSupplierId), note: "Черновик из низких остатков" }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(body?.detail || `Low-stock draft failed with ${response.status}`);
+      }
+      await refreshInventory();
+      setMessage("Черновик из низких остатков создан.");
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "";
+      setMessage(reason.includes("No low-stock")
+        ? "Низких остатков сейчас нет: черновик не создан."
+        : "Не удалось создать черновик из низких остатков.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runPurchaseAction(purchaseRequest: PurchaseRequest, path: string, successMessage: string, body: object = {}) {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error(`Purchase action failed with ${response.status}`);
+      await refreshInventory();
+      setMessage(`${successMessage}: PR-${purchaseRequest.purchase_request_id}.`);
+    } catch {
+      setMessage("Не удалось обновить закупку.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitDraftItems(event: FormEvent<HTMLFormElement>, purchaseRequest: PurchaseRequest) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`${apiBaseUrl()}${buildInventoryProcurementPurchaseRequestItemsPath(purchaseRequest.purchase_request_id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
+        body: JSON.stringify([{ part_id: Number(editPartId), quantity: Number(editQuantity), note: editNote.trim() || undefined }]),
+      });
+      if (!response.ok) throw new Error(`Draft item update failed with ${response.status}`);
+      setEditPurchaseRequestId(null);
+      setEditPartId("");
+      setEditQuantity("1");
+      setEditNote("");
+      await refreshInventory();
+      setMessage(`Строки PR-${purchaseRequest.purchase_request_id} обновлены.`);
+    } catch {
+      setMessage("Не удалось обновить строки закупки.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="app-page dispatcher-page inventory-page">
       <WorkspaceHeader session={session} onLogout={onLogout} />
@@ -306,9 +533,13 @@ export function InventoryPage({
         <section className="section-inner dispatcher-shell">
           <div className="dispatcher-topline">
             <div>
-              <span>Складской контур</span>
-              <h1>Склад запчастей</h1>
-              <p>Каталог, совместимость и базовые остатки для ремонтных выездов.</p>
+              <span>{procurementOnly ? "Закупочный контур" : "Складской контур"}</span>
+              <h1>{procurementOnly ? "Согласование закупок" : "Склад запчастей"}</h1>
+              <p>
+                {procurementOnly
+                  ? "Поставщики, заявки на закупку, согласование и приемка."
+                  : "Каталог, совместимость и базовые остатки для ремонтных выездов."}
+              </p>
             </div>
             <button className="secondary-status-button" type="button" onClick={() => void refreshInventory()} disabled={loading}>
               {loading ? "Обновляем" : "Обновить"}
@@ -316,43 +547,58 @@ export function InventoryPage({
           </div>
           {message ? <p className="status-message">{message}</p> : null}
           <div className="inventory-workspace">
-            <section className="dispatcher-card inventory-table-card">
-              <h2>Каталог</h2>
+            {!procurementOnly ? (
+            <section className="dispatcher-card inventory-table-card inventory-catalog-card compact-catalog">
+              <div className="inventory-catalog-heading">
+                <div>
+                  <h2>Каталог</h2>
+                  <p>Компактный список позиций, остатков и совместимости.</p>
+                </div>
+              </div>
               <div className="inventory-catalog-toolbar">
                 <div className="inventory-catalog-metrics" aria-label="Сводка склада">
                   <span>{parts.items.length} позиций</span>
                   <span>{lowStockCount} низкий остаток</span>
                   <span>{reservedPartsCount} с резервом</span>
                 </div>
-                <input
-                  value={inventorySearch}
-                  onChange={(event) => setInventorySearch(event.target.value)}
-                  placeholder="Поиск по SKU, названию, бренду или совместимости"
-                />
+                <div className="inventory-catalog-controls">
+                  <input
+                    value={inventorySearch}
+                    onChange={(event) => {
+                      setInventorySearch(event.target.value);
+                      setInventoryPage(1);
+                    }}
+                    placeholder="Поиск по SKU, названию, бренду или совместимости"
+                  />
+                </div>
               </div>
               <div className="inventory-table">
-                {visibleParts.length ? (
-                  visibleParts.map((part) => (
+                {paginatedParts.length ? (
+                  paginatedParts.map((part) => (
                     <article key={part.part_id} className="inventory-part-card">
                       <div className="inventory-part-identity">
                         <strong>{part.sku}</strong>
                         <span>{part.name}</span>
                       </div>
                       <div className="inventory-part-stock">
-                        <em>Доступно: {formatInventoryQuantity(part.available_quantity, part.unit)}</em>
-                        <small>На складе: {part.quantity_on_hand} · Резерв: {part.reserved_quantity}</small>
+                        <em>{formatInventoryQuantity(part.available_quantity, part.unit)}</em>
+                        <small>Склад {part.quantity_on_hand} · Резерв {part.reserved_quantity}</small>
                         <small className={part.is_low_stock ? "inventory-low-stock" : undefined}>
                           Минимум: {part.low_stock_threshold ?? "не задан"}{part.is_low_stock ? " · низкий остаток" : ""}
                         </small>
                       </div>
+                      <div className="inventory-part-model">
+                        <strong>{[part.brand, part.model].filter(Boolean).join(" ") || "Без модели"}</strong>
+                        <small>{buildInventoryPartSpecLabel(part)}</small>
+                      </div>
                       {part.compatibility?.length ? (
                         <div className="inventory-compatibility-list">
-                          <strong>Совместимость</strong>
-                          {part.compatibility.map((item) => (
+                          {part.compatibility.slice(0, 2).map((item) => (
                             <small key={item.compatibility_id}>
                               {buildInventoryCompatibilityLabel(item)}
                             </small>
                           ))}
+                          {part.compatibility.length > 2 ? <small>+{part.compatibility.length - 2}</small> : null}
                         </div>
                       ) : null}
                       <details className="inventory-part-details">
@@ -386,7 +632,50 @@ export function InventoryPage({
                   <p>{parts.items.length ? "По этому поиску позиций нет." : "Каталог пока пуст."}</p>
                 )}
               </div>
+              <div className="inventory-catalog-footer">
+                <strong>{inventoryRangeLabel}</strong>
+                <div className="inventory-page-size-control" aria-label="Количество позиций на странице">
+                  <span>На странице</span>
+                  {inventoryCatalogPageSizes.map((pageSize) => (
+                    <button
+                      aria-label={`Показывать ${pageSize} позиций`}
+                      className={inventoryPageSize === pageSize ? "active" : undefined}
+                      key={pageSize}
+                      onClick={() => {
+                        setInventoryPageSize(pageSize);
+                        setInventoryPage(1);
+                      }}
+                      type="button"
+                    >
+                      {pageSize}
+                    </button>
+                  ))}
+                </div>
+                <div className="inventory-pagination-bar" aria-label="Пагинация каталога">
+                  <button
+                    className="secondary-status-button"
+                    disabled={currentInventoryPage <= 1}
+                    onClick={() => setInventoryPage((page) => Math.max(1, page - 1))}
+                    type="button"
+                  >
+                    Предыдущая
+                  </button>
+                  <span>
+                    Страница {currentInventoryPage} из {inventoryTotalPages}
+                  </span>
+                  <button
+                    className="secondary-status-button"
+                    disabled={currentInventoryPage >= inventoryTotalPages}
+                    onClick={() => setInventoryPage((page) => Math.min(inventoryTotalPages, page + 1))}
+                    type="button"
+                  >
+                    Следующая
+                  </button>
+                </div>
+              </div>
             </section>
+            ) : null}
+            {!procurementOnly && isInventoryStaff ? (
             <section className="dispatcher-card inventory-actions-card">
               <div className="inventory-actions-heading">
                 <div>
@@ -601,6 +890,243 @@ export function InventoryPage({
                 </details>
               </div>
 	            </section>
+            ) : null}
+            {procurementOnly ? (
+            <section className="dispatcher-card inventory-procurement-card" id="procurement">
+              <div className="inventory-actions-heading procurement-command-heading">
+                <div>
+                  <h2>Рабочий поток закупок</h2>
+                  <p>Черновик, согласование, заказ и приемка в одном кабинете.</p>
+                </div>
+                <div className="inventory-catalog-metrics procurement-command-metrics">
+                  <span>{suppliers.items.length} поставщиков</span>
+                  <span>{purchaseRequests.items.length} заявок</span>
+                  <span>{lowStockCount} низкий остаток</span>
+                </div>
+              </div>
+              <div className="procurement-layout">
+                <details className="procurement-suppliers-panel">
+                  <summary>
+                    <span>Поставщики</span>
+                    <small>{suppliers.items.length ? `${suppliers.items.length} в справочнике` : "Справочник пуст"}</small>
+                  </summary>
+                  <div className="procurement-suppliers-body">
+                    <div className="compact-inventory-list inventory-table procurement-supplier-list">
+                      {suppliers.items.length ? (
+                        suppliers.items.map((supplier) => (
+                          <article key={supplier.supplier_id}>
+                            <strong>{supplier.name}</strong>
+                            <span>{supplier.contact_name ?? "Контакт не указан"}</span>
+                            <small>{supplier.phone ?? supplier.email ?? "Без связи"}</small>
+                            <em>{supplier.active ? "активен" : "выключен"}</em>
+                          </article>
+                        ))
+                      ) : (
+                        <p>Поставщики пока не добавлены.</p>
+                      )}
+                    </div>
+                    {isInventoryStaff ? (
+                      <form className="dispatcher-form compact-form procurement-form procurement-supplier-form" onSubmit={submitSupplier}>
+                        <input value={supplierName} onChange={(event) => setSupplierName(event.target.value)} placeholder="Название поставщика" required />
+                        <input value={supplierContact} onChange={(event) => setSupplierContact(event.target.value)} placeholder="Контакт" />
+                        <input value={supplierPhone} onChange={(event) => setSupplierPhone(event.target.value)} placeholder="Телефон" />
+                        <input value={supplierEmail} onChange={(event) => setSupplierEmail(event.target.value)} placeholder="Email" />
+                        <input className="wide-field" value={supplierNote} onChange={(event) => setSupplierNote(event.target.value)} placeholder="Заметка" />
+                        <button className="submit-button" type="submit" disabled={loading}>
+                          <FilePlus2 aria-hidden="true" />
+                          Добавить поставщика
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                </details>
+                <section className="procurement-panel procurement-draft-panel">
+                  <div>
+                    <h3>Новый черновик</h3>
+                    <p>Выберите поставщика один раз, затем создайте заявку вручную или из текущих низких остатков.</p>
+                  </div>
+                  {isInventoryStaff ? (
+                    <div className="procurement-draft-stack">
+                      <form className="dispatcher-form compact-form procurement-form" onSubmit={submitPurchaseRequest}>
+                        <select value={purchaseSupplierId} onChange={(event) => setPurchaseSupplierId(event.target.value)} required>
+                          <option value="">Поставщик</option>
+                          {suppliers.items.map((supplier) => (
+                            <option key={supplier.supplier_id} value={supplier.supplier_id}>{supplier.name}</option>
+                          ))}
+                        </select>
+                        <select value={purchasePartId} onChange={(event) => setPurchasePartId(event.target.value)} required>
+                          <option value="">Запчасть</option>
+                          {parts.items.map((part) => (
+                            <option key={part.part_id} value={part.part_id}>
+                              {part.sku} · {part.name} · доступно {formatInventoryQuantity(part.available_quantity, part.unit)}
+                            </option>
+                          ))}
+                        </select>
+                        <input value={purchaseQuantity} onChange={(event) => setPurchaseQuantity(event.target.value)} placeholder="Количество" type="number" min="1" required />
+                        <input value={purchaseNote} onChange={(event) => setPurchaseNote(event.target.value)} placeholder="Комментарий" />
+                        <button className="submit-button" type="submit" disabled={loading}>
+                          <FilePlus2 aria-hidden="true" />
+                          Создать черновик
+                        </button>
+                      </form>
+                      <button
+                        className="secondary-status-button wide-procurement-action procurement-low-stock-button"
+                        type="button"
+                        onClick={() => void createLowStockDraft()}
+                        disabled={loading || !suppliers.items.length}
+                      >
+                        <PackageCheck aria-hidden="true" />
+                        Создать из низких остатков
+                      </button>
+                      <small>
+                        {purchaseSupplierId
+                          ? lowStockCount
+                            ? `Будут взяты позиции с низким остатком: ${lowStockCount}.`
+                            : "Если низких остатков нет, система покажет понятное сообщение."
+                          : "Сначала выберите поставщика."}
+                      </small>
+                    </div>
+                  ) : (
+                    <p>Создание закупок доступно роли inventory.</p>
+                  )}
+                </section>
+                <section className="procurement-panel procurement-requests-panel">
+                  <div className="procurement-board-heading">
+                    <div>
+                      <h3>Заявки на закупку</h3>
+                      <p>Карточки показывают текущий статус и доступное следующее действие.</p>
+                    </div>
+                  </div>
+                  <div className="procurement-board procurement-request-list">
+                    {purchaseRequests.items.length ? (
+                      purchaseRequests.items.map((request) => (
+                        <article key={request.purchase_request_id} className="procurement-request-card">
+                          <div className="procurement-request-main">
+                            <div>
+                              <strong>PR-{request.purchase_request_id}</strong>
+                              <small>{request.supplier_name}</small>
+                            </div>
+                            <span>{request.items.map((item) => `${item.sku} x ${item.quantity}`).join(", ")}</span>
+                          </div>
+                          <em className={`procurement-status-badge ${procurementStatusTones[request.status]}`}>
+                            {procurementStatusLabels[request.status]}
+                          </em>
+                          <div className="procurement-actions">
+                            {isInventoryStaff && request.status === "draft" ? (
+                              <button
+                                className="secondary-status-button procurement-primary-action"
+                                type="button"
+                                onClick={() => void runPurchaseAction(request, buildInventoryProcurementPurchaseRequestSubmitPath(request.purchase_request_id), "Отправлено на согласование")}
+                                disabled={loading}
+                              >
+                                <Send aria-hidden="true" />
+                                Отправить на согласование
+                              </button>
+                            ) : null}
+                            {isAdminStaff && request.status === "pending_approval" ? (
+                              <button
+                                className="secondary-status-button procurement-primary-action"
+                                type="button"
+                                onClick={() => void runPurchaseAction(request, buildInventoryProcurementPurchaseRequestApprovePath(request.purchase_request_id), "Согласовано")}
+                                disabled={loading}
+                              >
+                                <CheckCircle2 aria-hidden="true" />
+                                Согласовать
+                              </button>
+                            ) : null}
+                            {isInventoryStaff && request.status === "approved" ? (
+                              <button
+                                className="secondary-status-button procurement-primary-action"
+                                type="button"
+                                onClick={() => void runPurchaseAction(request, buildInventoryProcurementPurchaseRequestMarkOrderedPath(request.purchase_request_id), "Отмечено заказанным")}
+                                disabled={loading}
+                              >
+                                <Truck aria-hidden="true" />
+                                Отметить заказанным
+                              </button>
+                            ) : null}
+                            {isInventoryStaff && request.status === "ordered" ? (
+                              <button
+                                className="secondary-status-button procurement-primary-action"
+                                type="button"
+                                onClick={() => void runPurchaseAction(request, buildInventoryProcurementPurchaseRequestReceivePath(request.purchase_request_id), "Принято на склад", { note: "Принято из интерфейса склада" })}
+                                disabled={loading}
+                              >
+                                <PackageCheck aria-hidden="true" />
+                                Принять на склад
+                              </button>
+                            ) : null}
+                            {isInventoryStaff && ["draft", "pending_approval", "approved", "ordered"].includes(request.status) ? (
+                              <button
+                                className="secondary-status-button procurement-danger-action"
+                                type="button"
+                                onClick={() => void runPurchaseAction(request, buildInventoryProcurementPurchaseRequestCancelPath(request.purchase_request_id), "Отменено")}
+                                disabled={loading}
+                              >
+                                <XCircle aria-hidden="true" />
+                                Отменить заявку
+                              </button>
+                            ) : null}
+                            {request.status === "received" || request.status === "cancelled" ? (
+                              <span className="procurement-terminal-action">
+                                <CircleSlash aria-hidden="true" />
+                                Действий нет
+                              </span>
+                            ) : null}
+                          </div>
+                          {isInventoryStaff && request.status === "draft" ? (
+                            <form className="dispatcher-form compact-form procurement-edit-form" onSubmit={(event) => submitDraftItems(event, request)}>
+                              <select
+                                value={editPurchaseRequestId === request.purchase_request_id ? editPartId : ""}
+                                onChange={(event) => {
+                                  setEditPurchaseRequestId(request.purchase_request_id);
+                                  setEditPartId(event.target.value);
+                                }}
+                                required
+                              >
+                                <option value="">Строка для замены</option>
+                                {parts.items.map((part) => (
+                                  <option key={part.part_id} value={part.part_id}>
+                                    {part.sku} · {part.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                value={editPurchaseRequestId === request.purchase_request_id ? editQuantity : "1"}
+                                onChange={(event) => {
+                                  setEditPurchaseRequestId(request.purchase_request_id);
+                                  setEditQuantity(event.target.value);
+                                }}
+                                placeholder="Количество"
+                                type="number"
+                                min="1"
+                                required
+                              />
+                              <input
+                                value={editPurchaseRequestId === request.purchase_request_id ? editNote : ""}
+                                onChange={(event) => {
+                                  setEditPurchaseRequestId(request.purchase_request_id);
+                                  setEditNote(event.target.value);
+                                }}
+                                placeholder="Заметка к строке"
+                              />
+                              <button className="secondary-status-button" type="submit" disabled={loading}>
+                                <PackageCheck aria-hidden="true" />
+                                Заменить строки
+                              </button>
+                            </form>
+                          ) : null}
+                        </article>
+                      ))
+                    ) : (
+                      <p>Заявок на закупку пока нет.</p>
+                    )}
+                  </div>
+                </section>
+              </div>
+            </section>
+            ) : null}
+	            {!procurementOnly && isInventoryStaff ? (
 	            <section className="dispatcher-card">
 	              <h2>Активные резервы</h2>
 	              <div className="inventory-table compact-inventory-list">
@@ -622,6 +1148,8 @@ export function InventoryPage({
 	                )}
 	              </div>
 	            </section>
+	            ) : null}
+	            {!procurementOnly && isInventoryStaff ? (
 	            <section className="dispatcher-card inventory-table-card">
 	              <h2>Движения склада</h2>
 	              <div className="inventory-table compact-inventory-list">
@@ -641,6 +1169,7 @@ export function InventoryPage({
 	                )}
 	              </div>
 	            </section>
+	            ) : null}
           </div>
         </section>
       </main>
@@ -652,11 +1181,19 @@ export function ProtectedInventoryPage({
   hasSession,
   initialSession,
   initialParts,
+  initialSuppliers,
+  initialPurchaseRequests,
+  procurementOnly = false,
 }: {
   hasSession?: boolean;
   initialSession?: StaffSession | null;
   initialParts?: InventoryPartListResponse;
+  initialSuppliers?: ProcurementSupplierListResponse;
+  initialPurchaseRequests?: PurchaseRequestListResponse;
+  procurementOnly?: boolean;
 }) {
+  const cabinetPath = procurementOnly ? "/procurement" : "/inventory";
+
   const [session, setSession] = useState<StaffSession | null>(() => {
     if (initialSession !== undefined) return initialSession;
     if (typeof hasSession === "boolean") {
@@ -669,7 +1206,7 @@ export function ProtectedInventoryPage({
     if (initialSession !== undefined || typeof hasSession === "boolean") return;
     const stored = getStoredStaffSession();
     setSession(stored);
-    if ((!stored || !staffHasRole(stored, "inventory")) && typeof window !== "undefined") {
+    if ((!stored || (!staffHasRole(stored, "inventory") && !staffHasRole(stored, "admin"))) && typeof window !== "undefined") {
       window.location.href = buildStaffLoginPath(window.location.pathname);
     }
   }, [hasSession, initialSession]);
@@ -677,10 +1214,10 @@ export function ProtectedInventoryPage({
   function logout() {
     clearStaffSession();
     setSession(null);
-    if (typeof window !== "undefined") window.location.href = buildStaffLoginPath("/inventory");
+    if (typeof window !== "undefined") window.location.href = buildStaffLoginPath(cabinetPath);
   }
 
-  if (!staffHasRole(session, "inventory")) {
+  if (!staffHasRole(session, "inventory") && !staffHasRole(session, "admin")) {
     const isAuthenticated = Boolean(session);
     return (
       <div className="app-page dispatcher-page">
@@ -690,8 +1227,16 @@ export function ProtectedInventoryPage({
             <div className="dispatcher-card protected-empty">
               <Shield aria-hidden="true" />
               <h1>{isAuthenticated ? "Недостаточно прав" : "Требуется вход сотрудника"}</h1>
-              <p>{isAuthenticated ? "Для склада нужна роль inventory." : "Склад находится во внутреннем контуре."}</p>
-              <a className="submit-button" href={buildStaffLoginPath("/inventory")}>
+              <p>
+                {isAuthenticated
+                  ? procurementOnly
+                    ? "Для закупок нужна роль inventory или admin."
+                    : "Для склада нужна роль inventory или admin."
+                  : procurementOnly
+                    ? "Закупки находятся во внутреннем контуре."
+                    : "Склад находится во внутреннем контуре."}
+              </p>
+              <a className="submit-button" href={buildStaffLoginPath(cabinetPath)}>
                 <LogIn aria-hidden="true" />
                 {isAuthenticated ? "Войти другим сотрудником" : "Войти"}
               </a>
@@ -702,5 +1247,18 @@ export function ProtectedInventoryPage({
     );
   }
 
-  return <InventoryPage session={session} onLogout={logout} initialParts={initialParts} />;
+  return (
+    <InventoryPage
+      session={session}
+      onLogout={logout}
+      initialParts={initialParts}
+      initialSuppliers={initialSuppliers}
+      initialPurchaseRequests={initialPurchaseRequests}
+      procurementOnly={procurementOnly}
+    />
+  );
+}
+
+export function ProtectedProcurementPage(props: Omit<Parameters<typeof ProtectedInventoryPage>[0], "procurementOnly">) {
+  return <ProtectedInventoryPage {...props} procurementOnly />;
 }

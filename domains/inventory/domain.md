@@ -63,8 +63,39 @@ Phase 21 allows n8n to send low-stock alerts from backend-owned owner dashboard 
 
 n8n must not recalculate stock, reserve parts, adjust counts, create purchase requests, receive stock, change compatibility records, or expose stock movement notes beyond the intended staff alert. Procurement remains deferred to Phase 22.
 
+## Phase 22 Procurement Lite
+
+Phase 22 adds lightweight supplier and purchase-request workflows inside the inventory domain. Procurement is an internal staff workflow, not a public client feature and not an n8n-owned approval system.
+
+Supplier rules:
+
+- Inventory staff can create supplier records with contact fields and internal notes.
+- Admin and inventory staff can read supplier and purchase-request records.
+- Supplier records are intentionally simple: no billing, invoices, fiscal documents, payment terms, or vendor accounting.
+
+Purchase request rules:
+
+- Purchase requests move through `draft`, `pending_approval`, `approved`, `ordered`, `received`, and `cancelled`.
+- Inventory staff create drafts, edit draft items, submit for approval, mark approved requests as ordered, receive ordered requests, and cancel requests before receipt.
+- Admin staff approve pending purchase requests.
+- The staff-facing procurement surface lives under `/inventory`; inventory staff see stock/procurement operations, while admin staff use the same workspace for procurement review and approval without inventory-only mutation controls.
+- Draft items are tied to existing inventory parts and positive quantities.
+- Low-stock draft creation uses backend-owned low-stock snapshots and creates a draft only for parts whose available quantity is at or below their threshold.
+
+Receiving rules:
+
+- Receiving is allowed only from `ordered`.
+- Receiving increments `quantity_on_hand` for each purchase-request item.
+- Each received item records a `procurement_receipt` stock movement with the resulting stock snapshot and a purchase-request reference in the movement note.
+- Cancelled purchase requests do not change stock and received purchase requests cannot be cancelled.
+
+Automation and AI boundary:
+
+- n8n can alert staff about low stock but does not create, approve, order, receive, or cancel purchase requests.
+- AI remains barred from autonomous procurement decisions. Later assistant work may propose drafts only through explicit human confirmation.
+
 Still deferred:
 
 - Multi-warehouse stock.
-- Purchase orders and supplier workflows.
 - Pricing, billing, warranty stock accounting, barcode scanning, and AI-created reservations.
+- Full purchase orders, supplier billing, invoices, payments, warranty stock accounting, barcode scanning, and AI-created procurement.
