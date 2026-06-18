@@ -875,6 +875,7 @@ p {
 
 .procurement-draft-actions .submit-button,
 .procurement-draft-actions .procurement-low-stock-button {
+  grid-column: auto;
   justify-self: stretch;
   width: 100%;
   min-height: 44px;
