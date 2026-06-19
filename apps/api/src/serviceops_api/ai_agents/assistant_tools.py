@@ -482,6 +482,17 @@ class AssistantToolRegistry:
 
     def _answer_inventory_database_query(self, query_spec: dict[str, object], message: str) -> dict[str, object]:
         metric = str(query_spec.get("metric") or "")
+        if metric == "parts_count":
+            parts = self._list_parts.execute().items
+            stocked = [part for part in parts if part.quantity_on_hand > 0]
+            available = [part for part in parts if part.available_quantity > 0]
+            refs = [
+                {"label": part.sku, "target_type": "inventory_part", "target_id": str(part.part_id), "href": "/inventory"}
+                for part in parts[:10]
+            ]
+            label = "Складских позиций запчастей" if "запчаст" in message.casefold() else "Складских позиций"
+            summary = f"{label}: {len(parts)}; с остатком на складе: {len(stocked)}; доступных к выдаче: {len(available)}."
+            return _completed_tool("answer_database_query", _safe_database_query_arguments(query_spec), summary, refs)
         if metric == "reserved_total":
             reservations = [reservation for reservation in self._list_reservations.execute().items if reservation.status == "active"]
             total = sum(reservation.quantity for reservation in reservations)
@@ -1012,11 +1023,13 @@ def _database_query_spec(message: str) -> dict[str, object] | None:
             "required_facets": ["entity", "metric"],
         }
     if plan.domain == "inventory":
+        metric = plan.metric or "reserved_total"
+        entity = "inventory_parts" if metric == "parts_count" else "part_reservations"
         return {
             "domain": "inventory",
-            "entity": "part_reservations",
-            "metric": "reserved_total",
-            "question_type": "sum",
+            "entity": entity,
+            "metric": metric,
+            "question_type": plan.question_type,
             "required_facets": ["entity", "metric"],
         }
     if plan.domain == "technicians":
@@ -1078,6 +1091,13 @@ def _structured_query_plan(message: str) -> AssistantQueryPlan | None:
             entity="part_reservations",
             metric="reserved_total",
             question_type="sum",
+        )
+    if _is_inventory_positions_question(lowered):
+        return AssistantQueryPlan(
+            domain="inventory",
+            entity="inventory_parts",
+            metric="parts_count",
+            question_type="count",
         )
     if _mentions_technicians(lowered) and _mentions_region_coverage(lowered):
         return AssistantQueryPlan(
@@ -1181,6 +1201,10 @@ def _self_check_tool(message: str, intent: str, tool_call: dict[str, object]) ->
         arguments = dict(tool_call.get("arguments") or {})
         if tool_name != "answer_database_query" or arguments.get("metric") != "reserved_total":
             failures.append("reservation_question_not_answered_from_reservations")
+    if _is_inventory_positions_question(lowered):
+        arguments = dict(tool_call.get("arguments") or {})
+        if tool_name != "answer_database_query" or arguments.get("metric") != "parts_count":
+            failures.append("inventory_positions_question_not_answered_from_inventory_parts")
     if _mentions_technicians(lowered) and _mentions_region_coverage(lowered):
         arguments = dict(tool_call.get("arguments") or {})
         if tool_name != "answer_database_query" or arguments.get("metric") != "service_regions":
@@ -1420,6 +1444,14 @@ def _mentions_inventory(lowered_message: str) -> bool:
     if any(marker in lowered_message for marker in inventory_markers):
         return True
     return _is_low_stock_question(lowered_message)
+
+
+def _is_inventory_positions_question(lowered_message: str) -> bool:
+    if not _is_count_question(lowered_message):
+        return False
+    if not any(marker in lowered_message for marker in ("склад", "stock", "inventory")):
+        return False
+    return any(marker in lowered_message for marker in ("позици", "номенклатур", "sku", "артикул"))
 
 
 def _mentions_supplier(lowered_message: str) -> bool:

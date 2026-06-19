@@ -428,6 +428,8 @@ def test_assistant_answers_database_wide_operational_questions_with_fact_checks(
                 "suppliers_list": (inventory_token, "перечисли наших поставщиков"),
                 "reserved_total": (inventory_token, "сколько запчастей в резерве?"),
                 "active_reserves": (inventory_token, "есть активные резервы?"),
+                "inventory_positions": (inventory_token, "сколько на складе позиций?"),
+                "inventory_part_positions": (inventory_token, "сколько на складе позиций запчастей?"),
                 "technician_regions": (dispatcher_token, "какие районы покрывают наши мастера?"),
                 "delonghi_stock": (inventory_token, "сколько запчастей делонги на складе?"),
             }
@@ -459,6 +461,12 @@ def test_assistant_answers_database_wide_operational_questions_with_fact_checks(
     assert results["active_reserves"]["tool_calls"][0]["tool_name"] == "answer_database_query"
     assert "В активном резерве: 3 pcs" in results["active_reserves"]["assistant_message"]
     assert results["active_reserves"]["tool_calls"][-1]["arguments"]["passed"] is True
+    assert results["inventory_positions"]["status"] == "completed"
+    assert results["inventory_positions"]["tool_calls"][0]["tool_name"] == "answer_database_query"
+    assert "Складских позиций: 2" in results["inventory_positions"]["assistant_message"]
+    assert "не нашёл совпадений" not in results["inventory_positions"]["assistant_message"]
+    assert results["inventory_part_positions"]["tool_calls"][0]["tool_name"] == "answer_database_query"
+    assert "Складских позиций запчастей: 2" in results["inventory_part_positions"]["assistant_message"]
     assert "DELONGHI-GRINDER" in results["delonghi_stock"]["assistant_message"]
     assert "доступно=5" in results["delonghi_stock"]["assistant_message"]
     assert "Tverskaya" in results["technician_regions"]["assistant_message"]
