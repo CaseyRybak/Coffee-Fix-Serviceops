@@ -218,7 +218,9 @@ Connected to redis://redis:6379/0
 celery@ef3c9b0871d0 ready.
 ```
 
-The worker still runs as root inside the production container because this test deployment follows the current root-based VPS decision. Celery emits a standard warning for that runtime mode.
+Historical note: this evidence originally observed the worker running as root inside the production container and Celery emitted a standard warning for that runtime mode.
+
+Follow-up on 2026-06-19: the worker image was hardened to run as the non-root `serviceops` user. Local production-image verification ran `docker compose -f docker-compose.production.yml --env-file .env.example run --rm --no-deps --entrypoint id worker -u -n` and returned `serviceops`. A production redeploy of the worker service is enough to apply the hardening; no database migration is involved.
 
 ## n8n And Notification Evidence
 

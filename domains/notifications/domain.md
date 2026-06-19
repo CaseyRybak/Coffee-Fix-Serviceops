@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-This domain handles Telegram, n8n webhooks, and later other delivery channels.
+This domain handles Telegram and n8n webhooks. Other delivery channels remain outside the current roadmap.
 
 ## First Use Cases
 
@@ -18,7 +18,7 @@ Phase 03 defined the first backend contract for Telegram notification opt-in.
 - `POST /service-requests/{request_number}/telegram-opt-in` accepts an optional Telegram handle.
 - The API returns the request number, saved Telegram handle, one-time token, and a bot deep link shaped as `https://t.me/coffeefix_service_bot?start=<token>`.
 - The token links a Telegram chat to a service request after the bot receives `/start <token>`.
-- The Telegram bot consumes the token through `POST /notifications/telegram/opt-ins/{token}/link` and persists `telegram_chat_id` for later notification delivery.
+- The Telegram bot consumes the token through `POST /notifications/telegram/opt-ins/{token}/link` and persists `telegram_chat_id` for notification delivery.
 
 Customer clarification answers are recorded through the service-request API because the question belongs to the repair lifecycle. Notifications subscribe to those events for n8n delivery and dispatcher/customer alerts.
 

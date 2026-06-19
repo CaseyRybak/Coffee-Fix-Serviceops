@@ -29,7 +29,7 @@ Technician identity:
 
 - Scheduling uses the staff username as the technician identifier.
 - Existing assignment matching still uses `assigned_technician_name`, now populated with the technician identifier when a structured appointment is created.
-- Dispatcher candidate selection reads active staff accounts with the `technician` role. Candidates expose staff display name, username, and phone. Region and skill data are provided later by the Phase 23 Lite technician profile boundary.
+- Dispatcher candidate selection reads active staff accounts with the `technician` role. Candidates expose staff display name, username, and phone. Phase 23 Lite adds profile-backed region and skill data for recommendation flows.
 
 Capacity assumption:
 
@@ -57,5 +57,9 @@ Phase 23 was intentionally scoped to a lightweight profile and recommendation fo
 - an optional internal note.
 
 Dispatcher recommendations are deterministic and explainable. They rank technicians using active staff/profile state, brand match, region match, scheduled workload, and optional appointment-window conflict checks. Recommendations return reasons and risks for dispatcher review, but they never assign technicians or create appointments.
+
+## Phase 24 Assistant Consumption Boundary
+
+The staff assistant can consume backend-owned technician recommendations for authorized staff. Assistant answers may summarize recommendation reasons and risks, but they must not assign technicians, create appointments, override scheduling conflicts, or expose technician private notes.
 
 Still deferred: GPS, route optimization, ratings, payroll, durable availability calendars, automatic assignment, and AI-owned technician assignment decisions.

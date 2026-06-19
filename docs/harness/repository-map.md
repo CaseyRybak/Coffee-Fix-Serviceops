@@ -35,6 +35,7 @@
 - `docs/execution-plans/index.md`: phase list.
 - `docs/execution-plans/roadmap-after-phase-16.md`: roadmap context, confirmed gaps, ordering rationale, and reconstruction guidance for Phase 17a and Phases 17-24.
 - `docs/execution-plans/phases/`: phase slice maps.
+- `docs/execution-plans/phases/README.md`: current-versus-historical guidance for phase slice maps.
 - `docs/execution-plans/detailed/`: just-in-time detailed implementation plans.
 - `docs/execution-plans/detailed/README.md`: current-versus-historical detailed plan guidance.
 - `docs/execution-plans/completed/README.md`: reserved archive convention for completed plans.
@@ -71,6 +72,7 @@
 - `docs/execution-plans/phases/24-ai-assistant-with-tools.md`: completed slice map for a bounded staff AI assistant with safe tool use and human confirmation.
 - `docs/execution-plans/completed/`: reserved archive directory for completed phase plans if the project later moves them out of `detailed/`.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
+- `docs/review/README.md`: current-versus-historical guidance for phase reviews and documentation audits.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
 - `docs/review/phase-03-review.md`: Phase 03 review artifact for client status and notifications.
 - `docs/review/phase-04-review.md`: Phase 04 review artifact for dispatcher MVP.
@@ -100,6 +102,7 @@
 - `docs/review/documentation-audit-2026-06-15.md`: documentation readiness audit before Phase 14 implementation.
 - `docs/review/documentation-audit-2026-06-15-current-state.md`: current-state documentation audit after Phase 14 and AI/RAG fallback hardening.
 - `docs/review/documentation-audit-2026-06-16.md`: current-state documentation audit after Phase 16 and post-phase production hardening.
+- `docs/review/documentation-audit-2026-06-19.md`: current-state documentation audit after Phase 24 closure and post-roadmap status alignment.
 
 ## Workflow Skills
 

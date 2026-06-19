@@ -20,6 +20,10 @@ The project packages a realistic service-operations workflow:
 - AI generates staff-reviewed suggestions using a source-backed RAG knowledge base;
 - technicians see assigned visits, record diagnosis, repair results, and parts used;
 - inventory staff maintain parts, stock, compatibility, reservations, movement history, and low-stock visibility;
+- owners/admins can review SLA risk, workload, low-stock risk, and daily report data;
+- inventory/admin staff can manage lightweight supplier and purchase-request workflows;
+- dispatchers can use deterministic technician recommendations with reasons and risks;
+- authorized staff can use a bounded AI assistant that runs safe tools and requires confirmation for purchase-draft creation;
 - n8n and Telegram deliver operational notifications while the API remains the source of truth;
 - production deployment uses Docker Compose, Dokploy/VPS routing, PostgreSQL, Redis, n8n, backups, smoke checks, and sanitized evidence.
 
@@ -31,7 +35,10 @@ The project packages a realistic service-operations workflow:
 4. **AI suggestions:** dispatcher-reviewed suggestions can classify intake, propose diagnostic questions, likely causes, parts hints, and customer reply drafts. AI never changes status, assigns technicians, reserves parts, or sends customer messages without staff action.
 5. **Technician workflow:** technicians can work assigned visits from a protected workspace and record diagnosis, repair result, and parts used.
 6. **Inventory workflow:** inventory staff can manage catalog identity, stock, compatibility rows, request-linked reservations, releases, movements, and low-stock visibility.
-7. **Notification automation:** backend events go to self-hosted n8n workflows, which send Telegram messages and call the API back with delivery results.
+7. **Procurement lite:** inventory/admin staff can draft, approve, order, receive, or cancel simple internal purchase requests while stock movements remain auditable.
+8. **Owner visibility:** admins can review SLA risk, workload, waiting-for-parts, technician workload, top issue groups, low-stock risk, and daily report payloads.
+9. **Staff AI assistant:** authorized staff can ask for request lookup, overdue work, knowledge search, stock checks, technician recommendations, daily reports, and confirmed purchase-draft creation.
+10. **Notification automation:** backend events go to self-hosted n8n workflows, which send Telegram messages and call the API back with delivery results.
 
 ## Architecture
 
@@ -104,16 +111,16 @@ The public demo has sanitized evidence for HTTPS routing, direct-port posture, D
 
 ## Roadmap
 
-Completed slices include public intake/status, staff RBAC, dispatcher workflow, AI/RAG suggestions, technician workflow, inventory reservations, scheduling depth, notification automation, production deployment artifacts, public demo closure, portfolio packaging, frontend workspace decomposition, and the owner dashboard/SLA foundation.
+Completed slices include public intake/status, staff RBAC, dispatcher workflow, AI/RAG suggestions, technician workflow, inventory reservations, scheduling depth, notification automation, production deployment artifacts, public demo closure, portfolio packaging, frontend workspace decomposition, owner dashboard/SLA foundation, operational n8n automation, procurement lite, technician recommendation lite, and a bounded staff AI assistant with tools.
 
-Next slices are intentionally scoped:
+The post-Phase-16 roadmap is complete through Phase 24. Any next slice should be deliberately scoped from the current codebase rather than inferred from the historical roadmap. Known follow-up candidates are:
 
-- broader operational n8n automation;
-- procurement lite;
-- richer technician profiles and recommendations;
-- bounded staff AI assistant with safe tool use and human confirmation.
+- assistant RBAC/audit polish;
+- role-aware assistant examples;
+- confirming-staff attribution in procurement artifacts;
+- stricter internal-origin allowlisting for assistant links.
 
-See [docs/execution-plans/roadmap-after-phase-16.md](docs/execution-plans/roadmap-after-phase-16.md) for ordering rationale.
+See [docs/execution-plans/index.md](docs/execution-plans/index.md) for current planning status and [docs/execution-plans/roadmap-after-phase-16.md](docs/execution-plans/roadmap-after-phase-16.md) for historical ordering rationale.
 
 ## Skills Demonstrated
 

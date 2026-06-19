@@ -50,7 +50,12 @@ REQUIRED_FILES = [
     "docs/execution-plans/detailed/18-portfolio-packaging-and-demo-mode-implementation.md",
     "docs/execution-plans/detailed/19-frontend-workspace-decomposition-implementation.md",
     "docs/execution-plans/detailed/20-owner-dashboard-and-sla-foundation-implementation.md",
+    "docs/execution-plans/detailed/21-operational-n8n-automation-implementation.md",
+    "docs/execution-plans/detailed/22-procurement-lite-implementation.md",
+    "docs/execution-plans/detailed/23-lite-technician-recommendation-foundation.md",
+    "docs/execution-plans/detailed/24-ai-assistant-with-tools-implementation.md",
     "docs/execution-plans/detailed/README.md",
+    "docs/execution-plans/phases/README.md",
     "docs/execution-plans/completed/README.md",
     "docker-compose.production.yml",
     "docs/operations/deployment-runbook.md",
@@ -68,6 +73,7 @@ REQUIRED_FILES = [
     "docs/operations/self-hosted-n8n-vps-evidence-2026-06-16.md",
     "docs/operations/public-demo-launch-evidence.md",
     "docs/product/portfolio-demo-guide.md",
+    "docs/review/README.md",
     "tools/operations/postgres_backup.sh",
     "tools/operations/postgres_restore.sh",
     "tools/operations/smoke_test.sh",
@@ -94,11 +100,16 @@ REQUIRED_FILES = [
     "docs/review/phase-18-review.md",
     "docs/review/phase-19-review.md",
     "docs/review/phase-20-review.md",
+    "docs/review/phase-21-review.md",
+    "docs/review/phase-22-review.md",
+    "docs/review/phase-23-review.md",
+    "docs/review/phase-24-review.md",
     "docs/review/documentation-audit-2026-06-07.md",
     "docs/review/documentation-audit-2026-06-10.md",
     "docs/review/documentation-audit-2026-06-15.md",
     "docs/review/documentation-audit-2026-06-15-current-state.md",
     "docs/review/documentation-audit-2026-06-16.md",
+    "docs/review/documentation-audit-2026-06-19.md",
     ".env.example",
     "docker-compose.yml",
     "apps/api/Dockerfile",
@@ -411,12 +422,15 @@ def main() -> None:
     require_text(".env.example", "SERVICEOPS_BACKUP_DIR")
     require_text("project_notes.md", "current operating dashboard")
     require_text("project_notes.md", "documentation-audit-2026-06-16.md")
+    require_text("project_notes.md", "documentation-audit-2026-06-19.md")
+    require_text("project_notes.md", "Current vs Historical Docs")
     require_text("project_notes.md", "Self-hosted n8n VPS production handoff")
     require_text("docs/harness/project-history.md", "Deferred Work Ledger")
     require_text("docs/harness/project-history.md", "Hardened production paths after Phase 16")
     require_text("docs/harness/project-history.md", "self-hosted VPS n8n service")
     require_text("docs/harness/repository-map.md", "compact current operating dashboard")
     require_text("docs/harness/repository-map.md", "documentation-audit-2026-06-16.md")
+    require_text("docs/harness/repository-map.md", "docs/review/README.md")
     require_text("docs/harness/repository-map.md", "self-hosted-n8n-vps-evidence-2026-06-16.md")
     require_text("docs/operations/ai-providers.md", "RAG Coverage And Knowledge Gaps")
     require_text("domains/ai-agents/domain.md", "Current RAG Fallback Behavior")

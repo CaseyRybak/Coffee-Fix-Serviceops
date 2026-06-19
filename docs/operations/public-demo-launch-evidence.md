@@ -31,7 +31,8 @@ This record is sanitized. Do not include passwords, bearer tokens, Telegram bot 
 - Docker/Dokploy app status: ServiceOps Compose app is running from `/etc/dokploy/compose/coffeefixserviceops-coffeefixserviceops-up3whl/code`.
 - API service status: Running and healthy; Docker still publishes `0.0.0.0:8000->8000/tcp`, with direct external access blocked by `serviceops-docker-port-guard.service`.
 - Web service status: Running; Docker still publishes `0.0.0.0:3001->80/tcp`, with direct external access blocked by `serviceops-docker-port-guard.service`.
-- Worker service status: Running; connected to Redis and ready. Celery logs warn that the worker runs as root.
+- Worker service status: Running; connected to Redis and ready. Initial evidence observed a Celery warning because the worker ran as root.
+- Worker non-root hardening follow-up on 2026-06-19: `apps/worker/Dockerfile` now creates and switches to the `serviceops` user. Local production-image verification ran `docker compose -f docker-compose.production.yml --env-file .env.example run --rm --no-deps --entrypoint id worker -u -n` and returned `serviceops`. Redeploy the worker image before treating the production warning as closed on the VPS.
 - Telegram bot status: Running and polling production bot `@CoffeeeFix_bot`.
 - n8n status: Running; four ServiceOps workflows activated. n8n logs mention editor URL `http://138.124.91.212:5678`, but Docker does not publish `5678` directly.
 - PostgreSQL health: ServiceOps PostgreSQL running and healthy; no public port publication.

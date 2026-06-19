@@ -1,6 +1,6 @@
 # Roadmap After Phase 16
 
-This roadmap preserves the post-Phase-16 planning context so future contributors can reconstruct detailed implementation plans without relying on chat history.
+This roadmap preserves the post-Phase-16 planning context so future contributors can understand why Phases 17-24 were ordered as they were. It is now a historical roadmap: Phases 17-24 have been implemented and reviewed. Use `project_notes.md` and `docs/execution-plans/index.md` for current status.
 
 ## Sources
 
@@ -11,7 +11,7 @@ This roadmap preserves the post-Phase-16 planning context so future contributors
 
 ## Current Baseline
 
-The project is already more than a public intake MVP. Implemented capabilities include:
+At the time this roadmap was written, the project was already more than a public intake MVP. Implemented capabilities included:
 
 - Public repair intake, request numbers, public status snapshots, clarification answers, and Telegram opt-in link contracts.
 - Dispatcher workspace, staff login/RBAC, persisted staff administration, technician workflow, scheduling, and inventory reservations.
@@ -22,22 +22,22 @@ The project is already more than a public intake MVP. Implemented capabilities i
 
 The main gap is not the core MVP. The main gap is public demonstration readiness and the remaining ServiceOps depth that would make the project read as a complete AI automation case.
 
-## Confirmed Gaps
+## Historical Confirmed Gaps
 
-- Public demo is not ready enough to rely on. Direct IP/port access is temporary, domains/HTTPS are not complete, and direct test ports still need closure or replacement by proper routing.
-- First public-page load is visually slowed by large hero image assets, which should be optimized before portfolio screenshots and demo packaging are finalized.
-- README and portfolio packaging are internal-developer oriented, not recruiter/employer oriented.
-- Frontend is concentrated in very large `App.tsx` and `styles.css` files, which raises change risk before adding dashboard, reports, procurement, and assistant surfaces.
-- n8n currently automates notification delivery, but not broader operational automation such as SLA reminders, owner reports, low-stock alerts, or purchase approvals.
-- SLA, overdue tracking, owner dashboard, daily reports, and owner-facing operational metrics are missing.
-- Procurement and suppliers remain deferred even though inventory reservations are implemented.
-- Technician profiles and recommendation logic are still shallow; scheduling currently identifies technicians by staff username rather than a richer technician domain profile.
-- AI is currently a suggestion engine, not a tool-using assistant. This is a good safety baseline, but it does not yet satisfy the original "AI dispatcher agent with tools" ambition.
+- Public demo was not ready enough to rely on. Phase 17 closed domain/HTTPS, routing, direct-port posture, Dokploy restriction, and live smoke evidence gaps.
+- First public-page load was visually slowed by large hero image assets. Phase 17a optimized responsive hero/static assets.
+- README and portfolio packaging were internal-developer oriented. Phase 18 repackaged the project as a portfolio case.
+- Frontend was concentrated in very large `App.tsx` and `styles.css` files. Phase 19 decomposed the frontend workspace before new staff screens.
+- n8n automated notification delivery but not broader operational automation. Phase 21 added SLA reminders, red alerts, owner daily reports, and low-stock alerts.
+- SLA, overdue tracking, owner dashboard, daily reports, and owner-facing operational metrics were missing. Phase 20 implemented the foundation.
+- Procurement and suppliers were deferred. Phase 22 added procurement lite.
+- Technician profiles and recommendation logic were shallow. Phase 23 added the lightweight profile and recommendation foundation.
+- AI was a suggestion engine rather than a tool-using assistant. Phase 24 added a bounded staff assistant with tools and confirmation rules.
 - Full customer accounts, full asset history, billing, payments, telephony, route optimization, GPS, multi-tenant SaaS, and complex calendar integrations remain intentionally out of scope for the next roadmap.
 
-## Ordering Rationale
+## Ordering Rationale Used For Phases 17-24
 
-The next work should happen in this order:
+The completed roadmap used this order:
 
 1. Make the project safely demonstrable before adding more product surface.
 2. Fix first-load public demo performance before capturing screenshots and packaging the portfolio case.
@@ -48,7 +48,7 @@ The next work should happen in this order:
 7. Add technician profiles and explainable recommendations before AI recommends technicians.
 8. Add tool-using AI last, after the underlying tools have meaningful domain APIs to call.
 
-This avoids building AI or automation around incomplete domain models and avoids growing an already large frontend file into a harder-to-maintain bottleneck.
+This avoided building AI or automation around incomplete domain models and avoided growing an already large frontend file into a harder-to-maintain bottleneck.
 
 ## Phase Sequence
 
@@ -97,18 +97,18 @@ Add a bounded staff-facing AI assistant that can call read-only tools directly a
 - Keep self-hosted n8n as the default production automation posture unless a later architecture decision deliberately changes it.
 - Keep production secret and log redaction rules intact for every new workflow.
 
-## How To Reconstruct Detailed Plans Later
+## How To Reconstruct Similar Detailed Plans Later
 
-For any future phase, read in this order:
+For any future phase or roadmap extension, read in this order:
 
 1. `AGENTS.md`
 2. `project_notes.md`
 3. `ARCHITECTURE.md`
 4. `docs/execution-plans/index.md`
-5. This roadmap
-6. The target phase file in `docs/execution-plans/phases/`
+5. This roadmap if the new work extends the Phase 17-24 sequence, otherwise the new roadmap or phase proposal
+6. The target phase file in `docs/execution-plans/phases/`, if one exists
 7. Relevant `domains/<domain>/AGENTS.md` and `domains/<domain>/domain.md`
 8. Current implementation files and tests
 9. Current operations docs when the phase touches deployment, n8n, Telegram, AI providers, logging, smoke tests, or secrets
 
-Then create a detailed implementation plan in `docs/execution-plans/detailed/` for only that phase.
+Then create a detailed implementation plan in `docs/execution-plans/detailed/` for only the selected phase.

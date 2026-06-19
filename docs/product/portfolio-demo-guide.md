@@ -171,14 +171,53 @@ Show:
 - reservation release;
 - stock movement history;
 - low-stock state.
+- procurement drafts, approval, ordering, receipt, cancellation, and supplier records, using fake supplier data only.
 
 Expected result:
 
 - available quantity accounts for active reservations;
 - on-hand quantity changes only when stock is adjusted or parts are consumed;
 - duplicate catalog protection uses factual part keys rather than fuzzy name matching.
+- procurement receipt creates normal stock movements and stays internal to staff workspaces.
 
-### 8. n8n And Operations Evidence
+### 8. Owner Dashboard
+
+Log in with a disposable admin account and open `/owner`.
+
+Show:
+
+- SLA risk and overdue/near-deadline workload;
+- waiting-for-parts and low-stock risk;
+- technician workload;
+- top issue groups;
+- daily report data for operational automation.
+
+Expected result:
+
+- owner data is internal and admin-only;
+- public status pages do not expose SLA labels, staff workload, low-stock thresholds, or daily report data.
+
+### 9. Staff AI Assistant
+
+Log in with a disposable dispatcher, inventory, or admin account and open `/assistant`.
+
+Show:
+
+- request lookup;
+- overdue work;
+- knowledge search;
+- technician recommendations;
+- daily report answers;
+- stock checks only for roles with assistant inventory read permission;
+- purchase-request draft creation only after explicit inventory-staff confirmation.
+
+Expected result:
+
+- read-only tools return bounded staff-safe summaries;
+- mutating tools stop for confirmation and create only normal draft artifacts through existing use cases;
+- assistant history does not expose raw provider bodies, phone numbers, Telegram chat ids, internal note bodies, technician private notes, or unrestricted source chunks.
+
+### 10. n8n And Operations Evidence
 
 Review these docs instead of exposing the live n8n admin UI by default:
 
@@ -253,16 +292,18 @@ python3 tools/operations/test_production_compose_contract.py
 
 The owner dashboard and SLA foundation are shipped as an admin-only internal surface at `/owner`. Demo it only with disposable admin credentials and fake operational data. Public reviewers without staff access should use screenshots or a guided private review window rather than public links.
 
-Phase 20 also exposes protected daily-report data for later automation, but Phase 21 owns sending owner reports and alerts through n8n.
+Phase 20 exposes protected daily-report data, and Phase 21 sends owner reports and alerts through n8n.
 
 Phase 22 procurement is shipped as an internal inventory/admin workflow at `/inventory#procurement`. Demo it only with disposable inventory/admin credentials and fake suppliers, parts, and purchase requests; do not show procurement data in public customer status pages.
 
 Phase 23 Lite technician recommendations are shipped as an internal dispatcher/admin workflow. Demo them only as deterministic, explainable suggestions that can prefill manual assignment fields; do not present them as automatic dispatching, route optimization, ratings, durable availability calendars, part-readiness scoring, or AI-owned assignment.
+
+Phase 24 bounded staff AI assistant is shipped as an internal protected workspace at `/assistant`. Demo it as a tool-using staff aid with role-specific permissions and human confirmation, not as an autonomous dispatcher or procurement owner.
 
 ## What Not To Demo As Shipped
 
 These are roadmap items, not completed capabilities:
 
 - full workforce-management recommendations beyond the Phase 23 Lite deterministic profile, workload, and scheduling-conflict foundation;
-- tool-using staff AI assistant;
+- autonomous tool-using AI that assigns technicians, changes statuses, sends customer messages, reserves or consumes stock, or approves/orders/receives purchases without staff confirmation;
 - billing, payments, telephony, GPS routing, multi-tenant SaaS, or customer accounts.

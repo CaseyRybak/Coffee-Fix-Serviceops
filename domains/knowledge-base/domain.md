@@ -18,7 +18,7 @@ The first implementation accepts text documents through the API and stores norma
 
 Embeddings are generated behind an embedding-provider port. Tests and local development use deterministic signed-hash embeddings with a fixed 12-dimension vector, while PostgreSQL runtime stores chunk vectors in pgvector through `knowledge_chunks.embedding`.
 
-The worker owns a Celery task boundary for embedding documents. The task uses repository and embedding-provider protocols so provider calls remain isolated and can be replaced by an OpenAI-compatible adapter in a later slice.
+The worker owns a Celery task boundary for embedding documents. The task uses repository and embedding-provider protocols so provider calls remain isolated. Phase 13 added OpenAI-compatible live embedding adapters while preserving deterministic local/test providers.
 
 The HTTP knowledge-base API is staff-only. Document ingestion requires an `admin` staff token, and source-backed retrieval requires either `admin` or `dispatcher`; public client flows do not expose document ingestion, source chunks, embeddings, or retrieval metadata.
 

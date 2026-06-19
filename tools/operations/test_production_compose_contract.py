@@ -70,8 +70,15 @@ def test_production_compose_renders_demo_hosts_with_example_env() -> None:
     assert "Host(`0.0.0.0`)" not in result.stdout
 
 
+def test_worker_image_runs_as_non_root_user() -> None:
+    dockerfile = (ROOT / "apps/worker/Dockerfile").read_text(encoding="utf-8")
+
+    assert "\nUSER serviceops\n" in f"\n{dockerfile}\n"
+
+
 if __name__ == "__main__":
     test_production_telegram_bot_runs_with_default_compose_profile()
     test_production_n8n_does_not_publish_direct_port()
     test_production_compose_tracks_dokploy_routing_overlay()
     test_production_compose_renders_demo_hosts_with_example_env()
+    test_worker_image_runs_as_non_root_user()

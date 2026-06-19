@@ -31,13 +31,13 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 24:
 
 ## Active Focus
 
-Phase 24 verification, subagent review, and final handoff for the completed post-Phase-16 roadmap.
+The post-Phase-16 roadmap is complete through Phase 24 and independently reviewed. The current focus is maintenance, portfolio-demo safety, and choosing any next slice deliberately before new implementation starts.
 
 ## Next Steps
 
-1. Complete Phase 24 full verification and independent review using `docs/review/subagent-review-protocol.md`.
-2. Resolve any blocking review findings before marking the roadmap closed.
-3. Keep demo data and credentials safe for portfolio review: use fake customer data, disposable staff accounts, deterministic AI defaults, and no production database reset.
+1. Keep demo data and credentials safe for portfolio review: use fake customer data, disposable staff accounts, deterministic AI defaults, and no production database reset.
+2. If new product work starts, create a fresh phase slice and just-in-time detailed implementation plan after re-reading current code and domain docs.
+3. Preserve the Phase 24 assistant boundaries unless a new reviewed phase deliberately changes them.
 
 ## Current Entry Points
 
@@ -52,6 +52,7 @@ Phase 24 verification, subagent review, and final handoff for the completed post
 - Documentation audit before Phase 14: `docs/review/documentation-audit-2026-06-15.md`
 - Documentation audit after Phase 14: `docs/review/documentation-audit-2026-06-15-current-state.md`
 - Documentation audit after Phase 16 and production hardening: `docs/review/documentation-audit-2026-06-16.md`
+- Documentation audit after Phase 24 closure: `docs/review/documentation-audit-2026-06-19.md`
 - Phase 17 review: `docs/review/phase-17-review.md`
 - Phase 17a review: `docs/review/phase-17a-review.md`
 - Phase 18 review: `docs/review/phase-18-review.md`
@@ -74,6 +75,10 @@ Phase 24 verification, subagent review, and final handoff for the completed post
 - AI provider operations: `docs/operations/ai-providers.md`
 - Operational diagnostics: `docs/operations/operational-diagnostics.md`
 - Incident response: `docs/operations/incident-response.md`
+
+## Current vs Historical Docs
+
+Use this file, `docs/execution-plans/index.md`, current domain docs, current operations docs, and the latest phase review as the source of current status. Older phase files, detailed plans, and review artifacts are historical evidence; they may contain deferred-scope language that was true when written but later resolved by another phase. The local README files in `docs/execution-plans/phases/`, `docs/execution-plans/detailed/`, and `docs/review/` define how to read those archives.
 
 ## Verification Commands
 

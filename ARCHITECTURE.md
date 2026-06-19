@@ -7,8 +7,8 @@ The project is a modular monolith with DDD and hexagonal architecture. The monol
 ## Applications
 
 - `apps/api`: FastAPI REST API plus operational migration entry points.
-- `apps/web`: React/Vite public site, status page, dispatcher workspace, technician workspace, inventory workspace, and admin workspace.
-- `apps/worker`: Celery background jobs for embeddings and later notification/AI maintenance.
+- `apps/web`: React/Vite public site, status page, dispatcher workspace, technician workspace, inventory/procurement workspace, owner dashboard, staff AI assistant, and admin workspace.
+- `apps/worker`: Celery background jobs for embeddings and operational maintenance.
 - `apps/telegram-bot`: aiogram bot for Telegram opt-in token consumption and customer notification linking.
 
 ## Domain Areas
@@ -18,9 +18,9 @@ The project is a modular monolith with DDD and hexagonal architecture. The monol
 - `machines`: coffee machine brands, models, installation context, and history.
 - `technicians`: technician profile, skills, regions, and availability.
 - `scheduling`: appointment windows and visit coordination.
-- `inventory`: parts, stock, compatibility, and reservations.
+- `inventory`: parts, stock, compatibility, reservations, suppliers, and lightweight procurement.
 - `knowledge-base`: documents, chunks, embeddings, and RAG retrieval.
-- `ai-agents`: intake, diagnostic, parts, dispatcher, and reply workflows.
+- `ai-agents`: intake, diagnostic, parts, dispatcher, reply, and bounded staff assistant workflows.
 - `notifications`: Telegram, n8n webhooks, and message delivery.
 - `billing`: estimates, repair totals, acts, warranty, and payment metadata.
 

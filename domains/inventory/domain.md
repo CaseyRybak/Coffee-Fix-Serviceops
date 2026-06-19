@@ -61,7 +61,7 @@ Stock visibility:
 
 Phase 21 allows n8n to send low-stock alerts from backend-owned owner dashboard data. The alert payload may include part id, SKU, part name, unit, available quantity, low-stock threshold, and an internal dashboard URL for staff follow-up.
 
-n8n must not recalculate stock, reserve parts, adjust counts, create purchase requests, receive stock, change compatibility records, or expose stock movement notes beyond the intended staff alert. Procurement remains deferred to Phase 22.
+n8n must not recalculate stock, reserve parts, adjust counts, create purchase requests, receive stock, change compatibility records, or expose stock movement notes beyond the intended staff alert. Phase 22 adds procurement inside ServiceOps; n8n remains alert-only for inventory workflows.
 
 ## Phase 22 Procurement Lite
 
@@ -103,5 +103,5 @@ The assistant can prepare `create_purchase_request_draft` only as a confirmation
 Still deferred:
 
 - Multi-warehouse stock.
-- Pricing, billing, warranty stock accounting, barcode scanning, and AI-created reservations.
-- Full purchase orders, supplier billing, invoices, payments, warranty stock accounting, barcode scanning, and AI-created procurement.
+- Pricing, billing, invoices, payments, warranty stock accounting, barcode scanning, and full purchase orders.
+- AI-created reservations or autonomous AI procurement beyond the Phase 24 confirmed purchase-draft tool.
