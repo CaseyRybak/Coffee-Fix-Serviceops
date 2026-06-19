@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, ChevronRight, ClipboardList, LogIn, Package, Shield, Wrench, type LucideIcon } from "lucide-react";
+import { BarChart3, Bot, ChevronRight, ClipboardList, LogIn, Package, Shield, Wrench, type LucideIcon } from "lucide-react";
 
 import {
   buildStaffLoginPath,
@@ -52,6 +52,13 @@ const staffWorkspaceCards: Array<{
     title: "Панель владельца",
     copy: "SLA, просрочки, загрузка мастеров, ожидание запчастей и складские риски.",
     Icon: BarChart3,
+  },
+  {
+    roles: ["dispatcher", "admin", "inventory"],
+    href: "/assistant",
+    title: "AI-помощник",
+    copy: "Ролевые инструменты для заявок, SLA, базы знаний, склада, рекомендаций и закупок.",
+    Icon: Bot,
   },
   {
     roles: ["inventory", "admin"],

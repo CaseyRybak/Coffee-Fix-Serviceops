@@ -167,3 +167,11 @@ Service-request lifecycle statuses such as `waiting_for_parts` remain customer-s
 Dispatcher technician recommendations can read service-request brand, address, urgency, status, appointment workload, and optional requested appointment window to rank technicians. This is an internal read-only dispatcher workflow.
 
 Recommendations do not change service-request status, assignment metadata, appointment rows, timeline events, notifications, inventory, or AI suggestions. Public status snapshots must not expose technician profile skills, service regions, recommendation scores, workload diagnostics, scheduling conflict reasons, or recommendation explanations.
+
+## Phase 24 Assistant Boundary
+
+The staff assistant can read dispatcher-safe request summaries through the `find_request` tool and can use service-request data indirectly through SLA reports and technician recommendations. Assistant request lookup must summarize operational facts without retaining or returning customer phone numbers, Telegram handles, internal note bodies, raw AI prompts, notification metadata, or unrestricted staff-only detail.
+
+The assistant cannot change service-request lifecycle status, ask customer clarifications, save internal notes, assign technicians, create/reschedule/cancel appointments, or send customer notifications. Those actions remain normal human-owned dispatcher and scheduling workflows.
+
+Public status snapshots and public APIs must not expose assistant prompts, assistant runs, tool calls, confirmation state, tool results, provider metadata, internal reasoning, SLA labels, technician recommendation explanations, procurement details, inventory quantities, or assistant dashboard links.

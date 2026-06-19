@@ -86,3 +86,48 @@ class AiSuggestionActionResponse(BaseModel):
     request_number: str
     suggestion: AiSuggestion
     message: str
+
+
+AssistantRunStatus = Literal["completed", "confirmation_required", "executing", "failed"]
+AssistantToolPolicy = Literal["read_only", "requires_confirmation"]
+AssistantToolCallStatus = Literal["completed", "confirmation_required", "executing", "failed"]
+
+
+class AssistantRunPayload(BaseModel):
+    message: str = Field(min_length=1, max_length=1000)
+
+    _clean_message = field_validator("message")(_clean_required)
+
+
+class AssistantToolReference(BaseModel):
+    label: str
+    target_type: str = Field(min_length=1, max_length=80)
+    target_id: str = Field(min_length=1, max_length=180)
+    href: str | None = Field(default=None, max_length=300)
+
+
+class AssistantToolCallRecord(BaseModel):
+    tool_call_id: int
+    tool_name: str
+    policy: AssistantToolPolicy
+    status: AssistantToolCallStatus
+    arguments: dict[str, object] = Field(default_factory=dict)
+    result_summary: str
+    result_refs: list[AssistantToolReference] = Field(default_factory=list)
+    created_at: str
+    updated_at: str
+
+
+class AssistantRunResponse(BaseModel):
+    run_id: int
+    actor_username: str
+    safe_message: str
+    status: AssistantRunStatus
+    assistant_message: str
+    tool_calls: list[AssistantToolCallRecord] = Field(default_factory=list)
+    created_at: str
+    updated_at: str
+
+
+class AssistantRunListResponse(BaseModel):
+    items: list[AssistantRunResponse]

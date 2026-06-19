@@ -12,6 +12,7 @@ import {
   canEditTechnicianProfile,
   redirectOnAdminAuthFailure,
 } from "./features/admin/AdminPage";
+import { AssistantPage, ProtectedAssistantPage, shouldRedirectAssistantResponse } from "./features/assistant/AssistantPage";
 import {
   DispatcherPage,
   ProtectedDispatcherPage,
@@ -37,6 +38,8 @@ import {
   buildAdminStaffRolesPath,
   buildAdminTechnicianProfilePath,
   buildAdminTechnicianProfilesPath,
+  buildAssistantConfirmPath,
+  buildAssistantRunsPath,
   buildCustomerAnswerPayload,
   buildDispatcherAppointmentCancelPath,
   buildDispatcherAppointmentPath,
@@ -85,7 +88,7 @@ import {
 } from "./shared/api";
 import { buildInventoryCompatibilityLabel, buildInventoryPartSpecLabel } from "./shared/formatters";
 import { buildInventorySkuSuggestion } from "./shared/inventory";
-import type { OwnerDashboardResponse } from "./shared/types";
+import type { AssistantRunResponse, OwnerDashboardResponse } from "./shared/types";
 import {
   buildStaffLoginPath,
   getStoredStaffSession,
@@ -700,6 +703,22 @@ describe("App", () => {
     assert.equal(
       resolveStaffLandingPath({ username: "admin@coffeefix.local", roles: ["admin"] }, "/procurement"),
       "/procurement",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "dispatcher@coffeefix.local", roles: ["dispatcher"] }, "/assistant"),
+      "/assistant",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "inventory@coffeefix.local", roles: ["inventory"] }, "/assistant"),
+      "/assistant",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "admin@coffeefix.local", roles: ["admin"] }, "/assistant"),
+      "/assistant",
+    );
+    assert.equal(
+      resolveStaffLandingPath({ username: "technician@coffeefix.local", roles: ["technician"] }, "/assistant"),
+      "/technician",
     );
     assert.equal(
       resolveStaffLandingPath({ username: "lead@coffeefix.local", roles: ["admin", "dispatcher"] }, "/dispatcher"),
@@ -2061,10 +2080,233 @@ describe("App", () => {
     assert.match(html, /href="\/owner"/);
   });
 
+  it("renders staff assistant workspace card and route helpers", () => {
+    const dispatcherHtml = renderToStaticMarkup(
+      <StaffWorkspacePage
+        initialSession={{
+          accessToken: "dispatcher-token",
+          username: "dispatcher@coffeefix.local",
+          roles: ["dispatcher"],
+        }}
+      />,
+    );
+    const technicianHtml = renderToStaticMarkup(
+      <StaffWorkspacePage
+        initialSession={{
+          accessToken: "technician-token",
+          username: "technician@coffeefix.local",
+          roles: ["technician"],
+        }}
+      />,
+    );
+
+    assert.equal(buildAssistantRunsPath(), "/assistant/runs");
+    assert.equal(buildAssistantConfirmPath(12), "/assistant/runs/12/confirm");
+    assert.match(dispatcherHtml, /AI-помощник/);
+    assert.match(dispatcherHtml, /href="\/assistant"/);
+    assert.doesNotMatch(technicianHtml, /AI-помощник/);
+  });
+
+  it("keeps assistant tool-level role denials on the assistant page", () => {
+    assert.equal(shouldRedirectAssistantResponse(401), true);
+    assert.equal(shouldRedirectAssistantResponse(403), false);
+  });
+
+  it("renders assistant runs, tool sources, and pending confirmation state", () => {
+    const initialRuns: AssistantRunResponse[] = [
+      {
+        run_id: 7,
+        actor_username: "dispatcher@coffeefix.local",
+        safe_message: "Порекомендуй техника для CFX-20260617-000001",
+        status: "completed",
+        assistant_message: "recommend_technician completed.",
+        created_at: "2026-06-17T12:00:00+00:00",
+        updated_at: "2026-06-17T12:00:00+00:00",
+        tool_calls: [
+          {
+            tool_call_id: 9,
+            tool_name: "recommend_technician",
+            policy: "read_only",
+            status: "completed",
+            arguments: { request_number: "CFX-20260617-000001" },
+            result_summary: "pavel@coffeefix.local: score=110, reasons=Brand match: Jura",
+            result_refs: [
+              {
+                label: "Pavel Sokolov",
+                target_type: "technician",
+                target_id: "pavel@coffeefix.local",
+                href: "/dispatcher?request=CFX-20260617-000001",
+              },
+              {
+                label: "Unsafe source",
+                target_type: "knowledge_source",
+                target_id: "javascript:alert(1)",
+                href: "javascript:alert(1)",
+              },
+            ],
+            created_at: "2026-06-17T12:00:00+00:00",
+            updated_at: "2026-06-17T12:00:00+00:00",
+          },
+        ],
+      },
+      {
+        run_id: 8,
+        actor_username: "inventory@coffeefix.local",
+        safe_message: "Создай черновик закупки supplier 1 part 2 qty 3",
+        status: "confirmation_required",
+        assistant_message: "create_purchase_request_draft requires staff confirmation before changing ServiceOps data.",
+        created_at: "2026-06-17T12:05:00+00:00",
+        updated_at: "2026-06-17T12:05:00+00:00",
+        tool_calls: [
+          {
+            tool_call_id: 10,
+            tool_name: "create_purchase_request_draft",
+            policy: "requires_confirmation",
+            status: "confirmation_required",
+            arguments: { supplier_id: 1, part_id: 2, quantity: 3 },
+            result_summary: "Confirmation required before creating a draft purchase request.",
+            result_refs: [],
+            created_at: "2026-06-17T12:05:00+00:00",
+            updated_at: "2026-06-17T12:05:00+00:00",
+          },
+        ],
+      },
+      {
+        run_id: 9,
+        actor_username: "inventory@coffeefix.local",
+        safe_message: "tool=create_purchase_request_draft; numeric_ids=1,2,3",
+        status: "executing",
+        assistant_message: "create_purchase_request_draft is being confirmed.",
+        created_at: "2026-06-17T12:06:00+00:00",
+        updated_at: "2026-06-17T12:06:00+00:00",
+        tool_calls: [
+          {
+            tool_call_id: 11,
+            tool_name: "create_purchase_request_draft",
+            policy: "requires_confirmation",
+            status: "executing",
+            arguments: { supplier_id: 1, part_id: 2, quantity: 3 },
+            result_summary: "Confirmed tool is executing.",
+            result_refs: [],
+            created_at: "2026-06-17T12:06:00+00:00",
+            updated_at: "2026-06-17T12:06:00+00:00",
+          },
+        ],
+      },
+      {
+        run_id: 10,
+        actor_username: "admin@coffeefix.local",
+        safe_message: "Вопрос: сколько всего получено заявок на ремонт?; инструмент: generate_daily_report",
+        status: "completed",
+        assistant_message: "Daily report 2026-06-19: Всего заявок: 33",
+        created_at: "2026-06-19T12:06:00+00:00",
+        updated_at: "2026-06-19T12:06:00+00:00",
+        tool_calls: [
+          {
+            tool_call_id: 12,
+            tool_name: "generate_daily_report",
+            policy: "read_only",
+            status: "completed",
+            arguments: {},
+            result_summary: "Daily report 2026-06-19: Всего заявок: 33",
+            result_refs: [{ label: "dashboard_url", target_type: "owner_dashboard", target_id: "/owner", href: "/owner" }],
+            created_at: "2026-06-19T12:06:00+00:00",
+            updated_at: "2026-06-19T12:06:00+00:00",
+          },
+        ],
+      },
+      {
+        run_id: 11,
+        actor_username: "admin@coffeefix.local",
+        safe_message: "tool=generate_daily_report",
+        status: "completed",
+        assistant_message: "Daily report 2026-06-19: Всего заявок: 33; Новые заявки: 19",
+        created_at: "2026-06-19T12:07:00+00:00",
+        updated_at: "2026-06-19T12:07:00+00:00",
+        tool_calls: [
+          {
+            tool_call_id: 13,
+            tool_name: "generate_daily_report",
+            policy: "read_only",
+            status: "completed",
+            arguments: {},
+            result_summary: "Daily report 2026-06-19: Всего заявок: 33; Новые заявки: 19",
+            result_refs: [],
+            created_at: "2026-06-19T12:07:00+00:00",
+            updated_at: "2026-06-19T12:07:00+00:00",
+          },
+        ],
+      },
+    ];
+    const html = renderToStaticMarkup(
+      <AssistantPage
+        initialSession={{
+          accessToken: "inventory-token",
+          username: "inventory@coffeefix.local",
+          roles: ["inventory"],
+        }}
+        initialRuns={initialRuns}
+      />,
+    );
+
+    assert.match(html, /AI-помощник/);
+    assert.match(html, /recommend_technician/);
+    assert.match(html, /Pavel Sokolov/);
+    assert.match(html, /Unsafe source/);
+    assert.doesNotMatch(html, /href="javascript:alert\(1\)"/);
+    assert.match(html, /Требует подтверждения/);
+    assert.match(html, /Подтвердить действие/);
+    assert.match(html, /Выполняется/);
+    assert.match(html, /выполняется/);
+    assert.match(html, /<h2>сколько всего получено заявок на ремонт\?<\/h2>/);
+    assert.match(html, /<h2>Всего заявок: 33<\/h2>/);
+    assert.match(html, /Всего заявок: 33/);
+    assert.doesNotMatch(html, /<h2>tool=generate_daily_report<\/h2>/);
+    assert.doesNotMatch(html, /<h2>Дневной отчет<\/h2>/);
+    assert.doesNotMatch(html, /<h2>.*инструмент:/);
+    assert.doesNotMatch(html, /уже создана/i);
+    assert.doesNotMatch(html, /\+7 999/);
+  });
+
+  it("protects and routes the staff assistant page", () => {
+    const guardedHtml = renderToStaticMarkup(<ProtectedAssistantPage initialSession={null} />);
+    const previousWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        location: {
+          origin: "http://localhost:3000",
+          pathname: "/assistant",
+          search: "",
+        },
+        localStorage: {
+          getItem: () =>
+            JSON.stringify({
+              accessToken: "dispatcher-token",
+              username: "dispatcher@coffeefix.local",
+              roles: ["dispatcher"],
+            }),
+        },
+      },
+    });
+
+    try {
+      const routedHtml = renderToStaticMarkup(<App />);
+
+      assert.match(guardedHtml, /Требуется вход сотрудника/);
+      assert.match(guardedHtml, /href="\/staff\/login\?next=%2Fassistant"/);
+      assert.match(routedHtml, /AI-помощник/);
+      assert.doesNotMatch(renderToStaticMarkup(<App />), /class="desktop-nav"/);
+    } finally {
+      Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow });
+    }
+  });
+
   it("renders owner dashboard SLA, workload, issue, and low-stock metrics", () => {
     const initialDashboard: OwnerDashboardResponse = {
       generated_at: "2026-06-17T12:00:00+00:00",
       metrics: {
+        total_requests: 4,
         new_requests: 1,
         in_progress_requests: 2,
         waiting_for_parts_requests: 1,
@@ -2122,6 +2364,7 @@ describe("App", () => {
     );
 
     assert.match(html, /Панель владельца/);
+    assert.match(html, /Всего заявок/);
     assert.match(html, /Новые заявки/);
     assert.match(html, /Просрочены/);
     assert.match(html, /CFX-20260617-000001/);

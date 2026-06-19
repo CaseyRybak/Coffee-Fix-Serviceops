@@ -208,6 +208,7 @@ def test_owner_dashboard_metrics_and_daily_report_payload() -> None:
     assert dashboard.status_code == 200
     body = dashboard.json()
     assert body["metrics"] == {
+        "total_requests": 4,
         "new_requests": 1,
         "in_progress_requests": 2,
         "waiting_for_parts_requests": 1,
@@ -230,4 +231,5 @@ def test_owner_dashboard_metrics_and_daily_report_payload() -> None:
     assert daily_report.status_code == 200
     assert daily_report.json()["report_date"] == "2026-06-17"
     assert daily_report.json()["summary"] == body["metrics"]
+    assert "Всего заявок: 4" in daily_report.json()["highlights"]
     assert daily_report.json()["dashboard_url"] == "/owner"

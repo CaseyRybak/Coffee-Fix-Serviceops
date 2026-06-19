@@ -19,6 +19,10 @@ Structured logs use operator-safe fields:
 
 Never copy passwords, hashes, bearer tokens, Telegram opt-in tokens, webhook secrets, API keys, raw AI prompts, provider bodies, customer phone numbers, Telegram chat ids, internal note bodies, or unrestricted source chunk text into tickets or launch evidence.
 
+Assistant logs may include `action` values such as `ai_assistant.run_recorded` and `ai_assistant.tool_confirmed`, the staff `actor_username`, a run id as `target`, a safe `outcome`, and a short tool-name `reason`. Do not copy raw assistant prompts, raw provider payloads, customer phone numbers, Telegram handles or chat ids, internal notes, technician private notes, or full knowledge chunks into diagnostics.
+
+If a confirmed assistant tool returns `failed` with a summary that says history finalization failed, treat the domain action as possibly completed. For the Phase 24 purchase-draft tool, check procurement records for the expected draft before retrying or recreating anything manually. Do not infer from the failed assistant run alone that no draft exists.
+
 ## Trace One Request
 
 1. Start with the customer-safe `request_number`.
@@ -28,6 +32,7 @@ Never copy passwords, hashes, bearer tokens, Telegram opt-in tokens, webhook sec
 5. Search worker logs when the problem involves knowledge-base embeddings or AI/RAG preparation.
 6. Search Telegram bot logs for `telegram.opt_in_linked` when customer notification linking is involved.
 7. Confirm the public status endpoint still excludes internal notes, staff data, AI suggestions, audit data, and notification metadata.
+8. If the incident involves the staff assistant, check assistant logs by safe run id and staff actor, then confirm public status responses still exclude assistant prompts, tool calls, confirmation state, provider metadata, and internal reasoning.
 
 ## Telegram Opt-In Failures
 

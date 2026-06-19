@@ -86,6 +86,7 @@ def test_run_migrations_initializes_all_postgres_repositories(monkeypatch) -> No
     monkeypatch.setattr(migrate, "create_service_request_repository", record_factory("service_requests"))
     monkeypatch.setattr(migrate, "create_knowledge_base_repository", record_factory("knowledge_base"))
     monkeypatch.setattr(migrate, "create_ai_suggestion_repository", record_factory("ai_agents"))
+    monkeypatch.setattr(migrate, "create_ai_assistant_history_repository", record_factory("ai_assistant"))
     monkeypatch.setattr(migrate, "create_inventory_repository", record_factory("inventory"))
     monkeypatch.setattr(migrate, "create_staff_account_repository", record_factory("staff_management"))
     monkeypatch.setattr(migrate, "create_technician_profile_repository", record_factory("technician_profiles"))
@@ -100,6 +101,7 @@ def test_run_migrations_initializes_all_postgres_repositories(monkeypatch) -> No
         ("service_requests", True),
         ("knowledge_base", True),
         ("ai_agents", True),
+        ("ai_assistant", True),
         ("inventory", True),
         ("staff_management", True),
         ("technician_profiles", True),

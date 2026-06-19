@@ -189,6 +189,7 @@ export interface OwnerSlaSnapshot {
 }
 
 export interface OwnerDashboardMetrics {
+  total_requests: number;
   new_requests: number;
   in_progress_requests: number;
   waiting_for_parts_requests: number;
@@ -245,6 +246,44 @@ export interface OwnerDailyReportResponse {
   sla_risks: OwnerSlaRiskItem[];
   low_stock_risk: LowStockRiskItem[];
   dashboard_url: string;
+}
+
+export type AssistantRunStatus = "completed" | "confirmation_required" | "executing" | "failed";
+export type AssistantToolPolicy = "read_only" | "requires_confirmation";
+export type AssistantToolCallStatus = "completed" | "confirmation_required" | "executing" | "failed";
+
+export interface AssistantToolReference {
+  label: string;
+  target_type: string;
+  target_id: string;
+  href: string | null;
+}
+
+export interface AssistantToolCall {
+  tool_call_id: number;
+  tool_name: string;
+  policy: AssistantToolPolicy;
+  status: AssistantToolCallStatus;
+  arguments: Record<string, unknown>;
+  result_summary: string;
+  result_refs: AssistantToolReference[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssistantRunResponse {
+  run_id: number;
+  actor_username: string;
+  safe_message: string;
+  status: AssistantRunStatus;
+  assistant_message: string;
+  tool_calls: AssistantToolCall[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssistantRunListResponse {
+  items: AssistantRunResponse[];
 }
 
 export interface TechnicianCandidate {

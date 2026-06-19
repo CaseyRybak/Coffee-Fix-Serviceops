@@ -6,6 +6,7 @@ from serviceops_api.owner_dashboard.sla import SlaSnapshot
 
 
 class OwnerDashboardMetrics(BaseModel):
+    total_requests: int = 0
     new_requests: int = 0
     in_progress_requests: int = 0
     waiting_for_parts_requests: int = 0

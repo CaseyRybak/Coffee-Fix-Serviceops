@@ -94,6 +94,12 @@ Automation and AI boundary:
 - n8n can alert staff about low stock but does not create, approve, order, receive, or cancel purchase requests.
 - AI remains barred from autonomous procurement decisions. Later assistant work may propose drafts only through explicit human confirmation.
 
+## Phase 24 Assistant Tool Boundary
+
+The staff assistant can run `check_part_stock` as a read-only tool for staff roles that already have full inventory read access through the assistant surface. In Phase 24 this means `admin` and `inventory` staff. It may summarize SKU, name, available, reserved, on-hand, and low-stock fields for internal operations, but this remains staff-only data. Dispatchers keep their existing low-stock visibility outside the assistant and do not receive full stock quantities through this tool.
+
+The assistant can prepare `create_purchase_request_draft` only as a confirmation-required tool for staff with the `inventory` role. Before confirmation, it stores only a safe preview. After confirmation, it creates a normal `draft` purchase request through the existing procurement use case. The assistant must not submit, approve, mark ordered, receive, cancel, reserve, release, adjust, consume stock, edit catalog identity, or change compatibility records.
+
 Still deferred:
 
 - Multi-warehouse stock.

@@ -18,6 +18,7 @@ import { WorkspaceHeader } from "../../shared/ui";
 const emptyDashboard: OwnerDashboardResponse = {
   generated_at: "",
   metrics: {
+    total_requests: 0,
     new_requests: 0,
     in_progress_requests: 0,
     waiting_for_parts_requests: 0,
@@ -32,6 +33,7 @@ const emptyDashboard: OwnerDashboardResponse = {
 };
 
 const metricLabels: Array<{ key: keyof OwnerDashboardMetrics; label: string; tone: string }> = [
+  { key: "total_requests", label: "Всего заявок", tone: "total" },
   { key: "new_requests", label: "Новые заявки", tone: "fresh" },
   { key: "in_progress_requests", label: "В работе", tone: "work" },
   { key: "waiting_for_parts_requests", label: "Ждут запчасти", tone: "parts" },

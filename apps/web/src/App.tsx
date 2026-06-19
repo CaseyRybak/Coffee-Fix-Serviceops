@@ -1,4 +1,5 @@
 import { ProtectedAdminPage } from "./features/admin/AdminPage";
+import { ProtectedAssistantPage } from "./features/assistant/AssistantPage";
 import { ProtectedDispatcherPage } from "./features/dispatcher/DispatcherPage";
 import { ProtectedInventoryPage, ProtectedProcurementPage } from "./features/inventory/InventoryPage";
 import { ProtectedOwnerDashboardPage } from "./features/owner/OwnerDashboardPage";
@@ -10,6 +11,7 @@ import { ProtectedTechnicianPage } from "./features/technician/TechnicianPage";
 import { staffWorkspacePath } from "./shared/staffAuth";
 
 export { AdminPage, ProtectedAdminPage, buildAdminStaffChangeRequests } from "./features/admin/AdminPage";
+export { AssistantPage, ProtectedAssistantPage } from "./features/assistant/AssistantPage";
 export { DispatcherPage, ProtectedDispatcherPage, filterDispatcherItems } from "./features/dispatcher/DispatcherPage";
 export { InventoryPage, ProtectedInventoryPage, ProtectedProcurementPage } from "./features/inventory/InventoryPage";
 export { OwnerDashboardPage, ProtectedOwnerDashboardPage } from "./features/owner/OwnerDashboardPage";
@@ -32,6 +34,7 @@ export function App() {
   const isInventoryRoute = pathname.startsWith("/inventory");
   const isAdminRoute = pathname.startsWith("/admin");
   const isOwnerRoute = pathname.startsWith("/owner");
+  const isAssistantRoute = pathname.startsWith("/assistant");
   const isStaffLoginRoute = pathname.startsWith("/staff/login");
   const isStaffWorkspaceRoute = pathname.startsWith(staffWorkspacePath);
   const isStaffEntryRoute = pathname === "/staff" || pathname === "/staff/";
@@ -41,6 +44,7 @@ export function App() {
   if (isStaffWorkspaceRoute || isStaffEntryRoute) return <StaffWorkspacePage />;
   if (isAdminRoute) return <ProtectedAdminPage />;
   if (isOwnerRoute) return <ProtectedOwnerDashboardPage />;
+  if (isAssistantRoute) return <ProtectedAssistantPage />;
   if (isDispatcherRoute) return <ProtectedDispatcherPage />;
   if (isTechnicianRoute) return <ProtectedTechnicianPage />;
   if (isProcurementRoute) return <ProtectedProcurementPage />;

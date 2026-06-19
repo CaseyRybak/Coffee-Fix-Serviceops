@@ -8,7 +8,7 @@ Before executing any phase, create a detailed implementation plan for that speci
 
 ## Active Phase
 
-- Phase 24: `phases/24-ai-assistant-with-tools.md`.
+- No next roadmap phase is currently active. Phase 24 is in verification/review closure.
 
 The active phase points to the next phase ready for implementation planning or execution. `phases/` contains all phase slice maps, not only active work.
 
@@ -18,7 +18,7 @@ Post-Phase-16 roadmap context is preserved in `roadmap-after-phase-16.md`. Use i
 
 Detailed implementation plans are created just in time in `detailed/`.
 
-Current detailed plan: none. Create a Phase 24 detailed implementation plan before changing assistant or tool-use code.
+Current detailed plan: `detailed/24-ai-assistant-with-tools-implementation.md`.
 
 Create later detailed implementation plans just in time before each future phase. Do not pre-write detailed plans for Phases 18-24 until their turn starts and the current code has been re-read.
 

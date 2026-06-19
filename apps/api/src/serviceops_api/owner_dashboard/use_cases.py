@@ -53,6 +53,7 @@ class GetOwnerDashboard:
         issue_groups: Counter[str] = Counter()
 
         for row in request_rows:
+            metrics.total_requests += 1
             status = str(row["status"])
             if status == "new":
                 metrics.new_requests += 1
@@ -105,6 +106,7 @@ class GetOwnerDailyReport:
         dashboard = self._dashboard.execute(now)
         generated_at = _parse_datetime(dashboard.generated_at)
         highlights = [
+            f"Всего заявок: {dashboard.metrics.total_requests}",
             f"Новые заявки: {dashboard.metrics.new_requests}",
             f"SLA риск: {dashboard.metrics.overdue_requests} просрочено, {dashboard.metrics.near_deadline_requests} близко к сроку",
             f"Ожидают запчасти: {dashboard.metrics.waiting_for_parts_requests}",

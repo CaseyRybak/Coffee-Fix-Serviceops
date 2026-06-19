@@ -64,6 +64,14 @@ Hazardous symptoms get safety-first handling even when the general repair seed b
 
 Provider prompts exclude customer phone numbers, Telegram handles, technician phone numbers, internal note bodies, notification delivery errors, and shared secrets. Provider failures are surfaced as generic `AI provider request failed` or `Embedding provider request failed` messages. Do not log raw prompts, API keys, provider request bodies, provider response bodies, or reusable customer contact data.
 
+Phase 24 staff assistant history follows the same privacy posture. Assistant runs store safe message text, tool names, bounded arguments, result summaries, and internal references only. They must not store raw provider bodies, API keys, bearer tokens, Telegram chat ids, customer phone numbers, internal note bodies, technician private notes, notification delivery errors, or unrestricted knowledge-base chunk text.
+
+Read-only assistant tools can execute directly for roles that already have access to the underlying domain data. Request totals and daily/SLA metrics are admin-only; schedule answers are dispatcher-only; technician answers are admin/dispatcher; knowledge search is admin/dispatcher; full stock lookup, supplier data, and reservation aggregates are admin/inventory. Structured operational questions that need dates, suppliers, reservations, stock aggregates, or technician regions are handled through `answer_database_query`, which stores a safe bounded query spec rather than raw SQL or raw staff text. Each completed read answer records an `assistant_self_check` tool call, and failed self-checks are returned as failed assistant runs instead of polished but irrelevant answers.
+
+The staff assistant uses deterministic domain guardrails and query-spec validation by default. When `SERVICEOPS_AI_PROVIDER=openai-compatible`, the same live provider configuration used for dispatcher suggestions can also advise assistant planning, but provider output remains bounded by the domain tool allowlist, RBAC checks, safe query specs, and self-check gate.
+
+Mutating tools require a separate confirmation call. Confirmation is one-shot: one pending assistant run may produce at most one domain artifact. The initial mutating tool can create a draft purchase request only; it cannot approve, order, receive, cancel, reserve stock, consume stock, change service-request status, assign technicians, schedule visits, or notify customers.
+
 ## Knowledge Base Content
 
 Curated seed repair documents live in `apps/api/src/serviceops_api/knowledge_base/seed_documents.py`. Each document has a stable `seed://repair/<slug>` source URI and metadata for traceability.
@@ -100,3 +108,4 @@ Before enabling live AI in production:
 4. Perform one covered-topic dispatcher AI smoke test and one knowledge-gap smoke test on non-sensitive requests.
 5. Verify suggestions are visible only in staff dispatcher views.
 6. Verify public status responses contain no AI suggestions or provider metadata.
+7. Verify assistant responses and history are visible only in staff assistant views and public responses contain no assistant prompts, tool calls, confirmation state, or provider metadata.

@@ -1,18 +1,25 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from serviceops_api.ai_agents.api import create_dispatcher_ai_router
+from serviceops_api.ai_agents.api import create_dispatcher_ai_router, create_staff_assistant_router
+from serviceops_api.ai_agents.assistant_tools import AssistantToolRegistry, create_assistant_planner
 from serviceops_api.ai_agents.providers import create_ai_suggestion_provider
 from serviceops_api.ai_agents.repository import (
+    PostgresAiAssistantHistoryRepository,
     PostgresAiSuggestionRepository,
+    SqliteAiAssistantHistoryRepository,
     SqliteAiSuggestionRepository,
+    create_ai_assistant_history_repository,
     create_ai_suggestion_repository,
 )
 from serviceops_api.ai_agents.use_cases import (
     AcceptAiClarificationSuggestion,
+    ConfirmStaffAssistantTool,
     GenerateAiSuggestions,
     IgnoreAiSuggestion,
     ListAiSuggestions,
+    ListStaffAssistantRuns,
+    RunStaffAssistant,
 )
 from serviceops_api.config import get_settings
 from serviceops_api.health import HealthStatus, build_health_status
@@ -139,6 +146,7 @@ def create_app(
     service_request_repository: ServiceRequestRepository | PostgresServiceRequestRepository | None = None,
     knowledge_base_repository: SqliteKnowledgeBaseRepository | PostgresKnowledgeBaseRepository | None = None,
     ai_suggestion_repository: SqliteAiSuggestionRepository | PostgresAiSuggestionRepository | None = None,
+    ai_assistant_history_repository: SqliteAiAssistantHistoryRepository | PostgresAiAssistantHistoryRepository | None = None,
     inventory_repository: SqliteInventoryRepository | PostgresInventoryRepository | None = None,
     staff_account_repository: SqliteStaffAccountRepository | PostgresStaffAccountRepository | None = None,
     technician_profile_repository: SqliteTechnicianProfileRepository | PostgresTechnicianProfileRepository | None = None,
@@ -162,6 +170,7 @@ def create_app(
         service_request_repository is not None
         or knowledge_base_repository is not None
         or ai_suggestion_repository is not None
+        or ai_assistant_history_repository is not None
         or inventory_repository is not None
         or staff_account_repository is not None
         or technician_profile_repository is not None
@@ -178,6 +187,11 @@ def create_app(
         SqliteAiSuggestionRepository.in_memory()
         if has_injected_repository
         else create_ai_suggestion_repository(settings)
+    )
+    assistant_history_store = ai_assistant_history_repository or (
+        SqliteAiAssistantHistoryRepository.in_memory()
+        if has_injected_repository
+        else create_ai_assistant_history_repository(settings)
     )
     inventory_store = inventory_repository or (
         SqliteInventoryRepository.in_memory()
@@ -212,6 +226,21 @@ def create_app(
     get_public_status = GetPublicStatus(repository)
     owner_dashboard = GetOwnerDashboard(repository, inventory_store)
     owner_daily_report = GetOwnerDailyReport(owner_dashboard)
+    assistant_tools = AssistantToolRegistry(
+        service_request_repository=repository,
+        owner_dashboard=owner_dashboard,
+        owner_daily_report=owner_daily_report,
+        retrieve_knowledge=retrieve_knowledge,
+        list_parts=ListParts(inventory_store),
+        list_purchase_requests=ListPurchaseRequests(inventory_store),
+        list_reservations=ListReservations(inventory_store),
+        list_suppliers=ListSuppliers(inventory_store),
+        list_staff_accounts=ListStaffAccounts(staff_account_store),
+        list_technician_profiles=ListTechnicianProfiles(technician_profile_store, staff_account_store),
+        recommend_technicians=RecommendTechnicians(repository, technician_profile_store, staff_account_store),
+        create_purchase_request=CreatePurchaseRequest(inventory_store, actor="assistant"),
+        planner=create_assistant_planner(settings),
+    )
     app.include_router(create_staff_auth_router(authenticator))
     app.include_router(
         create_staff_management_router(
@@ -293,6 +322,14 @@ def create_app(
             AcceptAiClarificationSuggestion(repository, ai_repository),
             IgnoreAiSuggestion(ai_repository),
             staff_dependency=require_staff_role("dispatcher", authenticator),
+        )
+    )
+    app.include_router(
+        create_staff_assistant_router(
+            RunStaffAssistant(assistant_history_store, assistant_tools),
+            ListStaffAssistantRuns(assistant_history_store),
+            ConfirmStaffAssistantTool(assistant_history_store, assistant_tools),
+            staff_dependency=require_staff_any_role({"admin", "dispatcher", "inventory"}, authenticator),
         )
     )
     app.include_router(

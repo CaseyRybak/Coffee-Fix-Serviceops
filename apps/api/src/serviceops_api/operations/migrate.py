@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from serviceops_api.ai_agents.repository import create_ai_suggestion_repository
+from serviceops_api.ai_agents.repository import create_ai_assistant_history_repository, create_ai_suggestion_repository
 from serviceops_api.config import Settings, get_settings
 from serviceops_api.inventory.repository import create_inventory_repository
 from serviceops_api.knowledge_base.repository import create_knowledge_base_repository
@@ -21,6 +21,7 @@ def run_migrations(settings: Settings | None = None) -> dict[str, str]:
     create_service_request_repository(resolved_settings, initialize=True)
     create_knowledge_base_repository(resolved_settings, initialize=True)
     create_ai_suggestion_repository(resolved_settings, initialize=True)
+    create_ai_assistant_history_repository(resolved_settings, initialize=True)
     create_inventory_repository(resolved_settings, initialize=True)
     create_staff_account_repository(resolved_settings, initialize=True)
     create_technician_profile_repository(resolved_settings, initialize=True)

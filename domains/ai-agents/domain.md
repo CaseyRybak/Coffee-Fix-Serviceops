@@ -33,3 +33,24 @@ Live AI output is still only a dispatcher-reviewed suggestion. It never changes 
 Prompt assembly filters retrieved knowledge chunks before provider calls. A chunk must share enough topic terms with the customer problem, or match a guarded safety topic such as electrical shock, before it is included as a source. This prevents a high-scoring but semantically wrong repair document from steering the dispatcher toward an unrelated scenario.
 
 When no relevant source chunk remains, the provider prompt labels the request as having no relevant RAG coverage. The deterministic provider returns generic, symptom-grounded clarification suggestions. The live provider is instructed to treat the request as `knowledge_gap=true`, leave `source_chunk_indexes` empty, avoid using similar but different scenarios as facts, and base hypotheses on the customer's description plus safe repair triage.
+
+## Phase 24 Staff Assistant With Tools
+
+Phase 24 adds a bounded staff assistant under protected internal routes. The assistant is an orchestrator over existing ServiceOps use cases, not a new authority over service-request, scheduling, inventory, procurement, notification, or technician state.
+
+Read-only tools can run directly when the authenticated staff role is allowed for that domain:
+
+- `find_request` for dispatcher-safe request lookup.
+- `list_overdue_requests`, `generate_daily_report`, and `answer_requests` for admin owner/SLA/request metrics.
+- `answer_schedule` for dispatcher schedule and appointment questions.
+- `answer_technicians` and `recommend_technician` for technician names, counts, skills, service regions, and request recommendations.
+- `answer_database_query` for safe read-only operational analytics that need structured filters or cross-table facts, including date-filtered requests, supplier lists/counts, active part reservations, stock aggregates, and technician region coverage.
+- `search_knowledge_base` for admin/dispatcher source-backed repair and service retrieval.
+- `check_part_stock` for admin/inventory stock visibility.
+- `assistant_self_check` for the assistant's post-tool relevance and safety gate.
+
+The assistant first builds a bounded operational query spec for database-backed questions that require facts such as date filters, suppliers, reservations, technician regions, and stock aggregates. It can use an OpenAI-compatible planner when `SERVICEOPS_AI_PROVIDER=openai-compatible`, but provider routing remains advisory: protected domain intents, role checks, query-spec validation, and self-checks decide whether the response can be returned. Inventory answers must not substitute unrelated stock rows when no matching part is found.
+
+The initial mutating tool is `create_purchase_request_draft`. It is limited to creating a draft purchase request through the inventory procurement use case and requires a separate explicit staff confirmation before execution. The assistant still cannot assign technicians, change request status, create or cancel appointments, notify customers, reserve or consume stock, approve/order/receive purchases, or publish n8n/Telegram messages.
+
+Assistant history stores safe prompt summaries, assistant summaries, tool names, bounded arguments, result summaries, and references. It must not store raw staff prompt text, raw provider request or response bodies, API keys, bearer tokens, Telegram chat ids, customer phone numbers, internal note bodies, technician profile notes, unrestricted source chunk text, or customer-visible status mutations.

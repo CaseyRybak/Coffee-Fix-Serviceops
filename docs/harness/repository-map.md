@@ -65,8 +65,10 @@
 - `docs/execution-plans/phases/20-owner-dashboard-and-sla-foundation.md`: completed slice map for owner dashboard metrics, SLA deadlines, overdue state, and daily report data.
 - `docs/execution-plans/phases/21-operational-n8n-automation.md`: completed slice map for SLA reminders, red alerts, owner daily reports, and low-stock alerts.
 - `docs/execution-plans/phases/22-procurement-lite.md`: completed slice map for suppliers, purchase requests, approval states, low-stock drafts, and receiving stock movements.
-- `docs/execution-plans/phases/23-technician-profiles-and-recommendation.md`: active slice map for technician profiles, skills, regions, workload, and explainable recommendations.
-- `docs/execution-plans/phases/24-ai-assistant-with-tools.md`: future slice map for a bounded staff AI assistant with safe tool use and human confirmation.
+- `docs/execution-plans/detailed/23-lite-technician-recommendation-foundation.md`: completed detailed plan for technician profiles, skills, regions, workload, and explainable recommendations.
+- `docs/execution-plans/detailed/24-ai-assistant-with-tools-implementation.md`: completed detailed plan for a bounded staff AI assistant with safe tool use and human confirmation.
+- `docs/execution-plans/phases/23-technician-profiles-and-recommendation.md`: completed slice map for technician profiles, skills, regions, workload, and explainable recommendations.
+- `docs/execution-plans/phases/24-ai-assistant-with-tools.md`: completed slice map for a bounded staff AI assistant with safe tool use and human confirmation.
 - `docs/execution-plans/completed/`: reserved archive directory for completed phase plans if the project later moves them out of `detailed/`.
 - `docs/review/subagent-review-protocol.md`: review protocol for every slice.
 - `docs/review/phase-02-review.md`: Phase 02 review artifact for service request intake.
@@ -87,6 +89,12 @@
 - `docs/review/phase-17-review.md`: Phase 17 review artifact for public demo and launch closure.
 - `docs/review/phase-17a-review.md`: Phase 17a review artifact for public demo hero image optimization.
 - `docs/review/phase-18-review.md`: Phase 18 review artifact for portfolio packaging and demo safety.
+- `docs/review/phase-19-review.md`: Phase 19 review artifact for frontend workspace decomposition.
+- `docs/review/phase-20-review.md`: Phase 20 review artifact for owner dashboard and SLA foundation.
+- `docs/review/phase-21-review.md`: Phase 21 review artifact for operational n8n automation.
+- `docs/review/phase-22-review.md`: Phase 22 review artifact for procurement lite.
+- `docs/review/phase-23-review.md`: Phase 23 review artifact for technician recommendation lite.
+- `docs/review/phase-24-review.md`: Phase 24 review artifact for bounded staff AI assistant with tools.
 - `docs/review/documentation-audit-2026-06-07.md`: documentation consistency and quality audit after Phase 10.
 - `docs/review/documentation-audit-2026-06-10.md`: documentation consistency and quality audit after Phase 13.
 - `docs/review/documentation-audit-2026-06-15.md`: documentation readiness audit before Phase 14 implementation.
@@ -116,14 +124,14 @@
 ## Code Areas
 
 - `apps/api`: FastAPI backend with `/health`, service request intake, public status, answer submission, Telegram opt-in/linking contracts, notification callbacks, dispatcher routes, technician routes, inventory routes, staff admin routes, knowledge-base RAG routes, AI suggestion routes, sqlite test persistence, and PostgreSQL Compose persistence.
-- `apps/api/src/serviceops_api/ai_agents`: AI suggestion models, prompt assembly with RAG relevance filtering, deterministic and OpenAI-compatible providers, knowledge-gap fallback behavior, sqlite/PostgreSQL repositories, dispatcher use cases, and protected routes.
+- `apps/api/src/serviceops_api/ai_agents`: AI suggestion models, prompt assembly with RAG relevance filtering, deterministic and OpenAI-compatible providers, knowledge-gap fallback behavior, assistant tool registry, assistant history persistence, sqlite/PostgreSQL repositories, dispatcher use cases, staff assistant use cases, and protected routes.
 - `apps/api/src/serviceops_api/service_requests`: service request intake/status/dispatcher API, use cases, models, sqlite repository, PostgreSQL repository with request-number sequencing and appointment conflict handling, and repository factory.
 - `apps/api/src/serviceops_api/technicians`: technician assigned-visit models, protected routes, and workflow use cases for diagnosis, repair result, and parts used.
 - `apps/api/src/serviceops_api/inventory`: parts catalog models, sqlite/PostgreSQL repositories, inventory use cases, protected inventory routes, stock decrement behavior, reservations, compatibility records, and PostgreSQL row-locking guards for stock/reservation mutations.
 - `apps/api/src/serviceops_api/staff_management`: persisted staff account models, sqlite/PostgreSQL repositories, admin account lifecycle use cases, local persisted staff seed command, audit records, and protected admin routes.
 - `apps/api/src/serviceops_api/operations`: migration and first-admin bootstrap commands for production operations.
 - `apps/api/src/serviceops_api/knowledge_base`: knowledge document models, chunking, deterministic and OpenAI-compatible embeddings, sqlite/PostgreSQL repositories, ingestion and retrieval use cases, API routes, curated seed repair documents, and RAG evaluation fixtures.
-- `apps/web`: React/Vite public intake form, request-number success state, public status page, dispatcher workspace, dispatcher AI suggestion panel, technician workspace, inventory workspace, admin staff-management workspace, and expired staff-session redirects.
+- `apps/web`: React/Vite public intake form, request-number success state, public status page, dispatcher workspace, dispatcher AI suggestion panel, technician workspace, inventory workspace, procurement workspace, owner dashboard, staff AI assistant workspace, admin staff-management workspace, and expired staff-session redirects.
 - `apps/worker`: Celery worker shell and knowledge-base embedding task boundary with deterministic/live-compatible provider selection.
 - `apps/telegram-bot`: aiogram bot for `/start <token>` Telegram opt-in linking.
 - `packages/shared-kernel`: shared domain primitives.

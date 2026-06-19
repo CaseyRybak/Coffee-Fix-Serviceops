@@ -256,6 +256,14 @@ export function buildOwnerDailyReportPath(): string {
   return "/owner/daily-report";
 }
 
+export function buildAssistantRunsPath(): string {
+  return "/assistant/runs";
+}
+
+export function buildAssistantConfirmPath(runId: number): string {
+  return `/assistant/runs/${runId}/confirm`;
+}
+
 export function buildAdminStaffPath(): string {
   return "/admin/staff";
 }
