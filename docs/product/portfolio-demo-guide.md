@@ -257,10 +257,12 @@ Phase 20 also exposes protected daily-report data for later automation, but Phas
 
 Phase 22 procurement is shipped as an internal inventory/admin workflow at `/inventory#procurement`. Demo it only with disposable inventory/admin credentials and fake suppliers, parts, and purchase requests; do not show procurement data in public customer status pages.
 
+Phase 23 Lite technician recommendations are shipped as an internal dispatcher/admin workflow. Demo them only as deterministic, explainable suggestions that can prefill manual assignment fields; do not present them as automatic dispatching, route optimization, ratings, durable availability calendars, part-readiness scoring, or AI-owned assignment.
+
 ## What Not To Demo As Shipped
 
 These are roadmap items, not completed capabilities:
 
-- richer technician profile recommendations;
+- full workforce-management recommendations beyond the Phase 23 Lite deterministic profile, workload, and scheduling-conflict foundation;
 - tool-using staff AI assistant;
 - billing, payments, telephony, GPS routing, multi-tenant SaaS, or customer accounts.

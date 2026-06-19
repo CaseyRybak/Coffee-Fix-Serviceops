@@ -4,7 +4,7 @@ This is the current operating dashboard. Historical phase chronology and older d
 
 ## Current Status
 
-Coffee Fix ServiceOps has completed implementation slices through Phase 22:
+Coffee Fix ServiceOps has completed implementation slices through Phase 23:
 
 - Public repair intake, request numbers, public status snapshots, clarification answers, and Telegram opt-in link contracts.
 - Dispatcher, staff login/RBAC, admin staff management, technician assigned-visit workflow, and inventory basics.
@@ -26,20 +26,17 @@ Coffee Fix ServiceOps has completed implementation slices through Phase 22:
 - Phase 20 owner dashboard and SLA foundation: SLA deadlines, near-deadline, overdue, and inactive states are derived from urgency/status/creation time; admin-only owner dashboard and daily-report APIs aggregate request workload, waiting-for-parts, technician workload, top issue groups, SLA risk, and low-stock risk; the web app now has an admin owner dashboard at `/owner`; public status snapshots remain free of SLA diagnostics, staff workload, inventory quantities, and internal risk labels.
 - Phase 21 operational n8n automation: protected n8n operational APIs now expose backend-owned SLA reminders, red alerts, owner daily report payloads, and low-stock alerts; deterministic operational event ids provide duplicate suppression while failed/retried deliveries can be retried in the same window; four scheduled n8n workflow exports are stored inactive for import/publish; operations docs cover `mark_sent=false` previews, import guidance, delivery evidence, and diagnostics.
 - Phase 22 procurement lite: inventory now owns supplier records, purchase request drafts, approval/order/receive/cancel states, low-stock draft creation, and procurement receipt stock movements; inventory staff can create and operate procurement requests, admin staff can approve, PostgreSQL and sqlite persistence share the workflow, and public status snapshots remain free of supplier, purchase, price, stock, and procurement-note data.
+- Phase 23 technician recommendation lite: technician profiles are linked to staff accounts, admins can maintain recommendation-active state, brand skills, regions, and internal notes, dispatchers can view deterministic recommendations with reasons and risks, optional requested appointment windows surface scheduling conflicts, risky candidates are ranked below viable available technicians, and manual dispatcher assignment remains the only confirmation path.
 
 ## Active Focus
 
-Phase 23 technician profiles and recommendation, using the existing staff directory, scheduling, inventory readiness, and technician workflow as inputs for richer technician profiles, skills, regions, workload, and explainable assignment recommendations.
-
-Phase 23 needs a detailed implementation plan before changing technician profile, scheduling, dispatcher recommendation, or frontend code. Use `docs/execution-plans/phases/23-technician-profiles-and-recommendation.md` as the slice map and keep the review gate in `docs/review/subagent-review-protocol.md`.
+Phase 24 bounded AI assistant with tools, using the completed deterministic technician recommendations, procurement workflow, scheduling, inventory, service-request, RAG, and notification boundaries as safe tool inputs.
 
 ## Next Steps
 
-1. Create a Phase 23 detailed implementation plan before changing technician profile, recommendation, scheduling, or dispatcher workflow code.
-2. Read the Phase 23 slice map, scheduling/technician/service-request domain docs, Phase 20 owner dashboard context, and current staff directory implementation before planning.
-3. Add richer technician profile data and explainable recommendation logic without letting AI assign technicians autonomously.
-4. Keep demo data and credentials safe for portfolio review: use fake customer data, disposable staff accounts, deterministic AI defaults, and no production database reset.
-5. After Phase 23, proceed to bounded AI assistant tools.
+1. Create a Phase 24 detailed implementation plan before changing assistant, tool-use, AI, dispatcher, scheduling, inventory, procurement, or frontend assistant code.
+2. Keep AI tool use bounded: read-only tools may be direct, mutating tools require explicit human confirmation.
+3. Keep demo data and credentials safe for portfolio review: use fake customer data, disposable staff accounts, deterministic AI defaults, and no production database reset.
 
 ## Current Entry Points
 
@@ -61,6 +58,7 @@ Phase 23 needs a detailed implementation plan before changing technician profile
 - Phase 20 review: `docs/review/phase-20-review.md`
 - Phase 21 review: `docs/review/phase-21-review.md`
 - Phase 22 review: `docs/review/phase-22-review.md`
+- Phase 23 review: `docs/review/phase-23-review.md`
 - Portfolio demo guide: `docs/product/portfolio-demo-guide.md`
 - Public demo launch evidence: `docs/operations/public-demo-launch-evidence.md`
 - Aeza VPS launch smoke evidence: `docs/operations/launch-smoke-evidence-2026-06-15-vps.md`
@@ -106,7 +104,7 @@ Phase 23 needs a detailed implementation plan before changing technician profile
 - PostgreSQL inventory reserve/release/consume paths lock stock and reservation rows before mutation.
 - n8n workflow records are operational artifacts. Phase 12 created live n8n workflows and repository exports; production now runs the imported workflow exports on self-hosted VPS n8n, and backend webhook emission plus delivery-result persistence are implemented.
 - The project currently uses one Telegram bot token and one staff chat for local and production. Only one polling bot instance may run with that token; production owns real `/start` traffic, and local tests should simulate opt-in through protected API calls unless production polling is intentionally paused.
-- Phases 23-24 are intentionally roadmap-level slice maps. Detailed implementation plans must still be created just in time from current code and docs before executing each phase.
+- Phase 24 remains a roadmap-level slice map. Create its detailed implementation plan just in time from current code and docs before executing the phase.
 - Production staff bootstrap uses `python -m serviceops_api.operations.bootstrap_admin`; local seed users remain disabled outside local/dev/test.
 - Portfolio demo mode is a documentation policy and walkthrough, not a runtime switch or production database reset. Public portfolio review should use fake customer data, disposable staff accounts, deterministic AI defaults, and sanitized screenshots/evidence.
 - AI and embedding providers default to deterministic mode for local development and tests; OpenAI-compatible live adapters are configurable for production through secret-backed environment variables.

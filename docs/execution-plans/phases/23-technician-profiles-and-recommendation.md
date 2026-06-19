@@ -1,14 +1,14 @@
-# Phase 23: Technician Profiles And Recommendation
+# Phase 23: Technician Profiles And Recommendation Lite
 
 > For implementation workers: create a detailed implementation plan before changing code, implement this phase as a bounded slice, then request subagent review using `docs/review/subagent-review-protocol.md`.
 
 ## Goal
 
-Add richer technician profiles and explainable technician recommendation logic.
+Add a lightweight technician profile and explainable technician recommendation foundation without turning the MVP into a full workforce-management system.
 
 ## Why This Phase Exists
 
-Scheduling currently uses staff accounts and usernames as technician identifiers. The original platform direction called for technician skills, regions, availability, workload, and recommendation reasoning. This phase creates the domain foundation needed before AI can safely recommend technicians.
+Scheduling currently uses staff accounts and usernames as technician identifiers. The original platform direction called for technician skills, regions, availability, workload, and recommendation reasoning. For the portfolio MVP, this phase is intentionally scoped down to the smallest useful foundation needed before AI can safely discuss technician choices.
 
 ## Context To Read
 
@@ -26,9 +26,9 @@ Scheduling currently uses staff accounts and usernames as technician identifiers
 ## Deliverables
 
 - Technician profile model linked to a staff account.
-- Technician skills/specializations, service regions, active flag, and optional workload metadata.
-- Dispatcher-visible technician profile management or admin-visible profile editing, depending on detailed plan.
-- Recommendation query that ranks technicians using documented rules such as skill match, region match, active workload, appointment availability, and part readiness.
+- Technician brand skills, service regions, active flag, and optional internal note.
+- Admin-visible lightweight profile editing for staff with the `technician` role.
+- Recommendation query that ranks technicians using documented rules such as brand match, region match, active profile/staff state, active appointment workload, and optional requested-window conflict checks.
 - Recommendation explanation that shows why a technician was suggested and what risks remain.
 - Dispatcher UI surface for viewing recommendations while preserving manual confirmation.
 - Tests for ranking, explanation, authorization, scheduling conflicts, and profile lifecycle.
@@ -38,6 +38,7 @@ Scheduling currently uses staff accounts and usernames as technician identifiers
 
 - This phase does not automatically assign technicians.
 - This phase does not implement GPS, route optimization, maps, mobile push, rating algorithms, payroll, or complex durable availability calendars.
+- This Lite scope does not implement part-readiness scoring or a full availability calendar.
 - AI may summarize recommendation reasoning later, but this phase should keep the recommendation engine explainable and deterministic.
 - Public status snapshots must not expose technician profile internals, private phone numbers, workload diagnostics, or recommendation reasoning.
 

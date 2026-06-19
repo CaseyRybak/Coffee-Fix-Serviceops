@@ -4,8 +4,20 @@ import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { App } from "./App";
-import { AdminPage, ProtectedAdminPage, buildAdminStaffChangeRequests } from "./features/admin/AdminPage";
-import { DispatcherPage, ProtectedDispatcherPage, filterDispatcherItems } from "./features/dispatcher/DispatcherPage";
+import {
+  AdminPage,
+  ProtectedAdminPage,
+  buildAdminStaffChangeRequests,
+  buildTechnicianProfilePayload,
+  canEditTechnicianProfile,
+} from "./features/admin/AdminPage";
+import {
+  DispatcherPage,
+  ProtectedDispatcherPage,
+  buildTechnicianRecommendationSelection,
+  buildVisitWindowDateTime,
+  filterDispatcherItems,
+} from "./features/dispatcher/DispatcherPage";
 import { ProtectedInventoryPage, ProtectedProcurementPage } from "./features/inventory/InventoryPage";
 import { OwnerDashboardPage, ProtectedOwnerDashboardPage } from "./features/owner/OwnerDashboardPage";
 import { StatusPage } from "./features/public/StatusPage";
@@ -22,6 +34,8 @@ import {
   buildAdminStaffProfilePath,
   buildAdminStaffResetPasswordPath,
   buildAdminStaffRolesPath,
+  buildAdminTechnicianProfilePath,
+  buildAdminTechnicianProfilesPath,
   buildCustomerAnswerPayload,
   buildDispatcherAppointmentCancelPath,
   buildDispatcherAppointmentPath,
@@ -34,6 +48,7 @@ import {
   buildDispatcherSchedulePath,
   buildDispatcherStatusPath,
   buildDispatcherTechnicianCandidatesPath,
+  buildDispatcherTechnicianRecommendationsPath,
   buildGenerateAiSuggestionsPath,
   buildIgnoreAiSuggestionPath,
   buildInventoryPartCompatibilityPath,
@@ -489,6 +504,18 @@ describe("App", () => {
       buildIgnoreAiSuggestionPath("CFX-20260605-000001", 12),
       "/dispatcher/service-requests/CFX-20260605-000001/ai-suggestions/12/ignore",
     );
+    assert.equal(
+      buildDispatcherTechnicianRecommendationsPath(" cfx-20260605-000001 "),
+      "/dispatcher/service-requests/CFX-20260605-000001/technician-recommendations",
+    );
+    assert.equal(
+      buildDispatcherTechnicianRecommendationsPath(
+        "CFX-20260605-000001",
+        "2026-06-19T10:00:00+03:00",
+        "2026-06-19T12:00:00+03:00",
+      ),
+      "/dispatcher/service-requests/CFX-20260605-000001/technician-recommendations?starts_at=2026-06-19T10%3A00%3A00%2B03%3A00&ends_at=2026-06-19T12%3A00%3A00%2B03%3A00",
+    );
   });
 
   it("builds technician and inventory API paths", () => {
@@ -592,6 +619,11 @@ describe("App", () => {
       "/admin/staff/admin%40coffeefix.local/reset-password",
     );
     assert.equal(buildAdminStaffAuditPath(), "/admin/staff/audit");
+    assert.equal(buildAdminTechnicianProfilesPath(), "/admin/technician-profiles");
+    assert.equal(
+      buildAdminTechnicianProfilePath("tech@coffeefix.local"),
+      "/admin/technician-profiles/tech%40coffeefix.local",
+    );
   });
 
   it("resolves one staff login landing path by role and validates next routes", () => {
@@ -973,6 +1005,22 @@ describe("App", () => {
             },
           ],
         }}
+        initialTechnicianProfiles={{
+          items: [
+            {
+              staff_username: "tech@coffeefix.local",
+              display_name: "Tech",
+              phone: "+7 999 000-10-02",
+              staff_active: false,
+              active: true,
+              skill_brands: ["Jura", "Rocket"],
+              service_regions: ["Tverskaya"],
+              notes: "Works central districts.",
+              created_at: "2026-06-19 10:00:00",
+              updated_at: "2026-06-19 10:00:00",
+            },
+          ],
+        }}
       />,
     );
 
@@ -999,6 +1047,88 @@ describe("App", () => {
     assert.match(workspaceHtml, /Телефон/);
     assert.match(workspaceHtml, /Аудит действий/);
     assert.match(workspaceHtml, /staff.deactivated/);
+    assert.match(workspaceHtml, /Профиль мастера/);
+    assert.match(workspaceHtml, /<details class="technician-profile-control"/);
+    assert.match(workspaceHtml, /<summary class="technician-profile-summary"/);
+    assert.match(workspaceHtml, /Бренды/);
+    assert.match(workspaceHtml, /Районы/);
+    assert.match(workspaceHtml, /Удалить бренд Jura/);
+    assert.match(workspaceHtml, /Удалить бренд Rocket/);
+    assert.match(workspaceHtml, /Удалить район Tverskaya/);
+    assert.match(workspaceHtml, /Добавить бренд/);
+    assert.match(workspaceHtml, /Добавить район/);
+    assert.match(workspaceHtml, /Tverskaya/);
+    assert.match(workspaceHtml, /class="technician-profile-save" type="button">Сохранить/);
+  });
+
+  it("builds trimmed technician profile payloads", () => {
+    assert.deepEqual(
+      buildTechnicianProfilePayload({
+        active: true,
+        skillBrands: [" Jura", "jura", "Rocket "],
+        serviceRegions: [" Tverskaya", "ЦАО "],
+        brandInput: "ignored draft",
+        regionInput: "ignored draft",
+        notes: "  Senior technician  ",
+      }),
+      {
+        active: true,
+        skill_brands: ["Jura", "Rocket"],
+        service_regions: ["Tverskaya", "ЦАО"],
+        notes: "Senior technician",
+      },
+    );
+  });
+
+  it("shows technician profile editing only for persisted technician staff roles", () => {
+    assert.equal(canEditTechnicianProfile(["technician"]), true);
+    assert.equal(canEditTechnicianProfile(["dispatcher", "technician"]), true);
+    assert.equal(canEditTechnicianProfile(["dispatcher"]), false);
+    assert.equal(canEditTechnicianProfile(["admin", "inventory"]), false);
+  });
+
+  it("passes preloaded technician profiles through the protected admin page", () => {
+    const html = renderToStaticMarkup(
+      <ProtectedAdminPage
+        initialSession={{ accessToken: "admin-token", username: "admin@coffeefix.local", roles: ["admin"] }}
+        initialStaff={{
+          items: [
+            {
+              username: "tech@coffeefix.local",
+              display_name: "Tech",
+              first_name: "Field",
+              last_name: "Tech",
+              phone: "+7 999 000-10-02",
+              roles: ["technician"],
+              active: true,
+              created_at: "2026-06-07 12:00:00",
+              updated_at: "2026-06-07 12:10:00",
+            },
+          ],
+        }}
+        initialAudit={{ items: [] }}
+        initialTechnicianProfiles={{
+          items: [
+            {
+              staff_username: "tech@coffeefix.local",
+              display_name: "Tech",
+              phone: "+7 999 000-10-02",
+              staff_active: true,
+              active: true,
+              skill_brands: ["Nuova Simonelli"],
+              service_regions: ["Khamovniki"],
+              notes: null,
+              created_at: "2026-06-19 10:00:00",
+              updated_at: "2026-06-19 10:00:00",
+            },
+          ],
+        }}
+      />,
+    );
+
+    assert.match(html, /Профиль мастера/);
+    assert.match(html, /Nuova Simonelli/);
+    assert.match(html, /Khamovniki/);
   });
 
   it("builds combined admin staff profile and role change requests", () => {
@@ -1133,6 +1263,105 @@ describe("App", () => {
     assert.ok(notesIndex < eventsIndex);
   });
 
+  it("renders explainable technician recommendations without automatic assignment", () => {
+    const html = renderToStaticMarkup(
+      <DispatcherPage
+        initialList={{
+          items: [
+            {
+              request_number: "CFX-20260605-000001",
+              status: "awaiting_assignment",
+              customer_name: "Anna Petrova",
+              customer_phone: "+7 999 111-22-33",
+              machine_label: "Jura E8",
+              urgency: "today",
+              address: "Tverskaya district",
+              created_at: "2026-06-05 10:00:00",
+              latest_event_title: "Готово к назначению",
+            },
+          ],
+        }}
+        initialDetail={{
+          ...dispatcherDetail,
+          status: "awaiting_assignment",
+          assignment: {
+            technician_name: null,
+            technician_phone: null,
+            technician_region: null,
+            visit_window: null,
+          },
+          appointment: null,
+        }}
+        initialTechnicianRecommendations={{
+          request: {
+            request_number: "CFX-20260605-000001",
+            brand: "Jura",
+            model: "E8",
+            address: "Tverskaya district",
+            urgency: "today",
+            status: "awaiting_assignment",
+          },
+          items: [
+            {
+              staff_username: "pavel@coffeefix.local",
+              display_name: "Pavel Sokolov",
+              phone: "+7 999 222-33-44",
+              score: 110,
+              active: true,
+              staff_active: true,
+              skill_brands: ["Jura"],
+              service_regions: ["Tverskaya"],
+              scheduled_visit_count: 0,
+              reasons: ["Brand match: Jura", "Region match: Tverskaya"],
+              risks: [
+                "No appointment window provided; schedule conflict will be checked when booking",
+                "Active scheduled visits: 2",
+                "Region mismatch for request address",
+                "Profile is inactive",
+              ],
+            },
+          ],
+        }}
+      />,
+    );
+
+    assert.match(html, /Рекомендации мастера/);
+    assert.match(html, /Pavel Sokolov/);
+    assert.match(html, /pavel@coffeefix.local/);
+    assert.match(html, /Brand match: Jura/);
+    assert.match(html, /Region match: Tverskaya/);
+    assert.match(html, /schedule conflict will be checked/);
+    assert.match(html, /Profile is inactive/);
+    assert.match(html, /Использовать в форме/);
+    assert.match(html, /Назначить мастера/);
+    assert.doesNotMatch(html, /Назначено автоматически/);
+  });
+
+  it("maps a technician recommendation into manual assignment form fields only", () => {
+    assert.deepEqual(
+      buildTechnicianRecommendationSelection({
+        staff_username: "pavel@coffeefix.local",
+        display_name: "Pavel Sokolov",
+        phone: "+7 999 111-22-33",
+        score: 120,
+        active: true,
+        staff_active: true,
+        skill_brands: ["Jura"],
+        service_regions: ["Tverskaya", "ЦАО"],
+        scheduled_visit_count: 0,
+        reasons: ["Brand match: Jura"],
+        risks: [],
+      }),
+      {
+        technicianName: "pavel@coffeefix.local",
+        technicianPhone: "+7 999 111-22-33",
+        technicianRegion: "Tverskaya",
+        appointmentTechnician: "pavel@coffeefix.local",
+        appointmentName: "Pavel Sokolov",
+      },
+    );
+  });
+
   it("renders dispatcher schedule and appointment controls", () => {
     const appointment = {
       appointment_id: 7,
@@ -1189,11 +1418,27 @@ describe("App", () => {
     assert.match(html, /Создать новое окно/);
     assert.match(html, /Перенести визит/);
     assert.match(html, /Отменить визит/);
+    assert.match(html, /Дата визита/);
+    assert.match(html, /Время с/);
+    assert.match(html, /Время по/);
+    assert.match(html, /Новая дата визита/);
+    assert.match(html, /Новое время с/);
+    assert.match(html, /Новое время по/);
+    assert.match(html, /type="date"/);
+    assert.match(html, /type="time"/);
+    assert.doesNotMatch(html, /datetime-local/);
     assert.doesNotMatch(html, />Назначение</);
     assert.doesNotMatch(html, />Расписание визита</);
     assert.match(html, /Логин мастера/);
     assert.doesNotMatch(html, /Начало ISO/);
     assert.doesNotMatch(html, /Конец ISO/);
+  });
+
+  it("builds visit window datetimes from one date and start/end times", () => {
+    assert.equal(buildVisitWindowDateTime("2026-06-16", "14:00"), "2026-06-16T14:00");
+    assert.equal(buildVisitWindowDateTime(" 2026-06-16 ", " 16:30 "), "2026-06-16T16:30");
+    assert.equal(buildVisitWindowDateTime("", "14:00"), "");
+    assert.equal(buildVisitWindowDateTime("2026-06-16", ""), "");
   });
 
   it("shows customer-safe appointment timing on public status", () => {

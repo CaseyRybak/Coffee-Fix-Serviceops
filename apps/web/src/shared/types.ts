@@ -257,6 +257,49 @@ export interface TechnicianCandidateListResponse {
   items: TechnicianCandidate[];
 }
 
+export interface TechnicianProfileItem {
+  staff_username: string;
+  display_name: string;
+  phone: string;
+  staff_active: boolean;
+  active: boolean;
+  skill_brands: string[];
+  service_regions: string[];
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface TechnicianProfileListResponse {
+  items: TechnicianProfileItem[];
+}
+
+export interface TechnicianRecommendationResponse {
+  request: {
+    request_number: string;
+    brand: string;
+    model: string | null;
+    address: string;
+    urgency: Urgency;
+    status: RequestStatus;
+  };
+  items: TechnicianRecommendationItem[];
+}
+
+export interface TechnicianRecommendationItem {
+  staff_username: string;
+  display_name: string;
+  phone: string;
+  score: number;
+  active: boolean;
+  staff_active: boolean;
+  skill_brands: string[];
+  service_regions: string[];
+  scheduled_visit_count: number;
+  reasons: string[];
+  risks: string[];
+}
+
 export interface DispatcherRequestDetail {
   request_number: string;
   status: RequestStatus;

@@ -161,3 +161,9 @@ Operational alert payloads may include request number, lifecycle status, urgency
 Procurement can be indirectly motivated by service-request work that waits for parts, but purchase requests belong to the inventory domain. Service-request public status snapshots must not expose suppliers, purchase request ids, purchase statuses, prices, stock quantities, low-stock thresholds, stock movement history, or procurement notes.
 
 Service-request lifecycle statuses such as `waiting_for_parts` remain customer-safe summaries. Internal procurement progress is visible only to authorized staff through inventory/procurement routes.
+
+## Phase 23 Lite Technician Recommendation Boundary
+
+Dispatcher technician recommendations can read service-request brand, address, urgency, status, appointment workload, and optional requested appointment window to rank technicians. This is an internal read-only dispatcher workflow.
+
+Recommendations do not change service-request status, assignment metadata, appointment rows, timeline events, notifications, inventory, or AI suggestions. Public status snapshots must not expose technician profile skills, service regions, recommendation scores, workload diagnostics, scheduling conflict reasons, or recommendation explanations.

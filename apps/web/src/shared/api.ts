@@ -105,6 +105,17 @@ export function buildDispatcherTechnicianCandidatesPath(): string {
   return "/dispatcher/technician-candidates";
 }
 
+export function buildDispatcherTechnicianRecommendationsPath(
+  requestNumber: string,
+  startsAt?: string,
+  endsAt?: string,
+): string {
+  const path = `${buildDispatcherDetailPath(requestNumber)}/technician-recommendations`;
+  if (!startsAt || !endsAt) return path;
+  const params = new URLSearchParams({ starts_at: startsAt, ends_at: endsAt });
+  return `${path}?${params.toString()}`;
+}
+
 export function buildDispatcherDetailPath(requestNumber: string): string {
   return `/dispatcher/service-requests/${encodeURIComponent(normalizeRequestNumber(requestNumber))}`;
 }
@@ -271,4 +282,12 @@ export function buildAdminStaffResetPasswordPath(username: string): string {
 
 export function buildAdminStaffAuditPath(): string {
   return "/admin/staff/audit";
+}
+
+export function buildAdminTechnicianProfilesPath(): string {
+  return "/admin/technician-profiles";
+}
+
+export function buildAdminTechnicianProfilePath(username: string): string {
+  return `/admin/technician-profiles/${encodeURIComponent(username)}`;
 }

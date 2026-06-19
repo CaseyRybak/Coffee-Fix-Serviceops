@@ -117,13 +117,21 @@ from serviceops_api.staff_management.use_cases import (
     UpdateStaffProfile,
     UpdateStaffRoles,
 )
-from serviceops_api.technicians.api import create_technician_router
+from serviceops_api.technicians.api import create_technician_profile_router, create_technician_router
+from serviceops_api.technicians.repository import (
+    PostgresTechnicianProfileRepository,
+    SqliteTechnicianProfileRepository,
+    create_technician_profile_repository,
+)
 from serviceops_api.technicians.use_cases import (
     GetTechnicianRequest,
     ListTechnicianRequests,
+    ListTechnicianProfiles,
     RecordTechnicianDiagnosis,
     RecordTechnicianPartsUsed,
     RecordTechnicianResult,
+    RecommendTechnicians,
+    UpsertTechnicianProfile,
 )
 
 
@@ -133,6 +141,7 @@ def create_app(
     ai_suggestion_repository: SqliteAiSuggestionRepository | PostgresAiSuggestionRepository | None = None,
     inventory_repository: SqliteInventoryRepository | PostgresInventoryRepository | None = None,
     staff_account_repository: SqliteStaffAccountRepository | PostgresStaffAccountRepository | None = None,
+    technician_profile_repository: SqliteTechnicianProfileRepository | PostgresTechnicianProfileRepository | None = None,
     notification_repository: SqliteNotificationRepository | PostgresNotificationRepository | None = None,
     n8n_client: N8nDeliveryClient | None = None,
     n8n_callback_secret: str | None = None,
@@ -155,6 +164,7 @@ def create_app(
         or ai_suggestion_repository is not None
         or inventory_repository is not None
         or staff_account_repository is not None
+        or technician_profile_repository is not None
         or notification_repository is not None
         or n8n_client is not None
     )
@@ -178,6 +188,11 @@ def create_app(
         SqliteStaffAccountRepository.in_memory()
         if has_injected_repository
         else create_staff_account_repository(settings)
+    )
+    technician_profile_store = technician_profile_repository or (
+        SqliteTechnicianProfileRepository.in_memory()
+        if has_injected_repository
+        else create_technician_profile_repository(settings)
     )
     notification_store = notification_repository or (
         SqliteNotificationRepository.in_memory()
@@ -278,6 +293,15 @@ def create_app(
             AcceptAiClarificationSuggestion(repository, ai_repository),
             IgnoreAiSuggestion(ai_repository),
             staff_dependency=require_staff_role("dispatcher", authenticator),
+        )
+    )
+    app.include_router(
+        create_technician_profile_router(
+            ListTechnicianProfiles(technician_profile_store, staff_account_store),
+            UpsertTechnicianProfile(technician_profile_store, staff_account_store),
+            RecommendTechnicians(repository, technician_profile_store, staff_account_store),
+            admin_dependency=require_staff_role("admin", authenticator),
+            dispatcher_dependency=require_staff_role("dispatcher", authenticator),
         )
     )
     app.include_router(

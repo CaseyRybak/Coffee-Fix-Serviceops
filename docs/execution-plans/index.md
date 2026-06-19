@@ -8,7 +8,7 @@ Before executing any phase, create a detailed implementation plan for that speci
 
 ## Active Phase
 
-- Phase 23: `phases/23-technician-profiles-and-recommendation.md`.
+- Phase 24: `phases/24-ai-assistant-with-tools.md`.
 
 The active phase points to the next phase ready for implementation planning or execution. `phases/` contains all phase slice maps, not only active work.
 
@@ -18,11 +18,11 @@ Post-Phase-16 roadmap context is preserved in `roadmap-after-phase-16.md`. Use i
 
 Detailed implementation plans are created just in time in `detailed/`.
 
-Current detailed plan: none. Create a Phase 23 detailed implementation plan before changing technician recommendation code.
+Current detailed plan: none. Create a Phase 24 detailed implementation plan before changing assistant or tool-use code.
 
 Create later detailed implementation plans just in time before each future phase. Do not pre-write detailed plans for Phases 18-24 until their turn starts and the current code has been re-read.
 
-Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`, `detailed/04-dispatcher-mvp-implementation.md`, `detailed/05-staff-access-and-roles-implementation.md`, `detailed/06-knowledge-base-rag-implementation.md`, `detailed/07-ai-agent-workflows-implementation.md`, `detailed/08-technician-and-inventory-implementation.md`, `detailed/09-staff-admin-and-user-management-implementation.md`, `detailed/10-deployment-and-operations-implementation.md`, `detailed/11-production-launch-readiness-implementation.md`, `detailed/12-notification-automation-implementation.md`, `detailed/13-live-ai-provider-and-knowledge-base-content-implementation.md`, `detailed/14-operational-hardening-implementation.md`, `detailed/15-scheduling-depth-implementation.md`, `detailed/16-inventory-reservations-implementation.md`, `detailed/17-public-demo-and-launch-closure-implementation.md`, `detailed/18-portfolio-packaging-and-demo-mode-implementation.md`, `detailed/19-frontend-workspace-decomposition-implementation.md`, `detailed/20-owner-dashboard-and-sla-foundation-implementation.md`, `detailed/21-operational-n8n-automation-implementation.md`, `detailed/22-procurement-lite-implementation.md`.
+Completed detailed plans: `detailed/00-repository-harness-implementation.md`, `detailed/01-foundation-runtime-implementation.md`, `detailed/02-service-request-intake-implementation.md`, `detailed/03-client-status-and-notifications-implementation.md`, `detailed/03a-postgres-persistence-implementation.md`, `detailed/04-dispatcher-mvp-implementation.md`, `detailed/05-staff-access-and-roles-implementation.md`, `detailed/06-knowledge-base-rag-implementation.md`, `detailed/07-ai-agent-workflows-implementation.md`, `detailed/08-technician-and-inventory-implementation.md`, `detailed/09-staff-admin-and-user-management-implementation.md`, `detailed/10-deployment-and-operations-implementation.md`, `detailed/11-production-launch-readiness-implementation.md`, `detailed/12-notification-automation-implementation.md`, `detailed/13-live-ai-provider-and-knowledge-base-content-implementation.md`, `detailed/14-operational-hardening-implementation.md`, `detailed/15-scheduling-depth-implementation.md`, `detailed/16-inventory-reservations-implementation.md`, `detailed/17-public-demo-and-launch-closure-implementation.md`, `detailed/18-portfolio-packaging-and-demo-mode-implementation.md`, `detailed/19-frontend-workspace-decomposition-implementation.md`, `detailed/20-owner-dashboard-and-sla-foundation-implementation.md`, `detailed/21-operational-n8n-automation-implementation.md`, `detailed/22-procurement-lite-implementation.md`, `detailed/23-lite-technician-recommendation-foundation.md`.
 
 ## Phase Sequence
 

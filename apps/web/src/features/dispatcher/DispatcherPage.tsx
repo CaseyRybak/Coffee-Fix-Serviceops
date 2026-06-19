@@ -16,6 +16,7 @@ import {
   buildDispatcherSchedulePath,
   buildDispatcherStatusPath,
   buildDispatcherTechnicianCandidatesPath,
+  buildDispatcherTechnicianRecommendationsPath,
   buildGenerateAiSuggestionsPath,
   buildIgnoreAiSuggestionPath,
   buildInventoryLowStockPath,
@@ -42,6 +43,8 @@ import type {
   StaffSession,
   TechnicianCandidate,
   TechnicianCandidateListResponse,
+  TechnicianRecommendationItem,
+  TechnicianRecommendationResponse,
 } from "../../shared/types";
 import { WorkspaceHeader } from "../../shared/ui";
 
@@ -57,11 +60,29 @@ export function filterDispatcherItems(
   });
 }
 
+export function buildVisitWindowDateTime(date: string, time: string): string {
+  const day = date.trim();
+  const clock = time.trim();
+  if (!day || !clock) return "";
+  return `${day}T${clock}`;
+}
+
+export function buildTechnicianRecommendationSelection(recommendation: TechnicianRecommendationItem) {
+  return {
+    technicianName: recommendation.staff_username,
+    technicianPhone: recommendation.phone,
+    technicianRegion: recommendation.service_regions[0] ?? "",
+    appointmentTechnician: recommendation.staff_username,
+    appointmentName: recommendation.display_name,
+  };
+}
+
 export function DispatcherPage({
   initialList,
   initialDetail,
   initialSchedule,
   initialTechnicianCandidates,
+  initialTechnicianRecommendations,
   session,
   onLogout,
 }: {
@@ -69,6 +90,7 @@ export function DispatcherPage({
   initialDetail?: DispatcherRequestDetail;
   initialSchedule?: ScheduleListResponse;
   initialTechnicianCandidates?: TechnicianCandidateListResponse;
+  initialTechnicianRecommendations?: TechnicianRecommendationResponse;
   session?: StaffSession | null;
   onLogout?: () => void;
 }) {
@@ -76,6 +98,9 @@ export function DispatcherPage({
   const [schedule, setSchedule] = useState<ScheduleListResponse>(initialSchedule ?? { items: [] });
   const [technicianCandidates, setTechnicianCandidates] = useState<TechnicianCandidateListResponse>(
     initialTechnicianCandidates ?? { items: [] },
+  );
+  const [technicianRecommendations, setTechnicianRecommendations] = useState<TechnicianRecommendationResponse | null>(
+    initialTechnicianRecommendations ?? null,
   );
   const [lowStock, setLowStock] = useState<InventoryPartListResponse>({ items: [] });
   const [selected, setSelected] = useState(initialDetail?.request_number ?? initialList?.items[0]?.request_number ?? "");
@@ -90,11 +115,13 @@ export function DispatcherPage({
   const [visitWindow, setVisitWindow] = useState("");
   const [appointmentTechnician, setAppointmentTechnician] = useState("technician@coffeefix.local");
   const [appointmentName, setAppointmentName] = useState("");
-  const [appointmentStart, setAppointmentStart] = useState("");
-  const [appointmentEnd, setAppointmentEnd] = useState("");
+  const [appointmentDate, setAppointmentDate] = useState("");
+  const [appointmentStartTime, setAppointmentStartTime] = useState("");
+  const [appointmentEndTime, setAppointmentEndTime] = useState("");
   const [appointmentLabel, setAppointmentLabel] = useState("");
-  const [rescheduleStart, setRescheduleStart] = useState("");
-  const [rescheduleEnd, setRescheduleEnd] = useState("");
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleStartTime, setRescheduleStartTime] = useState("");
+  const [rescheduleEndTime, setRescheduleEndTime] = useState("");
   const [rescheduleLabel, setRescheduleLabel] = useState("");
   const [rescheduleReason, setRescheduleReason] = useState("");
   const [cancelReason, setCancelReason] = useState("");
@@ -154,6 +181,24 @@ export function DispatcherPage({
     return body;
   }
 
+  async function loadTechnicianRecommendations(requestNumber: string) {
+    if (!requestNumber) return null;
+    const appointmentStart = buildVisitWindowDateTime(appointmentDate, appointmentStartTime);
+    const appointmentEnd = buildVisitWindowDateTime(appointmentDate, appointmentEndTime);
+    const startsAt = appointmentStart ? toApiDateTime(appointmentStart) : undefined;
+    const endsAt = appointmentEnd ? toApiDateTime(appointmentEnd) : undefined;
+    const response = await fetch(
+      `${apiBaseUrl()}${buildDispatcherTechnicianRecommendationsPath(requestNumber, startsAt, endsAt)}`,
+      {
+        headers: staffAuthHeaders(session),
+      },
+    );
+    assertStaffResponse(response, "Technician recommendations");
+    const body = (await response.json()) as TechnicianRecommendationResponse;
+    setTechnicianRecommendations(body);
+    return body;
+  }
+
   async function loadDetail(requestNumber: string) {
     if (!requestNumber) return;
     const response = await fetch(`${apiBaseUrl()}${buildDispatcherDetailPath(requestNumber)}`, {
@@ -171,7 +216,10 @@ export function DispatcherPage({
     try {
       await Promise.all([loadList(), loadSchedule(), loadLowStock()]);
       await loadTechnicianCandidates();
-      if (requestNumber) await loadDetail(requestNumber);
+      if (requestNumber) {
+        await loadDetail(requestNumber);
+        await loadTechnicianRecommendations(requestNumber);
+      }
     } catch {
       setMessage("Не удалось обновить диспетчерские данные.");
     } finally {
@@ -186,7 +234,9 @@ export function DispatcherPage({
 
   useEffect(() => {
     if (!selected || selected === detail?.request_number) return;
-    void loadDetail(selected).catch(() => setMessage("Не удалось открыть заявку."));
+    void Promise.all([loadDetail(selected), loadTechnicianRecommendations(selected)]).catch(() =>
+      setMessage("Не удалось открыть заявку."),
+    );
   }, [selected, detail?.request_number]);
 
   async function postAction(path: string, body: object, afterSuccess: () => void, successMessage: string) {
@@ -261,14 +311,15 @@ export function DispatcherPage({
       {
         technician_identifier: appointmentTechnician.trim(),
         technician_name: appointmentName.trim() || undefined,
-        starts_at: toApiDateTime(appointmentStart),
-        ends_at: toApiDateTime(appointmentEnd),
+        starts_at: toApiDateTime(buildVisitWindowDateTime(appointmentDate, appointmentStartTime)),
+        ends_at: toApiDateTime(buildVisitWindowDateTime(appointmentDate, appointmentEndTime)),
         window_label: appointmentLabel.trim() || undefined,
       },
       () => {
         setAppointmentName("");
-        setAppointmentStart("");
-        setAppointmentEnd("");
+        setAppointmentDate("");
+        setAppointmentStartTime("");
+        setAppointmentEndTime("");
         setAppointmentLabel("");
       },
       "Визит запланирован.",
@@ -281,14 +332,15 @@ export function DispatcherPage({
     await postAction(
       buildDispatcherAppointmentReschedulePath(detail.request_number, detail.appointment.appointment_id),
       {
-        starts_at: toApiDateTime(rescheduleStart),
-        ends_at: toApiDateTime(rescheduleEnd),
+        starts_at: toApiDateTime(buildVisitWindowDateTime(rescheduleDate, rescheduleStartTime)),
+        ends_at: toApiDateTime(buildVisitWindowDateTime(rescheduleDate, rescheduleEndTime)),
         window_label: rescheduleLabel.trim() || undefined,
         reason: rescheduleReason.trim() || undefined,
       },
       () => {
-        setRescheduleStart("");
-        setRescheduleEnd("");
+        setRescheduleDate("");
+        setRescheduleStartTime("");
+        setRescheduleEndTime("");
         setRescheduleLabel("");
         setRescheduleReason("");
       },
@@ -364,6 +416,15 @@ export function DispatcherPage({
     }
     setTechnicianName(username);
     setAppointmentTechnician(username);
+  }
+
+  function selectTechnicianRecommendation(recommendation: TechnicianRecommendationItem) {
+    const selection = buildTechnicianRecommendationSelection(recommendation);
+    setTechnicianName(selection.technicianName);
+    setTechnicianPhone(selection.technicianPhone);
+    setTechnicianRegion(selection.technicianRegion);
+    setAppointmentTechnician(selection.appointmentTechnician);
+    setAppointmentName(selection.appointmentName);
   }
 
   const pendingAiSuggestions = detail?.ai_suggestions?.filter((suggestion) => suggestion.status === "pending") ?? [];
@@ -722,6 +783,48 @@ export function DispatcherPage({
                       </div>
                     </div>
                     <div className="visit-workspace">
+                      <div className="visit-panel technician-recommendations-panel">
+                        <div className="dispatcher-card-heading">
+                          <strong>Рекомендации мастера</strong>
+                          <span>{technicianRecommendations?.items.length ?? 0}</span>
+                        </div>
+                        <button
+                          className="secondary-status-button"
+                          type="button"
+                          onClick={() => detail && void loadTechnicianRecommendations(detail.request_number)}
+                          disabled={loading}
+                        >
+                          Обновить рекомендации
+                        </button>
+                        {technicianRecommendations?.items.length ? (
+                          <div className="technician-recommendation-list">
+                            {technicianRecommendations.items.slice(0, 3).map((recommendation) => (
+                              <article className="technician-recommendation-card" key={recommendation.staff_username}>
+                                <div>
+                                  <strong>{recommendation.display_name}</strong>
+                                  <span>{recommendation.staff_username}</span>
+                                  <small>
+                                    Балл {recommendation.score} · визитов {recommendation.scheduled_visit_count}
+                                  </small>
+                                </div>
+                                <div className="recommendation-signals">
+                                  {recommendation.reasons.map((reason) => (
+                                    <span className="recommendation-reason" key={reason}>{reason}</span>
+                                  ))}
+                                  {recommendation.risks.map((risk) => (
+                                    <span className="recommendation-risk" key={risk}>{risk}</span>
+                                  ))}
+                                </div>
+                                <button type="button" onClick={() => selectTechnicianRecommendation(recommendation)}>
+                                  Использовать в форме
+                                </button>
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <p>Профили мастеров пока не настроены.</p>
+                        )}
+                      </div>
                       <div className="visit-panel">
                         <strong>Мастер и первичное окно</strong>
                         <form className="dispatcher-form" onSubmit={submitAssignment}>
@@ -762,22 +865,46 @@ export function DispatcherPage({
                         <form className="dispatcher-form compact-form" onSubmit={submitAppointment}>
                           <input value={appointmentTechnician} onChange={(event) => setAppointmentTechnician(event.target.value)} placeholder="Логин мастера" required />
                           <input value={appointmentName} onChange={(event) => setAppointmentName(event.target.value)} placeholder="Имя для расписания" />
-                          <input value={appointmentStart} onChange={(event) => setAppointmentStart(event.target.value)} aria-label="Начало визита" required type="datetime-local" />
-                          <input value={appointmentEnd} onChange={(event) => setAppointmentEnd(event.target.value)} aria-label="Конец визита" required type="datetime-local" />
+                          <label className="visit-date-field">
+                            <span>Дата визита</span>
+                            <input value={appointmentDate} onChange={(event) => setAppointmentDate(event.target.value)} aria-label="Дата визита" required type="date" />
+                          </label>
+                          <div className="visit-time-range" aria-label="Время визита">
+                            <label>
+                              <span>Время с</span>
+                              <input value={appointmentStartTime} onChange={(event) => setAppointmentStartTime(event.target.value)} aria-label="Время с" required step="900" type="time" />
+                            </label>
+                            <label>
+                              <span>Время по</span>
+                              <input value={appointmentEndTime} onChange={(event) => setAppointmentEndTime(event.target.value)} aria-label="Время по" required step="900" type="time" />
+                            </label>
+                          </div>
                           <input value={appointmentLabel} onChange={(event) => setAppointmentLabel(event.target.value)} placeholder="Метка окна" />
                           <button className="submit-button" type="submit">{detail.appointment ? "Создать новое окно" : "Создать визит"}</button>
                         </form>
                         {detail.appointment ? (
                           <>
                             <form className="dispatcher-form compact-form" onSubmit={submitReschedule}>
-                              <input value={rescheduleStart} onChange={(event) => setRescheduleStart(event.target.value)} aria-label="Новое начало визита" required type="datetime-local" />
-                              <input value={rescheduleEnd} onChange={(event) => setRescheduleEnd(event.target.value)} aria-label="Новый конец визита" required type="datetime-local" />
+                              <label className="visit-date-field">
+                                <span>Новая дата визита</span>
+                                <input value={rescheduleDate} onChange={(event) => setRescheduleDate(event.target.value)} aria-label="Новая дата визита" required type="date" />
+                              </label>
+                              <div className="visit-time-range" aria-label="Новое время визита">
+                                <label>
+                                  <span>Новое время с</span>
+                                  <input value={rescheduleStartTime} onChange={(event) => setRescheduleStartTime(event.target.value)} aria-label="Новое время с" required step="900" type="time" />
+                                </label>
+                                <label>
+                                  <span>Новое время по</span>
+                                  <input value={rescheduleEndTime} onChange={(event) => setRescheduleEndTime(event.target.value)} aria-label="Новое время по" required step="900" type="time" />
+                                </label>
+                              </div>
                               <input value={rescheduleLabel} onChange={(event) => setRescheduleLabel(event.target.value)} placeholder="Новая метка" />
-                              <input value={rescheduleReason} onChange={(event) => setRescheduleReason(event.target.value)} placeholder="Причина переноса" />
+                              <input className="wide-field" value={rescheduleReason} onChange={(event) => setRescheduleReason(event.target.value)} placeholder="Причина переноса" />
                               <button className="submit-button" type="submit">Перенести визит</button>
                             </form>
                             <form className="dispatcher-form compact-form" onSubmit={submitCancelAppointment}>
-                              <input value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Причина отмены" />
+                              <input className="wide-field" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Причина отмены" />
                               <button className="secondary-status-button" type="submit">Отменить визит</button>
                             </form>
                           </>

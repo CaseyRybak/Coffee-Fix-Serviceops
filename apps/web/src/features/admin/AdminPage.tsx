@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
-import { LogIn, Shield } from "lucide-react";
+import type { FormEvent, KeyboardEvent } from "react";
+import { ChevronDown, LogIn, Plus, Shield, X } from "lucide-react";
 
 import {
   apiBaseUrl,
@@ -11,10 +11,20 @@ import {
   buildAdminStaffProfilePath,
   buildAdminStaffResetPasswordPath,
   buildAdminStaffRolesPath,
+  buildAdminTechnicianProfilePath,
+  buildAdminTechnicianProfilesPath,
 } from "../../shared/api";
 import { formatCompactDateTime } from "../../shared/formatters";
 import { buildStaffLoginPath, clearStaffSession, getStoredStaffSession, staffAuthHeaders, staffHasRole } from "../../shared/staffAuth";
-import type { StaffAccountItem, StaffAccountListResponse, StaffAuditListResponse, StaffRole, StaffSession } from "../../shared/types";
+import type {
+  StaffAccountItem,
+  StaffAccountListResponse,
+  StaffAuditListResponse,
+  StaffRole,
+  StaffSession,
+  TechnicianProfileItem,
+  TechnicianProfileListResponse,
+} from "../../shared/types";
 import { WorkspaceHeader } from "../../shared/ui";
 
 const staffRoleOptions: StaffRole[] = ["admin", "dispatcher", "technician", "inventory"];
@@ -25,12 +35,122 @@ interface StaffProfileDraft {
   phone: string;
 }
 
+interface TechnicianProfileDraft {
+  active: boolean;
+  skillBrands: string[];
+  serviceRegions: string[];
+  brandInput: string;
+  regionInput: string;
+  notes: string;
+}
+
 function staffProfileDraft(account: StaffAccountItem): StaffProfileDraft {
   return {
     firstName: account.first_name,
     lastName: account.last_name,
     phone: account.phone,
   };
+}
+
+function technicianProfileDraft(profile?: TechnicianProfileItem): TechnicianProfileDraft {
+  return {
+    active: profile?.active ?? true,
+    skillBrands: profile?.skill_brands ?? [],
+    serviceRegions: profile?.service_regions ?? [],
+    brandInput: "",
+    regionInput: "",
+    notes: profile?.notes ?? "",
+  };
+}
+
+function splitProfileText(value: string): string[] {
+  return value
+    .split(/[,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeProfileItems(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  values
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .forEach((item) => {
+      const key = item.toLocaleLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      result.push(item);
+    });
+  return result;
+}
+
+export function buildTechnicianProfilePayload(profile: TechnicianProfileDraft) {
+  return {
+    active: profile.active,
+    skill_brands: normalizeProfileItems(profile.skillBrands),
+    service_regions: normalizeProfileItems(profile.serviceRegions),
+    notes: profile.notes.trim() || undefined,
+  };
+}
+
+function formatProfileCount(count: number, one: string, few: string, many: string): string {
+  if (count % 10 === 1 && count % 100 !== 11) return `${count} ${one}`;
+  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return `${count} ${few}`;
+  return `${count} ${many}`;
+}
+
+function ProfileChipEditor({
+  label,
+  addLabel,
+  placeholder,
+  values,
+  inputValue,
+  onInputChange,
+  onAdd,
+  onRemove,
+}: {
+  label: string;
+  addLabel: string;
+  placeholder: string;
+  values: string[];
+  inputValue: string;
+  onInputChange: (value: string) => void;
+  onAdd: () => void;
+  onRemove: (value: string) => void;
+}) {
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    onAdd();
+  }
+
+  return (
+    <div className="technician-profile-chip-editor">
+      <span>{label}</span>
+      <div className="technician-profile-chip-list" aria-label={label}>
+        {values.map((value) => (
+          <button
+            className="technician-profile-chip"
+            key={value}
+            type="button"
+            aria-label={`Удалить ${label.toLocaleLowerCase().slice(0, -1)} ${value}`}
+            onClick={() => onRemove(value)}
+          >
+            {value}
+            <X aria-hidden="true" />
+          </button>
+        ))}
+      </div>
+      <div className="technician-profile-add-row">
+        <input value={inputValue} onChange={(event) => onInputChange(event.target.value)} onKeyDown={handleKeyDown} placeholder={placeholder} />
+        <button type="button" onClick={onAdd} aria-label={addLabel}>
+          <Plus aria-hidden="true" />
+          {addLabel}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function buildAdminStaffChangeRequests(username: string, profile: StaffProfileDraft, roles: StaffRole[]) {
@@ -50,20 +170,29 @@ export function buildAdminStaffChangeRequests(username: string, profile: StaffPr
   ];
 }
 
+export function canEditTechnicianProfile(roles: StaffRole[]): boolean {
+  return roles.includes("technician");
+}
+
 export function AdminPage({
   initialSession,
   initialStaff,
   initialAudit,
+  initialTechnicianProfiles,
   onLogout,
 }: {
   initialSession?: StaffSession | null;
   initialStaff?: StaffAccountListResponse;
   initialAudit?: StaffAuditListResponse;
+  initialTechnicianProfiles?: TechnicianProfileListResponse;
   onLogout?: () => void;
 }) {
   const session = initialSession ?? getStoredStaffSession();
   const [staff, setStaff] = useState<StaffAccountListResponse>(initialStaff ?? { items: [] });
   const [audit, setAudit] = useState<StaffAuditListResponse>(initialAudit ?? { items: [] });
+  const [technicianProfiles, setTechnicianProfiles] = useState<TechnicianProfileListResponse>(
+    initialTechnicianProfiles ?? { items: [] },
+  );
   const [username, setUsername] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -75,6 +204,9 @@ export function AdminPage({
   );
   const [profileDrafts, setProfileDrafts] = useState<Record<string, StaffProfileDraft>>(() =>
     Object.fromEntries((initialStaff?.items ?? []).map((item) => [item.username, staffProfileDraft(item)])),
+  );
+  const [technicianProfileDrafts, setTechnicianProfileDrafts] = useState<Record<string, TechnicianProfileDraft>>(() =>
+    Object.fromEntries((initialTechnicianProfiles?.items ?? []).map((item) => [item.staff_username, technicianProfileDraft(item)])),
   );
   const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -97,12 +229,26 @@ export function AdminPage({
     setAudit(body);
   }
 
+  async function loadTechnicianProfiles() {
+    const response = await fetch(`${apiBaseUrl()}${buildAdminTechnicianProfilesPath()}`, {
+      headers: staffAuthHeaders(session),
+    });
+    if (!response.ok) throw new Error(`Technician profiles list failed with ${response.status}`);
+    const body = (await response.json()) as TechnicianProfileListResponse;
+    setTechnicianProfiles(body);
+    setTechnicianProfileDrafts(
+      Object.fromEntries(body.items.map((item) => [item.staff_username, technicianProfileDraft(item)])),
+    );
+    return body;
+  }
+
   async function refresh() {
     setLoading(true);
     setMessage(null);
     try {
       await loadStaff();
       await loadAudit();
+      await loadTechnicianProfiles();
     } catch {
       setMessage("Не удалось обновить учетные записи сотрудников.");
     } finally {
@@ -111,9 +257,9 @@ export function AdminPage({
   }
 
   useEffect(() => {
-    if (initialStaff || initialAudit) return;
+    if (initialStaff || initialAudit || initialTechnicianProfiles) return;
     void refresh();
-  }, [initialStaff, initialAudit]);
+  }, [initialStaff, initialAudit, initialTechnicianProfiles]);
 
   function toggleRole(roles: StaffRole[], role: StaffRole): StaffRole[] {
     const next = roles.includes(role) ? roles.filter((item) => item !== role) : [...roles, role];
@@ -203,6 +349,60 @@ export function AdminPage({
     }
   }
 
+  async function postTechnicianProfile(username: string, profile: TechnicianProfileDraft) {
+    await postAdminAction(
+      buildAdminTechnicianProfilePath(username),
+      buildTechnicianProfilePayload(profile),
+      "Профиль мастера сохранен.",
+    );
+  }
+
+  function technicianDraftFor(username: string, current: Record<string, TechnicianProfileDraft>) {
+    const profile = technicianProfiles.items.find((item) => item.staff_username === username);
+    return current[username] ?? technicianProfileDraft(profile);
+  }
+
+  function patchTechnicianDraft(username: string, patch: Partial<TechnicianProfileDraft>) {
+    setTechnicianProfileDrafts((current) => {
+      const draft = technicianDraftFor(username, current);
+      return { ...current, [username]: { ...draft, ...patch } };
+    });
+  }
+
+  function addTechnicianProfileItems(
+    username: string,
+    valueField: "skillBrands" | "serviceRegions",
+    inputField: "brandInput" | "regionInput",
+  ) {
+    setTechnicianProfileDrafts((current) => {
+      const draft = technicianDraftFor(username, current);
+      const nextItems = splitProfileText(draft[inputField]);
+      if (nextItems.length === 0) return current;
+      return {
+        ...current,
+        [username]: {
+          ...draft,
+          [valueField]: normalizeProfileItems([...draft[valueField], ...nextItems]),
+          [inputField]: "",
+        },
+      };
+    });
+  }
+
+  function removeTechnicianProfileItem(username: string, valueField: "skillBrands" | "serviceRegions", value: string) {
+    setTechnicianProfileDrafts((current) => {
+      const draft = technicianDraftFor(username, current);
+      const removedKey = value.toLocaleLowerCase();
+      return {
+        ...current,
+        [username]: {
+          ...draft,
+          [valueField]: draft[valueField].filter((item) => item.toLocaleLowerCase() !== removedKey),
+        },
+      };
+    });
+  }
+
   return (
     <div className="app-page dispatcher-page admin-page">
       <WorkspaceHeader session={session} onLogout={onLogout} />
@@ -235,6 +435,9 @@ export function AdminPage({
                   staff.items.map((account) => {
                     const draftRoles = roleDrafts[account.username] ?? account.roles;
                     const draftProfile = profileDrafts[account.username] ?? staffProfileDraft(account);
+                    const technicianProfile = technicianProfiles.items.find((item) => item.staff_username === account.username);
+                    const technicianDraft =
+                      technicianProfileDrafts[account.username] ?? technicianProfileDraft(technicianProfile);
                     return (
                       <article className={account.active ? "admin-staff-row" : "admin-staff-row inactive"} key={account.username}>
                         <div className="admin-staff-identity">
@@ -338,6 +541,65 @@ export function AdminPage({
                             Сбросить пароль
                           </button>
                         </div>
+                        {canEditTechnicianProfile(account.roles) ? (
+                          <details className="technician-profile-control" aria-label={`Профиль мастера ${account.username}`}>
+                            <summary className="technician-profile-summary">
+                              <span>
+                                <strong>Профиль мастера</strong>
+                                <small>
+                                  {formatProfileCount(technicianDraft.skillBrands.length, "бренд", "бренда", "брендов")} ·{" "}
+                                  {formatProfileCount(technicianDraft.serviceRegions.length, "район", "района", "районов")}
+                                </small>
+                              </span>
+                              <span className={technicianDraft.active ? "technician-profile-status active" : "technician-profile-status"}>
+                                {technicianDraft.active ? "В рекомендациях" : "Выключен"}
+                              </span>
+                              <ChevronDown aria-hidden="true" />
+                            </summary>
+                            <div className="technician-profile-panel">
+                              <label className="technician-profile-toggle">
+                                <input checked={technicianDraft.active} type="checkbox" onChange={(event) => patchTechnicianDraft(account.username, { active: event.target.checked })} />
+                                Участвует в рекомендациях
+                              </label>
+                              <ProfileChipEditor
+                                label="Бренды"
+                                addLabel="Добавить бренд"
+                                placeholder="Jura, Rocket"
+                                values={technicianDraft.skillBrands}
+                                inputValue={technicianDraft.brandInput}
+                                onInputChange={(value) => patchTechnicianDraft(account.username, { brandInput: value })}
+                                onAdd={() => addTechnicianProfileItems(account.username, "skillBrands", "brandInput")}
+                                onRemove={(value) => removeTechnicianProfileItem(account.username, "skillBrands", value)}
+                              />
+                              <ProfileChipEditor
+                                label="Районы"
+                                addLabel="Добавить район"
+                                placeholder="ЦАО, Хамовники"
+                                values={technicianDraft.serviceRegions}
+                                inputValue={technicianDraft.regionInput}
+                                onInputChange={(value) => patchTechnicianDraft(account.username, { regionInput: value })}
+                                onAdd={() => addTechnicianProfileItems(account.username, "serviceRegions", "regionInput")}
+                                onRemove={(value) => removeTechnicianProfileItem(account.username, "serviceRegions", value)}
+                              />
+                              <textarea
+                                className="technician-profile-note"
+                                value={technicianDraft.notes}
+                                onChange={(event) => patchTechnicianDraft(account.username, { notes: event.target.value })}
+                                placeholder="Внутренняя заметка"
+                                rows={2}
+                              />
+                              <div className="technician-profile-actions">
+                                <button
+                                  className="technician-profile-save"
+                                  type="button"
+                                  onClick={() => void postTechnicianProfile(account.username, technicianDraft)}
+                                >
+                                  Сохранить
+                                </button>
+                              </div>
+                            </div>
+                          </details>
+                        ) : null}
                       </article>
                     );
                   })
@@ -409,11 +671,13 @@ export function ProtectedAdminPage({
   initialSession,
   initialStaff,
   initialAudit,
+  initialTechnicianProfiles,
 }: {
   hasSession?: boolean;
   initialSession?: StaffSession | null;
   initialStaff?: StaffAccountListResponse;
   initialAudit?: StaffAuditListResponse;
+  initialTechnicianProfiles?: TechnicianProfileListResponse;
 }) {
   const [session, setSession] = useState<StaffSession | null>(() => {
     if (initialSession !== undefined) return initialSession;
@@ -460,5 +724,13 @@ export function ProtectedAdminPage({
     );
   }
 
-  return <AdminPage initialSession={session} onLogout={logout} initialStaff={initialStaff} initialAudit={initialAudit} />;
+  return (
+    <AdminPage
+      initialSession={session}
+      onLogout={logout}
+      initialStaff={initialStaff}
+      initialAudit={initialAudit}
+      initialTechnicianProfiles={initialTechnicianProfiles}
+    />
+  );
 }

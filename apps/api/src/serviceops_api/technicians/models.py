@@ -89,3 +89,77 @@ class TechnicianActionResponse(BaseModel):
     request_number: str
     status: RequestStatus
     message: str
+
+
+def _clean_text_list(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        cleaned = value.strip()
+        if not cleaned:
+            continue
+        key = cleaned.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(cleaned)
+    return result
+
+
+class TechnicianProfilePayload(BaseModel):
+    active: bool = True
+    skill_brands: list[str] = Field(default_factory=list, max_length=12)
+    service_regions: list[str] = Field(default_factory=list, max_length=12)
+    notes: str | None = Field(default=None, max_length=500)
+
+    _clean_notes = field_validator("notes")(_clean_optional)
+
+    @field_validator("skill_brands", "service_regions")
+    @classmethod
+    def _clean_lists(cls, values: list[str]) -> list[str]:
+        return _clean_text_list(values)
+
+
+class TechnicianProfileSnapshot(BaseModel):
+    staff_username: str
+    display_name: str
+    phone: str
+    staff_active: bool
+    active: bool
+    skill_brands: list[str]
+    service_regions: list[str]
+    notes: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class TechnicianProfileListResponse(BaseModel):
+    items: list[TechnicianProfileSnapshot]
+
+
+class TechnicianRecommendationRequestSnapshot(BaseModel):
+    request_number: str
+    brand: str
+    model: str | None
+    address: str
+    urgency: Urgency
+    status: RequestStatus
+
+
+class TechnicianRecommendationItem(BaseModel):
+    staff_username: str
+    display_name: str
+    phone: str
+    score: int
+    active: bool
+    staff_active: bool
+    skill_brands: list[str]
+    service_regions: list[str]
+    scheduled_visit_count: int
+    reasons: list[str]
+    risks: list[str]
+
+
+class TechnicianRecommendationResponse(BaseModel):
+    request: TechnicianRecommendationRequestSnapshot
+    items: list[TechnicianRecommendationItem]

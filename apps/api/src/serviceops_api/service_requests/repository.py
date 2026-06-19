@@ -634,6 +634,41 @@ class ServiceRequestRepository:
             raise KeyError(request_number)
         return self._dispatcher_detail(request)
 
+    def get_technician_recommendation_request(self, request_number: str) -> dict[str, Any]:
+        row = self._connection.execute(
+            """
+            SELECT sr.request_number, sr.status, sr.address, sr.urgency, m.brand, m.model
+            FROM service_requests sr
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE sr.request_number = ?
+            """,
+            (request_number,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(request_number)
+        return {
+            "request_number": row["request_number"],
+            "status": row["status"],
+            "address": row["address"],
+            "urgency": row["urgency"],
+            "brand": row["brand"],
+            "model": row["model"],
+        }
+
+    def count_scheduled_appointments_for_technician(self, technician_identifier: str) -> int:
+        row = self._connection.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM request_appointments
+            WHERE technician_identifier = ? AND status = 'scheduled'
+            """,
+            (technician_identifier,),
+        ).fetchone()
+        return 0 if row is None else int(row["count"])
+
+    def has_appointment_overlap_for_technician(self, technician_identifier: str, starts_at: str, ends_at: str) -> bool:
+        return self._has_appointment_overlap(technician_identifier, starts_at, ends_at)
+
     def update_status(self, request_number: str, status: str, title: str, description: str, actor: str) -> str:
         self.add_status_event(request_number, status, title, description, actor)
         return self._get_request_status(request_number)
@@ -2010,6 +2045,41 @@ class PostgresServiceRequestRepository:
         if request is None:
             raise KeyError(request_number)
         return self._dispatcher_detail(request)
+
+    def get_technician_recommendation_request(self, request_number: str) -> dict[str, Any]:
+        row = self._connect().execute(
+            """
+            SELECT sr.request_number, sr.status, sr.address, sr.urgency, m.brand, m.model
+            FROM service_requests sr
+            JOIN machines m ON m.id = sr.machine_id
+            WHERE sr.request_number = %s
+            """,
+            (request_number,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(request_number)
+        return {
+            "request_number": row["request_number"],
+            "status": row["status"],
+            "address": row["address"],
+            "urgency": row["urgency"],
+            "brand": row["brand"],
+            "model": row["model"],
+        }
+
+    def count_scheduled_appointments_for_technician(self, technician_identifier: str) -> int:
+        row = self._connect().execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM request_appointments
+            WHERE technician_identifier = %s AND status = 'scheduled'
+            """,
+            (technician_identifier,),
+        ).fetchone()
+        return 0 if row is None else int(row["count"])
+
+    def has_appointment_overlap_for_technician(self, technician_identifier: str, starts_at: str, ends_at: str) -> bool:
+        return self._has_appointment_overlap(technician_identifier, starts_at, ends_at)
 
     def update_status(self, request_number: str, status: str, title: str, description: str, actor: str) -> str:
         self.add_status_event(request_number, status, title, description, actor)

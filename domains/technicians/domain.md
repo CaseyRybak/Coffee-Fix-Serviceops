@@ -19,7 +19,7 @@ Phase 04 records manual assignment metadata from the dispatcher workflow on the 
 
 Phase 08 adds a protected technician workspace for staff with the `technician` role. A technician can see service requests assigned to their staff username, open request detail, record a diagnosis checklist, record a repair result, and mark parts used during the visit.
 
-Technician actions append service-request status events with actor `technician`. This slice still does not create full technician profiles, availability calendars, automatic matching, technician-owned rescheduling controls, or mobile push notifications. Dispatcher-owned structured rescheduling arrives in the Phase 15 scheduling boundary below.
+Technician actions append service-request status events with actor `technician`. This slice did not create full technician profiles, availability calendars, automatic matching, technician-owned rescheduling controls, or mobile push notifications. Dispatcher-owned structured rescheduling arrives in the Phase 15 scheduling boundary below.
 
 ## Phase 15 Schedule Visibility
 
@@ -29,7 +29,7 @@ Technician identity:
 
 - Scheduling uses the staff username as the technician identifier.
 - Existing assignment matching still uses `assigned_technician_name`, now populated with the technician identifier when a structured appointment is created.
-- Dispatcher candidate selection reads active staff accounts with the `technician` role. Candidates expose staff display name, username, and phone. Region, skills, and availability remain manual or deferred technician-profile data.
+- Dispatcher candidate selection reads active staff accounts with the `technician` role. Candidates expose staff display name, username, and phone. Region and skill data are provided later by the Phase 23 Lite technician profile boundary.
 
 Capacity assumption:
 
@@ -46,3 +46,16 @@ Technician boundary:
 Technician parts usage now cooperates with inventory reservations. When a technician records parts used for an assigned request, the inventory domain consumes any active reservation for the same request and part before using unreserved available stock.
 
 Technician catalog access is read-only. The technician workspace can load the parts catalog, show available/reserved stock context, and let the technician select a catalog part by SKU/name before recording usage. Catalog creation, duplicate control, compatibility metadata, stock adjustment, and reservation creation/release remain inventory-owned.
+
+## Phase 23 Lite Recommendation Foundation
+
+Phase 23 was intentionally scoped to a lightweight profile and recommendation foundation for the portfolio MVP. A technician profile is linked to an existing staff account with the `technician` role and stores only:
+
+- whether the technician participates in recommendations;
+- brand skills;
+- service regions;
+- an optional internal note.
+
+Dispatcher recommendations are deterministic and explainable. They rank technicians using active staff/profile state, brand match, region match, scheduled workload, and optional appointment-window conflict checks. Recommendations return reasons and risks for dispatcher review, but they never assign technicians or create appointments.
+
+Still deferred: GPS, route optimization, ratings, payroll, durable availability calendars, automatic assignment, and AI-owned technician assignment decisions.

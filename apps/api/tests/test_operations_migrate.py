@@ -54,6 +54,22 @@ def test_scheduling_migration_enforces_postgres_overlap_constraint() -> None:
     assert "WHERE (status = 'scheduled')" in migration_sql
 
 
+def test_technician_profile_migration_contract() -> None:
+    migration_sql = (
+        __import__("pathlib").Path(__file__).resolve().parents[1]
+        / "src"
+        / "serviceops_api"
+        / "migrations"
+        / "0014_technician_profiles.sql"
+    ).read_text(encoding="utf-8")
+
+    assert "CREATE TABLE IF NOT EXISTS technician_profiles" in migration_sql
+    assert "staff_username TEXT PRIMARY KEY REFERENCES staff_accounts(username) ON DELETE CASCADE" in migration_sql
+    assert "skill_brands JSONB NOT NULL DEFAULT '[]'::jsonb" in migration_sql
+    assert "service_regions JSONB NOT NULL DEFAULT '[]'::jsonb" in migration_sql
+    assert "CREATE INDEX IF NOT EXISTS idx_technician_profiles_active" in migration_sql
+
+
 def test_run_migrations_initializes_all_postgres_repositories(monkeypatch) -> None:
     from serviceops_api.operations import migrate
 
@@ -72,6 +88,7 @@ def test_run_migrations_initializes_all_postgres_repositories(monkeypatch) -> No
     monkeypatch.setattr(migrate, "create_ai_suggestion_repository", record_factory("ai_agents"))
     monkeypatch.setattr(migrate, "create_inventory_repository", record_factory("inventory"))
     monkeypatch.setattr(migrate, "create_staff_account_repository", record_factory("staff_management"))
+    monkeypatch.setattr(migrate, "create_technician_profile_repository", record_factory("technician_profiles"))
     monkeypatch.setattr(migrate, "create_notification_repository", record_factory("notifications"))
 
     result = migrate.run_migrations(
@@ -85,5 +102,6 @@ def test_run_migrations_initializes_all_postgres_repositories(monkeypatch) -> No
         ("ai_agents", True),
         ("inventory", True),
         ("staff_management", True),
+        ("technician_profiles", True),
         ("notifications", True),
     ]
