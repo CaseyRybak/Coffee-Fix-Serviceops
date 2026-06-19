@@ -15,7 +15,14 @@ import {
   buildAdminTechnicianProfilesPath,
 } from "../../shared/api";
 import { formatCompactDateTime } from "../../shared/formatters";
-import { buildStaffLoginPath, clearStaffSession, getStoredStaffSession, staffAuthHeaders, staffHasRole } from "../../shared/staffAuth";
+import {
+  buildStaffLoginPath,
+  clearStaffSession,
+  getStoredStaffSession,
+  redirectOnStaffAuthFailure,
+  staffAuthHeaders,
+  staffHasRole,
+} from "../../shared/staffAuth";
 import type {
   StaffAccountItem,
   StaffAccountListResponse,
@@ -174,6 +181,14 @@ export function canEditTechnicianProfile(roles: StaffRole[]): boolean {
   return roles.includes("technician");
 }
 
+export function redirectOnAdminAuthFailure(
+  status: number,
+  storage: Storage | undefined = typeof window !== "undefined" ? window.localStorage : undefined,
+  location: Pick<Location, "href"> | undefined = typeof window !== "undefined" ? window.location : undefined,
+): boolean {
+  return redirectOnStaffAuthFailure(status, "/admin", storage, location);
+}
+
 export function AdminPage({
   initialSession,
   initialStaff,
@@ -214,6 +229,7 @@ export function AdminPage({
 
   async function loadStaff() {
     const response = await fetch(`${apiBaseUrl()}${buildAdminStaffPath()}`, { headers: staffAuthHeaders(session) });
+    if (redirectOnAdminAuthFailure(response.status)) throw new Error("Admin session expired");
     if (!response.ok) throw new Error(`Admin staff list failed with ${response.status}`);
     const body = (await response.json()) as StaffAccountListResponse;
     setStaff(body);
@@ -224,6 +240,7 @@ export function AdminPage({
 
   async function loadAudit() {
     const response = await fetch(`${apiBaseUrl()}${buildAdminStaffAuditPath()}`, { headers: staffAuthHeaders(session) });
+    if (redirectOnAdminAuthFailure(response.status)) throw new Error("Admin session expired");
     if (!response.ok) throw new Error(`Admin audit list failed with ${response.status}`);
     const body = (await response.json()) as StaffAuditListResponse;
     setAudit(body);
@@ -233,6 +250,7 @@ export function AdminPage({
     const response = await fetch(`${apiBaseUrl()}${buildAdminTechnicianProfilesPath()}`, {
       headers: staffAuthHeaders(session),
     });
+    if (redirectOnAdminAuthFailure(response.status)) throw new Error("Admin session expired");
     if (!response.ok) throw new Error(`Technician profiles list failed with ${response.status}`);
     const body = (await response.json()) as TechnicianProfileListResponse;
     setTechnicianProfiles(body);
@@ -284,7 +302,8 @@ export function AdminPage({
 	          roles: createRoles,
 	        }),
 	      });
-	      if (!response.ok) throw new Error(`Create staff failed with ${response.status}`);
+		      if (redirectOnAdminAuthFailure(response.status)) throw new Error("Admin session expired");
+		      if (!response.ok) throw new Error(`Create staff failed with ${response.status}`);
 	      setUsername("");
 	      setFirstName("");
 	      setLastName("");
@@ -309,6 +328,7 @@ export function AdminPage({
         headers: { "Content-Type": "application/json", ...staffAuthHeaders(session) },
         body: JSON.stringify(body),
       });
+      if (redirectOnAdminAuthFailure(response.status)) throw new Error("Admin session expired");
       if (!response.ok) throw new Error(`Admin action failed with ${response.status}`);
       if (path.endsWith("/reset-password")) {
         const resetBody = (await response.json()) as { temporary_password: string };
@@ -339,6 +359,9 @@ export function AdminPage({
           }),
         ),
       );
+      if (responses.some((response) => redirectOnAdminAuthFailure(response.status))) {
+        throw new Error("Admin session expired");
+      }
       if (responses.some((response) => !response.ok)) throw new Error("Admin changes failed");
       await refresh();
       setMessage(successMessage);

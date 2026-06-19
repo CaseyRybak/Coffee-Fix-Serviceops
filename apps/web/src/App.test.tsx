@@ -10,6 +10,7 @@ import {
   buildAdminStaffChangeRequests,
   buildTechnicianProfilePayload,
   canEditTechnicianProfile,
+  redirectOnAdminAuthFailure,
 } from "./features/admin/AdminPage";
 import {
   DispatcherPage,
@@ -594,6 +595,35 @@ describe("App", () => {
     assert.equal(fakeStorage.getItem("serviceops.staffSession"), null);
     assert.equal(fakeLocation.href, "/staff/login?next=%2Finventory");
     assert.equal(redirectOnStaffAuthFailure(500, "/inventory", fakeStorage, fakeLocation), false);
+  });
+
+  it("redirects stale admin sessions instead of rendering an empty staff workspace", () => {
+    const storage = new Map<string, string>();
+    const fakeStorage = {
+      get length() {
+        return storage.size;
+      },
+      clear: () => storage.clear(),
+      getItem: (key: string) => storage.get(key) ?? null,
+      key: (index: number) => Array.from(storage.keys())[index] ?? null,
+      setItem: (key: string, value: string) => {
+        storage.set(key, value);
+      },
+      removeItem: (key: string) => {
+        storage.delete(key);
+      },
+    } as Storage;
+    const fakeLocation = { href: "" };
+    fakeStorage.setItem(
+      "serviceops.staffSession",
+      JSON.stringify({ accessToken: "expired-admin", username: "admin@coffeefix.local", roles: ["admin"] }),
+    );
+
+    assert.equal(redirectOnAdminAuthFailure(401, fakeStorage, fakeLocation), true);
+
+    assert.equal(fakeStorage.getItem("serviceops.staffSession"), null);
+    assert.equal(fakeLocation.href, "/staff/login?next=%2Fadmin");
+    assert.equal(redirectOnAdminAuthFailure(500, fakeStorage, fakeLocation), false);
   });
 
   it("builds admin staff management API paths", () => {
