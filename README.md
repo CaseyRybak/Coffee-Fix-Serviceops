@@ -10,6 +10,35 @@ Coffee Fix ServiceOps is an AI-assisted operations system for coffee machine rep
 
 The public site can be reviewed without staff access. Internal workspaces are protected by role-based staff login. Demo staff credentials are not committed to the repository; they should be disposable accounts created by the operator for a specific review window.
 
+## What To Review First
+
+If you have only a few minutes, start with the visual walkthrough:
+
+1. Scan the screenshots below to see the public intake, staff operations, inventory, procurement, owner view, and AI assistant.
+2. Review the bounded AI/RAG flow in the dispatcher screenshot, then compare it with the assistant screen.
+3. Check the architecture diagram to see how the React app, FastAPI API, PostgreSQL/pgvector, Redis, worker, Telegram bot, and n8n fit together.
+4. For a live review, follow the safe data rules in [docs/product/portfolio-demo-guide.md](docs/product/portfolio-demo-guide.md).
+
+Recommended demo route: public intake -> public status -> dispatcher triage -> AI suggestions/RAG -> technician recommendations -> inventory reservations -> procurement -> owner dashboard -> staff AI assistant.
+
+## Product Screenshots
+
+| Public landing | Public-safe status |
+| --- | --- |
+| ![Coffee Fix public landing page](docs/assets/portfolio/01-public-landing.png) | ![Public request status page](docs/assets/portfolio/02-public-status.png) |
+
+| Dispatcher AI triage | Technician recommendations |
+| --- | --- |
+| ![Dispatcher request card with AI suggestions](docs/assets/portfolio/03-dispatcher-ai-triage.png) | ![Dispatcher technician recommendation panel](docs/assets/portfolio/04-technician-recommendations.png) |
+
+| Inventory reservations | Procurement workflow |
+| --- | --- |
+| ![Inventory catalog with reserved and low-stock parts](docs/assets/portfolio/05-inventory-reservations.png) | ![Procurement purchase request workflow](docs/assets/portfolio/06-procurement-workflow.png) |
+
+| Owner dashboard | Staff AI assistant |
+| --- | --- |
+| ![Owner dashboard with SLA and workload metrics](docs/assets/portfolio/07-owner-dashboard.png) | ![Staff AI assistant with safe tool results](docs/assets/portfolio/08-ai-assistant.png) |
+
 ## What It Demonstrates
 
 The project packages a realistic service-operations workflow:
@@ -43,6 +72,47 @@ The project packages a realistic service-operations workflow:
 ## Architecture
 
 The system is a modular monolith with DDD and hexagonal boundaries. The repository keeps product intent, domain maps, execution plans, review artifacts, and operations evidence close to the code so future work can continue without chat history.
+
+```mermaid
+flowchart LR
+  PublicUser[Customer]
+  StaffUser[Staff]
+  Web[React/Vite web app]
+  API[FastAPI modular monolith]
+  Worker[Celery worker]
+  Bot[Telegram bot]
+  DB[(PostgreSQL + pgvector)]
+  Redis[(Redis)]
+  N8N[n8n workflows]
+  AI[OpenAI-compatible AI/embeddings]
+
+  PublicUser --> Web
+  StaffUser --> Web
+  Web --> API
+  API --> DB
+  API --> Redis
+  Worker --> Redis
+  Worker --> DB
+  Bot --> API
+  API --> N8N
+  API --> AI
+
+  subgraph Domains
+    Requests[Service requests]
+    Scheduling[Scheduling]
+    Inventory[Inventory and procurement]
+    KB[Knowledge base/RAG]
+    Assistant[Bounded staff assistant]
+    Notifications[Notifications]
+  end
+
+  API --> Requests
+  API --> Scheduling
+  API --> Inventory
+  API --> KB
+  API --> Assistant
+  API --> Notifications
+```
 
 Main applications:
 

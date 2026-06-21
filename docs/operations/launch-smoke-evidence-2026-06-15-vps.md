@@ -220,7 +220,16 @@ celery@ef3c9b0871d0 ready.
 
 Historical note: this evidence originally observed the worker running as root inside the production container and Celery emitted a standard warning for that runtime mode.
 
-Follow-up on 2026-06-19: the worker image was hardened to run as the non-root `serviceops` user. Local production-image verification ran `docker compose -f docker-compose.production.yml --env-file .env.example run --rm --no-deps --entrypoint id worker -u -n` and returned `serviceops`. A production redeploy of the worker service is enough to apply the hardening; no database migration is involved.
+Follow-up on 2026-06-19: the worker image was hardened to run as the non-root `serviceops` user. Local production-image verification ran `docker compose -f docker-compose.production.yml --env-file .env.example run --rm --no-deps --entrypoint id worker -u -n` and returned `serviceops`. Applying the hardening required only a worker service redeploy; no database migration was involved.
+
+Production follow-up on 2026-06-21 confirmed that the redeployed VPS worker container is running as the non-root user:
+
+```text
+WORKER_CONTAINER=coffeefixserviceops-coffeefixserviceops-up3whl-worker-1
+WORKER_USER=serviceops
+WORKER_UID=1000
+WORKER_CONFIG_USER=serviceops
+```
 
 ## n8n And Notification Evidence
 
