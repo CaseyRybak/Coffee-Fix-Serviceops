@@ -1,5 +1,7 @@
 import asyncio
+from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 import httpx
 
@@ -18,6 +20,12 @@ from serviceops_api.staff_auth import hash_staff_password
 from serviceops_api.staff_management.models import CreateStaffAccountPayload
 from serviceops_api.staff_management.repository import SqliteStaffAccountRepository
 from serviceops_api.technicians.repository import SqliteTechnicianProfileRepository
+
+
+class FixedAssistantDate(date):
+    @classmethod
+    def today(cls) -> date:
+        return cls(2026, 6, 19)
 
 
 def intake_payload(*, brand: str = "Jura", problem: str = "Machine leaks water under brew group.") -> dict[str, object]:
@@ -233,7 +241,8 @@ def test_assistant_can_run_reporting_knowledge_stock_and_recommendation_tools() 
                 results.append(response.json())
         return results
 
-    results = asyncio.run(scenario())
+    with patch("serviceops_api.ai_agents.assistant_tools.date", FixedAssistantDate):
+        results = asyncio.run(scenario())
 
     assert [result["status"] for result in results] == ["completed"] * 6
     assert [result["tool_calls"][0]["tool_name"] for result in results] == [
@@ -439,7 +448,8 @@ def test_assistant_answers_database_wide_operational_questions_with_fact_checks(
                 results[key] = response.json()
         return results
 
-    results = asyncio.run(scenario())
+    with patch("serviceops_api.ai_agents.assistant_tools.date", FixedAssistantDate):
+        results = asyncio.run(scenario())
 
     assert results["new_17"]["status"] == "completed"
     assert "17 июня 2026" in results["new_17"]["assistant_message"]
@@ -499,6 +509,10 @@ def test_assistant_handles_service_site_procurement_relative_date_and_meta_quest
         inventory_repository.approve_purchase_request(purchase.purchase_request_id, actor="admin@coffeefix.local")
         inventory_repository.mark_purchase_request_ordered(purchase.purchase_request_id, actor="inventory@coffeefix.local")
         inventory_repository.receive_purchase_request(purchase.purchase_request_id, actor="inventory@coffeefix.local", note="arrived")
+        inventory_repository._connection.execute(  # type: ignore[attr-defined]
+            "UPDATE purchase_requests SET created_at = ?, updated_at = ? WHERE id = ?",
+            ("2026-06-19T10:00:00+00:00", "2026-06-19T10:00:00+00:00", purchase.purchase_request_id),
+        )
 
         app = build_app(service_repository, knowledge_repository, inventory_repository, staff_repository, profile_repository)
         transport = httpx.ASGITransport(app=app)
@@ -562,7 +576,8 @@ def test_assistant_handles_service_site_procurement_relative_date_and_meta_quest
                 results[key] = response.json()
         return results
 
-    results = asyncio.run(scenario())
+    with patch("serviceops_api.ai_agents.assistant_tools.date", FixedAssistantDate):
+        results = asyncio.run(scenario())
 
     assert results["capabilities"]["tool_calls"][0]["tool_name"] == "answer_capabilities"
     assert "заяв" in results["capabilities"]["assistant_message"].casefold()
@@ -681,7 +696,8 @@ def test_assistant_uses_structured_filters_for_status_staff_visits_and_procureme
                 results[key] = response.json()
         return results
 
-    results = asyncio.run(scenario())
+    with patch("serviceops_api.ai_agents.assistant_tools.date", FixedAssistantDate):
+        results = asyncio.run(scenario())
 
     assert results["completed_17"]["status"] == "completed"
     assert results["completed_17"]["tool_calls"][0]["tool_name"] == "answer_database_query"
@@ -736,8 +752,8 @@ def test_assistant_finds_ordinal_request_and_keeps_safe_question_in_history() ->
     assert response["tool_calls"][0]["arguments"] == {"ordinal_position": 2}
     assert numbers["second"] in response["assistant_message"]
     assert numbers["latest"] not in response["assistant_message"]
-    assert "найди вторую заявку" in response["safe_message"]
-    assert "найди вторую заявку" in str(state["history"])
+    assert response["safe_message"] == "tool=find_request"
+    assert "найди вторую заявку" not in str(state["history"])
 
 
 def test_assistant_enforces_stock_role_boundary_and_redacts_secret_like_prompts() -> None:
@@ -880,7 +896,7 @@ def test_assistant_provider_or_planner_failure_records_safe_failed_run() -> None
     )
 
     assert response.status == "failed"
-    assert response.safe_message == "Вопрос: Поищи в базе знаний [credential redacted]; инструмент: unknown"
+    assert response.safe_message == "tool=unknown"
     assert response.tool_calls[0].result_summary == "Assistant tool request failed."
     assert history.saved is not None
     assert "Bearer" not in str(history.saved)

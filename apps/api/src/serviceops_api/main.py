@@ -156,8 +156,14 @@ def create_app(
     telegram_bot_api_secret: str | None = None,
     staff_authenticator: StaffAuthenticator | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="Coffee Fix ServiceOps API")
     settings = get_settings()
+    production_docs_disabled = settings.environment.strip().lower() in {"production", "prod"}
+    app = FastAPI(
+        title="Coffee Fix ServiceOps API",
+        docs_url=None if production_docs_disabled else "/docs",
+        redoc_url=None if production_docs_disabled else "/redoc",
+        openapi_url=None if production_docs_disabled else "/openapi.json",
+    )
     settings.validate_runtime()
     configure_logging(settings.service_name, settings.environment)
     app.add_middleware(

@@ -51,13 +51,15 @@ N8N_WEBHOOK_URL=https://n8n.serviceops.example.com/
 N8N_BASIC_AUTH_USER=<admin user>
 N8N_BASIC_AUTH_PASSWORD=<strong password>
 N8N_ENCRYPTION_KEY=<long random value>
-N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+N8N_BLOCK_ENV_ACCESS_IN_NODE=true
 SERVICEOPS_BACKUP_DIR=/var/backups/serviceops
 ```
 
 The production API and n8n services should call each other through private Compose service names. `N8N_WEBHOOK_URL` controls generated public n8n URLs for the UI/runtime, but the ServiceOps backend webhook targets should remain `http://n8n:5678/...` when n8n runs in the same Compose app.
 
 Phase 21 scheduled operational workflows call the API through `SERVICEOPS_API_BASE_URL` and authenticate with `SERVICEOPS_N8N_CALLBACK_SECRET`. They do not need separate webhook URL variables because n8n pulls `GET /notifications/n8n/operations/sla-reminders`, `/red-alerts`, `/owner-daily-report`, and `/low-stock-alerts` from the API.
+
+Keep `N8N_BLOCK_ENV_ACCESS_IN_NODE=true` unless an approved incident response or migration task explicitly needs environment-variable access inside workflow nodes. Store workflow secrets in n8n credentials or the Compose environment fields already listed above, not in workflow code.
 
 For live AI, set the OpenAI-compatible values from `docs/operations/ai-providers.md` in Dokploy. Do not commit provider API keys to `.env.example`, screenshots, smoke evidence, or workflow exports.
 

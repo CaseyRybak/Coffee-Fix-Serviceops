@@ -2036,11 +2036,11 @@ def _machine_label(machine: dict[str, object]) -> str:
 def safe_assistant_message(message: str, tool_name: str = "unknown") -> str:
     request_numbers = sorted({match.group(0).upper() for match in REQUEST_NUMBER_PATTERN.finditer(message)})
     numeric_ids = [match.group(1) for match in re.finditer(r"\b(?:supplier|part|qty|quantity)\s+(\d+)\b", message, flags=re.IGNORECASE)]
-    parts = [f"Вопрос: {_safe_staff_question(message)}", f"инструмент: {tool_name}"]
+    parts = [f"tool={tool_name}"]
     if request_numbers:
-        parts.append(f"заявки={','.join(request_numbers[:5])}")
+        parts.append(f"request_numbers={','.join(request_numbers[:5])}")
     if numeric_ids:
-        parts.append(f"ids={','.join(numeric_ids[:6])}")
+        parts.append(f"numeric_ids={','.join(numeric_ids[:6])}")
     return "; ".join(parts)
 
 

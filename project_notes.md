@@ -95,6 +95,7 @@ Use this file, `docs/execution-plans/index.md`, current domain docs, current ope
 - `bash -n tools/operations/smoke_test.sh`
 - `python3 tools/operations/test_smoke_script_contract.py`
 - `python3 tools/operations/test_production_compose_contract.py`
+- `python3 tools/operations/test_restore_script_contract.py`
 
 ## Current Decisions
 

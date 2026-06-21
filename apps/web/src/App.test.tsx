@@ -267,7 +267,8 @@ describe("App", () => {
 
     assert.match(dockerfile, /COPY public \.\/public/);
     assert.match(dockerfile, /COPY nginx\.conf \/etc\/nginx\/conf\.d\/default\.conf/);
-    assert.match(nginxConfig, /try_files \$uri \$uri\/ \/index\.html;/);
+    assert.match(nginxConfig, /try_files \/index\.html =404;/);
+    assert.match(nginxConfig, /location \/ {\s*return 404;\s*}/);
   });
 
   it("renders the success state with a request number and a new request action", () => {

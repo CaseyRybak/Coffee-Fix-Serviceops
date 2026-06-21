@@ -120,3 +120,26 @@ def test_create_app_configures_logging(monkeypatch) -> None:
     main.create_app()
 
     assert calls == [("serviceops-api", "test")]
+
+
+def test_create_app_disables_openapi_docs_in_production(monkeypatch) -> None:
+    import serviceops_api.main as main
+
+    from serviceops_api.service_requests.repository import ServiceRequestRepository
+
+    settings = Settings(
+        environment="production",
+        database_url="postgresql+psycopg://serviceops:strong-password@postgres:5432/serviceops",
+        staff_auth_secret="staff-secret-value",
+        n8n_webhook_shared_secret="webhook-secret-value",
+        n8n_callback_secret="callback-secret-value",
+        telegram_bot_api_secret="telegram-api-secret-value",
+    )
+    monkeypatch.setattr(main, "get_settings", lambda: settings)
+    monkeypatch.setattr(main, "configure_logging", lambda service_name, environment: None)
+
+    app = main.create_app(service_request_repository=ServiceRequestRepository.in_memory())
+
+    assert app.docs_url is None
+    assert app.redoc_url is None
+    assert app.openapi_url is None

@@ -1,0 +1,70 @@
+name: Verification
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Check docs
+        run: python3 tools/repo-checks/check_docs.py
+
+      - name: Test API
+        working-directory: apps/api
+        run: uv run --extra dev pytest
+
+      - name: Test worker
+        working-directory: apps/worker
+        run: uv run --extra dev pytest
+
+      - name: Test Telegram bot
+        working-directory: apps/telegram-bot
+        run: uv run --extra dev pytest
+
+      - name: Test web
+        run: npm run web:test
+
+      - name: Lint web
+        run: npm run web:lint
+
+      - name: Build web
+        run: npm run web:build
+
+      - name: Validate production compose
+        run: docker compose -f docker-compose.production.yml --env-file .env.example config --quiet
+
+      - name: Check operation scripts
+        run: |
+          bash -n tools/operations/postgres_backup.sh
+          bash -n tools/operations/postgres_restore.sh
+          bash -n tools/operations/smoke_test.sh
+          python3 tools/operations/test_smoke_script_contract.py
+          python3 tools/operations/test_production_compose_contract.py
+          python3 tools/operations/test_restore_script_contract.py

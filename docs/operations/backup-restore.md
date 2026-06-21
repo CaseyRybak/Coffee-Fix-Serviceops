@@ -75,10 +75,12 @@ POSTGRES_PORT=5432 \
 POSTGRES_DB=serviceops \
 POSTGRES_USER=serviceops \
 POSTGRES_PASSWORD=<production password> \
+SERVICEOPS_RESTORE_CONFIRM=I_UNDERSTAND_THIS_WILL_OVERWRITE_TARGET_DB \
+POSTGRES_DB=serviceops_restore_drill \
 tools/operations/postgres_restore.sh /var/backups/serviceops/serviceops-YYYYmmdd-HHMMSS.dump
 ```
 
-The restore script uses `pg_restore --clean --if-exists --no-owner --no-acl`.
+The restore script verifies the matching `.sha256` file before running `pg_restore --clean --if-exists --no-owner --no-acl`. By default it refuses targets whose database name does not include `restore`, `drill`, or `test`; production restore requires `SERVICEOPS_ALLOW_PRODUCTION_RESTORE=true` plus incident-owner approval.
 
 ## Restore Drill
 

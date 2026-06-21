@@ -29,6 +29,14 @@ def test_production_n8n_does_not_publish_direct_port() -> None:
     assert "5678:5678" not in n8n
 
 
+def test_production_n8n_blocks_workflow_env_access_by_default() -> None:
+    compose = (ROOT / "docker-compose.production.yml").read_text(encoding="utf-8")
+    env_example = (ROOT / ".env.example").read_text(encoding="utf-8")
+
+    assert "N8N_BLOCK_ENV_ACCESS_IN_NODE: ${N8N_BLOCK_ENV_ACCESS_IN_NODE:-true}" in compose
+    assert "N8N_BLOCK_ENV_ACCESS_IN_NODE=true" in env_example
+
+
 def test_production_compose_tracks_dokploy_routing_overlay() -> None:
     compose = (ROOT / "docker-compose.production.yml").read_text(encoding="utf-8")
     api = _service_block(compose, "api")
@@ -70,10 +78,27 @@ def test_production_compose_renders_demo_hosts_with_example_env() -> None:
     assert "Host(`0.0.0.0`)" not in result.stdout
 
 
-def test_worker_image_runs_as_non_root_user() -> None:
-    dockerfile = (ROOT / "apps/worker/Dockerfile").read_text(encoding="utf-8")
+def test_python_service_images_run_as_non_root_user() -> None:
+    for dockerfile_path in (
+        ROOT / "apps/api/Dockerfile",
+        ROOT / "apps/worker/Dockerfile",
+        ROOT / "apps/telegram-bot/Dockerfile",
+    ):
+        dockerfile = dockerfile_path.read_text(encoding="utf-8")
 
-    assert "\nUSER serviceops\n" in f"\n{dockerfile}\n"
+        assert "\nUSER serviceops\n" in f"\n{dockerfile}\n"
+
+
+def test_python_service_images_install_from_uv_lockfiles() -> None:
+    for dockerfile_path in (
+        ROOT / "apps/api/Dockerfile",
+        ROOT / "apps/worker/Dockerfile",
+        ROOT / "apps/telegram-bot/Dockerfile",
+    ):
+        dockerfile = dockerfile_path.read_text(encoding="utf-8")
+
+        assert "COPY pyproject.toml uv.lock ./" in dockerfile
+        assert "uv sync --frozen --no-dev" in dockerfile
 
 
 def test_web_nginx_rejects_suspicious_paths_without_spa_fallback() -> None:
@@ -109,8 +134,10 @@ def test_web_nginx_preserves_known_spa_routes() -> None:
 if __name__ == "__main__":
     test_production_telegram_bot_runs_with_default_compose_profile()
     test_production_n8n_does_not_publish_direct_port()
+    test_production_n8n_blocks_workflow_env_access_by_default()
     test_production_compose_tracks_dokploy_routing_overlay()
     test_production_compose_renders_demo_hosts_with_example_env()
-    test_worker_image_runs_as_non_root_user()
+    test_python_service_images_run_as_non_root_user()
+    test_python_service_images_install_from_uv_lockfiles()
     test_web_nginx_rejects_suspicious_paths_without_spa_fallback()
     test_web_nginx_preserves_known_spa_routes()

@@ -36,7 +36,7 @@ SERVICEOPS_N8N_WEBHOOK_SHARED_SECRET=<same inbound webhook value>
 SERVICEOPS_N8N_CALLBACK_SECRET=<same callback value>
 SERVICEOPS_TELEGRAM_BOT_TOKEN=<bot token>
 SERVICEOPS_DISPATCHER_TELEGRAM_CHAT_ID=<dispatcher operations chat id>
-N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+N8N_BLOCK_ENV_ACCESS_IN_NODE=true
 ```
 
 Telegram opt-in flow:
