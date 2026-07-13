@@ -4,7 +4,7 @@
 
 **Goal:** Make shared landing-page anchor links navigate correctly when clicked from public status routes.
 
-**Architecture:** Keep the existing native anchor navigation and shared Header/Footer components. Replace document-relative fragments with root-qualified fragments so browser navigation always targets sections rendered by the landing route.
+**Architecture:** Keep the existing native anchor navigation and shared Header/Footer components. Replace document-relative fragments with root-qualified fragments so browser navigation always targets sections rendered by the landing route, then resolve the initial hash in a landing-page mount effect because the browser may process the fragment before React creates the target element.
 
 **Tech Stack:** React, TypeScript, Node test runner, Vite, Playwright CLI
 
@@ -56,7 +56,15 @@ In `apps/web/src/features/public/PublicLandingPage.tsx`, change only shared land
 
 Use `/#trust` in `footerClientLinks`, `/#services` and `/#brands` in generated footer columns, and `/#top` for the two footer-bottom links.
 
-- [ ] **Step 4: Verify web quality gates**
+- [ ] **Step 4: Write the failing post-render scroll test**
+
+Import `scrollToLandingHash`, pass a target lookup callback, and assert that `#services` calls the target's `scrollIntoView()` while an empty hash returns `false`.
+
+- [ ] **Step 5: Implement post-render hash resolution**
+
+Export `scrollToLandingHash` from `PublicLandingPage.tsx`. It strips the leading `#`, looks up the target, calls `scrollIntoView()`, and reports whether a target was found. Call it from a `useEffect` in `PublicLandingPage` with `window.location.hash`.
+
+- [ ] **Step 6: Verify web quality gates**
 
 Run:
 
@@ -68,11 +76,11 @@ npm run web:build
 
 Expected: all commands exit 0.
 
-- [ ] **Step 5: Verify navigation locally or in production**
+- [ ] **Step 7: Verify navigation locally or in production**
 
 Use Playwright from `/status/CFX-20260616-000008`, click `Услуги`, and verify the URL pathname/hash become `/#services` and the `#services` section is present in the viewport.
 
-- [ ] **Step 6: Commit, push, and deploy**
+- [ ] **Step 8: Commit, push, and deploy**
 
 ```bash
 git add apps/web/src/App.test.tsx apps/web/src/features/public/PublicLandingPage.tsx docs/superpowers/specs/2026-07-13-status-page-anchor-navigation-design.md docs/superpowers/plans/2026-07-13-status-page-anchor-navigation.md
@@ -81,4 +89,3 @@ git push origin main
 ```
 
 On the VPS, fast-forward the checkout, validate `docker-compose.production.yml`, rebuild `web`, and recreate only `web` with `--no-deps`. Confirm API health, web HTTP 200, and repeat the Playwright transition against production.
-

@@ -26,7 +26,14 @@ import { StatusPage } from "./features/public/StatusPage";
 import { StaffLoginPage } from "./features/staff-auth/StaffLoginPage";
 import { StaffWorkspacePage } from "./features/staff-auth/StaffWorkspacePage";
 import { ProtectedTechnicianPage } from "./features/technician/TechnicianPage";
-import { SuccessState, getNextFormStep, validateIntakeStep } from "./features/public/PublicLandingPage";
+import {
+  Footer,
+  Header,
+  SuccessState,
+  getNextFormStep,
+  scrollToLandingHash,
+  validateIntakeStep,
+} from "./features/public/PublicLandingPage";
 import {
   buildAcceptAiClarificationPath,
   buildAdminStaffActivatePath,
@@ -317,6 +324,39 @@ describe("App", () => {
     assert.doesNotMatch(html, /href="\/admin/);
     assert.doesNotMatch(html, /href="\/technician/);
     assert.doesNotMatch(html, /href="\/inventory/);
+  });
+
+  it("routes shared section links through the landing page", () => {
+    const html = renderToStaticMarkup(
+      <>
+        <Header />
+        <Footer />
+      </>,
+    );
+
+    for (const section of ["services", "brands", "how-it-works", "trust", "footer", "top"]) {
+      assert.match(html, new RegExp(`href="/#${section}"`));
+    }
+    assert.doesNotMatch(html, /href="#(?:services|brands|how-it-works|trust|footer|top)"/);
+  });
+
+  it("scrolls to a landing hash after the React page has rendered", () => {
+    let scrolled = false;
+
+    assert.equal(
+      scrollToLandingHash("#services", (id) =>
+        id === "services"
+          ? {
+              scrollIntoView: () => {
+                scrolled = true;
+              },
+            }
+          : null,
+      ),
+      true,
+    );
+    assert.equal(scrolled, true);
+    assert.equal(scrollToLandingHash("", () => null), false);
   });
 
   it("uses the wide hero image without cropping it", () => {

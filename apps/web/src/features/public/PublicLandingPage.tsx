@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import {
   ArrowRight,
@@ -53,12 +53,12 @@ const initialForm: IntakeFormState = {
 };
 
 const navLinks = [
-  { label: "Услуги", href: "#services" },
-  { label: "Бренды", href: "#brands" },
-  { label: "Как работаем", href: "#how-it-works" },
-  { label: "Гарантия", href: "#trust" },
+  { label: "Услуги", href: "/#services" },
+  { label: "Бренды", href: "/#brands" },
+  { label: "Как работаем", href: "/#how-it-works" },
+  { label: "Гарантия", href: "/#trust" },
   { label: "Статус заявки", href: "/status" },
-  { label: "Контакты", href: "#footer" },
+  { label: "Контакты", href: "/#footer" },
 ];
 
 const brands = [
@@ -179,8 +179,8 @@ const footerClientLinks = [
   { label: "Оставить заявку", href: "/#request-form" },
   { label: "Отследить статус", href: "/status" },
   { label: "Telegram-уведомления", href: "/status" },
-  { label: "Гарантийные условия", href: "#trust" },
-  { label: "Оплата и документы", href: "#trust" },
+  { label: "Гарантийные условия", href: "/#trust" },
+  { label: "Оплата и документы", href: "/#trust" },
 ];
 
 export function getNextFormStep(step: FormStep): FormStep {
@@ -207,6 +207,19 @@ export function validateIntakeStep(form: IntakeFormState, step: FormStep): strin
   }
 
   return form.address.trim() ? [] : ["Район или адрес"];
+}
+
+export function scrollToLandingHash(
+  hash: string,
+  findTarget: (id: string) => { scrollIntoView: () => void } | null = (id) =>
+    typeof document === "undefined" ? null : document.getElementById(id),
+): boolean {
+  const targetId = hash.startsWith("#") ? hash.slice(1) : hash;
+  if (!targetId) return false;
+  const target = findTarget(targetId);
+  if (!target) return false;
+  target.scrollIntoView();
+  return true;
 }
 
 export function ServiceBar() {
@@ -741,8 +754,8 @@ export function Footer() {
         </div>
       </div>
       <div className="section-inner footer-main">
-        <FooterColumn title="Услуги" items={footerServices.map((label) => ({ label, href: "#services" }))} />
-        <FooterColumn title="Бренды" items={footerBrands.map((label) => ({ label, href: "#brands" }))} />
+        <FooterColumn title="Услуги" items={footerServices.map((label) => ({ label, href: "/#services" }))} />
+        <FooterColumn title="Бренды" items={footerBrands.map((label) => ({ label, href: "/#brands" }))} />
         <FooterColumn title="Клиентам" items={footerClientLinks} />
         <div>
           <h3>Контакты</h3>
@@ -774,8 +787,8 @@ export function Footer() {
         <Logo />
         <p>© 2026 CoffeeFix Pro. Ремонт и обслуживание кофемашин.</p>
         <div>
-          <a href="#top">Политика конфиденциальности</a>
-          <a href="#top">Публичная оферта</a>
+          <a href="/#top">Политика конфиденциальности</a>
+          <a href="/#top">Публичная оферта</a>
         </div>
       </div>
     </footer>
@@ -807,6 +820,11 @@ function SectionHeading({ title, copy }: { title: string; copy: string }) {
 }
 
 export function PublicLandingPage() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    scrollToLandingHash(window.location.hash);
+  }, []);
+
   return (
     <div className="app-page">
       <ServiceBar />
