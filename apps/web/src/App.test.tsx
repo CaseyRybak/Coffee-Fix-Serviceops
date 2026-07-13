@@ -98,6 +98,23 @@ import {
   staffAuthHeaders,
 } from "./shared/staffAuth";
 
+function mediaQueryRules(css: string, query: string): string {
+  const queryStart = css.indexOf(`@media ${query}`);
+  assert.notEqual(queryStart, -1);
+  const queryEnd = css.indexOf("@media", queryStart + 1);
+  return css.slice(queryStart, queryEnd === -1 ? undefined : queryEnd);
+}
+
+function cssRuleBody(css: string, selector: string): string {
+  const selectorStart = css.indexOf(selector);
+  assert.notEqual(selectorStart, -1);
+  const bodyStart = css.indexOf("{", selectorStart + selector.length);
+  const bodyEnd = css.indexOf("}", bodyStart + 1);
+  assert.notEqual(bodyStart, -1);
+  assert.notEqual(bodyEnd, -1);
+  return css.slice(bodyStart + 1, bodyEnd);
+}
+
 describe("App", () => {
   const dispatcherDetail = {
     request_number: "CFX-20260605-000001",
@@ -1215,6 +1232,32 @@ describe("App", () => {
     assert.doesNotMatch(
       css,
       /grid-template-columns: minmax\(170px, 0\.75fr\) minmax\(210px, 0\.9fr\) minmax\(210px, 0\.75fr\) minmax\(220px, 0\.7fr\)/,
+    );
+  });
+
+  it("keeps the public hero balanced on landscape tablets", () => {
+    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf-8");
+    const tabletRules = mediaQueryRules(css, "(min-width: 981px) and (max-width: 1100px)");
+    assert.match(cssRuleBody(tabletRules, ".hero-inner"), /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[\s\S]*gap: 24px;/);
+    assert.match(cssRuleBody(tabletRules, ".hero-badges"), /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+    assert.match(cssRuleBody(tabletRules, ".hero-actions"), /display: grid;[\s\S]*grid-template-columns: minmax\(0, 1\.2fr\) minmax\(0, 1fr\);/);
+    assert.match(cssRuleBody(tabletRules, ".hero-actions .primary-cta,\n  .hero-actions .secondary-cta"), /width: 100%;/);
+  });
+
+  it("stacks public status content on portrait tablets and compact phones", () => {
+    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf-8");
+    const tabletRules = mediaQueryRules(css, "(max-width: 768px)");
+    assert.match(cssRuleBody(tabletRules, ".status-lookup,\n  .status-dashboard"), /grid-template-columns: minmax\(0, 1fr\);/);
+    assert.match(cssRuleBody(tabletRules, ".telegram-panel"), /grid-column: auto;/);
+    assert.match(cssRuleBody(tabletRules, ".status-page .secondary-status-button"), /justify-self: stretch;[\s\S]*width: 100%;/);
+    assert.match(cssRuleBody(tabletRules, ".status-page .timeline-item h3,\n  .status-page .timeline-item p"), /overflow-wrap: anywhere;/);
+    assert.doesNotMatch(tabletRules, /(?:^|\n)\s{2}\.secondary-status-button\s*{/);
+
+    const phoneRules = mediaQueryRules(css, "(max-width: 620px)");
+    assert.match(cssRuleBody(phoneRules, ".status-lookup,\n  .status-summary,\n  .status-panel"), /padding: 20px;/);
+    assert.match(
+      cssRuleBody(phoneRules, ".status-answer-form .submit-button,\n  .telegram-controls .submit-button"),
+      /width: 100%;[\s\S]*min-height: 44px;/,
     );
   });
 

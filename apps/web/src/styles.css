@@ -4055,6 +4055,42 @@ select:focus {
   display: none;
 }
 
+@media (min-width: 981px) and (max-width: 1100px) {
+  .desktop-nav {
+    gap: 18px;
+    font-size: 0.86rem;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .header-cta {
+    padding: 0 14px;
+    font-size: 0.86rem;
+  }
+
+  .hero-inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  .hero-badges {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  }
+
+  .hero-actions .primary-cta,
+  .hero-actions .secondary-cta {
+    width: 100%;
+    padding-inline: 14px;
+  }
+}
+
 @media (max-width: 980px) {
   .assistant-layout {
     grid-template-columns: 1fr;
@@ -4218,6 +4254,37 @@ select:focus {
   }
 }
 
+@media (max-width: 768px) {
+  .status-lookup,
+  .status-dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .status-lookup > *,
+  .status-dashboard > * {
+    min-width: 0;
+  }
+
+  .status-page .secondary-status-button {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .telegram-panel {
+    grid-column: auto;
+  }
+
+  .status-lookup h1,
+  .status-summary strong {
+    overflow-wrap: anywhere;
+  }
+
+  .status-page .timeline-item h3,
+  .status-page .timeline-item p {
+    overflow-wrap: anywhere;
+  }
+}
+
 @media (max-width: 620px) {
   .section-inner,
   .service-bar-inner,
@@ -4237,6 +4304,31 @@ select:focus {
 
   .site-header-inner {
     min-height: 64px;
+  }
+
+  .status-main {
+    padding: 32px 0 48px;
+  }
+
+  .status-workspace,
+  .status-dashboard {
+    gap: 16px;
+  }
+
+  .status-lookup,
+  .status-summary,
+  .status-panel {
+    padding: 20px;
+  }
+
+  .status-lookup {
+    gap: 18px;
+  }
+
+  .status-answer-form .submit-button,
+  .telegram-controls .submit-button {
+    width: 100%;
+    min-height: 44px;
   }
 
   .workspace-header-inner {
